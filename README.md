@@ -72,7 +72,7 @@ is enforced in the scoring engine, not left to interface copy.
 | 1 | **Location Potential Score** | *Is this specific spot suitable for the business I have in mind?* A 0–100 score across five weighted components, with the top supporting factors and top risks named. |
 | 2 | **Business Type Recommendation** | *I have a location but no fixed plan — what should I open here?* All seven MVP categories scored and ranked, with the reasoning for each. |
 | 3 | **Competitor Analysis** | *How crowded is this market really?* Not a raw shop count — a distance-, access- and similarity-weighted **Competitor Equivalent Count**, compared against estimated demand to produce a saturation ratio. |
-| 4 | **Target Market Insight** | *Who would actually walk in?* Six customer segments scored 0–100, each backed by the specific facilities that produced the score, plus what that implies for product, pricing, and opening hours. |
+| 4 | **Target Market Insight** | *Which customer segments are most likely to be present around this location?* Six customer segments scored 0–100, each backed by the specific facilities that produced the score, plus what that implies for product, pricing, and opening hours. |
 | 5 | **Simulation & Report** | *What would change if I fixed the parking?* A consolidated, exportable report plus a what-if simulator for the operational variables an owner can actually control. |
 
 Full formulas, weights, and worked examples: **[docs/methodology.md](docs/methodology.md)**.
@@ -89,8 +89,8 @@ medium-sized enterprises."*
 This is the project's thesis, not a retrofitted label. GAYATAMA takes an
 analytical capability currently reserved for well-capitalised firms and makes it
 free at the point of use for the micro-enterprises the target explicitly names.
-Better-sited businesses survive longer, and surviving businesses are what create
-durable local employment.
+Better location decisions can improve a small business owner's odds of survival, and 
+surviving businesses are what create durable local employment.
 
 **SDG 9.3** — improving small-scale enterprises' access to information services
 that were previously available only to larger competitors.
@@ -104,7 +104,7 @@ more balanced and participatory local economic planning.
 | Layer | Technology | Why |
 |-------|-----------|-----|
 | Frontend | React 19, TypeScript, Vite | Fast iteration, strict typing across the whole codebase |
-| Mapping | Leaflet + React Leaflet, OpenStreetMap tiles | No API key, no vendor quota — the demo cannot be throttled into failure |
+| Mapping | Leaflet + React Leaflet, OpenStreetMap tiles | No API key is required for the MVP. Rate limiting, caching, and graceful fallback are used to reduce dependency on public OpenStreetMap infrastructure |
 | Server state | TanStack Query | Request deduplication and caching for slow geospatial queries |
 | Backend | NestJS 11, TypeScript | Modular architecture with dependency injection; keeps the geospatial, scoring, and caching concerns genuinely separated |
 | Database | Cloud Firestore | POI cache and saved reports; serverless, so there is no instance to keep alive during judging |
@@ -121,8 +121,8 @@ worth stating explicitly:
 
 - **The what-if simulator runs in the browser.** Moving a slider recomputes the
   score locally at interactive speed, with no server round trip.
-- **The frontend and backend cannot disagree.** Both import the same functions,
-  so a score shown in the UI is the score the API would compute.
+- **The frontend and backend minimize scoring drift.** Both import the same scoring functions, while the backend
+  remains the authoritative source for saved reports and final recommendations.
 - **The methodology is testable as a unit.** Every worked example in
   [docs/methodology.md](docs/methodology.md) exists as an assertion in the test
   suite, so the documentation cannot silently drift from the implementation.
@@ -133,32 +133,62 @@ worth stating explicitly:
 ┌──────────────────────────────┐         ┌──────────────────────────────┐
 │  apps/web  (React + Vite)    │         │  apps/api  (NestJS)          │
 │                              │  HTTP   │                              │
-│  • Leaflet map picker        │ ──────► │  • Overpass client           │
-│  • Score breakdown panel     │ ◄────── │  • Firestore POI cache       │
-│  • Business ranking          │         │  • Scoring orchestration     │
-│  • What-if simulator ────┐   │         │  • Rate limiting             │
-│  • Report / PDF export   │   │         │              │               │
-└──────────────────────────┼───┘         └──────────────┼───────────────┘
-                           │                            │
-                           │   imports the same engine  │
-                           └───────────┬────────────────┘
-                                       ▼
-                        ┌──────────────────────────────┐
-                        │  packages/scoring            │
-                        │  Pure TypeScript, no deps    │
-                        │                              │
-                        │  • Distance zone weighting   │
-                        │  • 6 target market segments  │
-                        │  • 7 business categories     │
-                        │  • Competitor equivalence    │
-                        │  • Confidence & uncertainty  │
-                        └──────────────────────────────┘
-                                       ▲
-                                       │  read-through cache
-                        ┌──────────────┴───────────────┐
-                        │  Overpass API (OpenStreetMap)│
-                        └──────────────────────────────┘
+│  • Leaflet map picker        │ ──────► │  • Request validation        │
+│  • Score breakdown panel     │ ◄────── │  • POI cache lookup          │
+│  • Business ranking          │         │  • Overpass fetch on miss    │
+│  • What-if simulator         │         │  • Scoring orchestration     │
+│  • Report / PDF export       │         │  • Rate limiting             │
+│                              │         │  • Report / PDF endpoint     │
+└──────────────┬───────────────┘         └───┬────────────────┬─────────┘
+               │                             │                │
+               │ imports for local preview   │ reads/writes   │ fetches on miss
+               │ optional only               ▼                ▼
+               │                  ┌──────────────────┐ ┌──────────────────────┐
+               │                  │ Firestore POI    │ │ Overpass API         │
+               │                  │ Cache            │ │ OpenStreetMap source │
+               │                  └──────────────────┘ └──────────────────────┘
+               │                             │
+               │                             │ raw / cached POI data
+               │                             ▼
+               │                  ┌──────────────────────────────┐
+               │                  │ Data Normalization Layer     │
+               │                  │                              │
+               │                  │ • Tag normalization          │
+               │                  │ • Duplicate cleanup          │
+               │                  │ • Distance calculation       │
+               │                  │ • Distance zone assignment   │
+               │                  │ • Data freshness check       │
+               │                  │ • Data quality scoring       │
+               │                  └──────────────┬───────────────┘
+               │                                 │ normalized POI data
+               ▼                                 ▼
+┌──────────────────────────────┐      ┌──────────────────────────────┐
+│ packages/scoring             │◄─────│ Scoring Input Builder        │
+│ Pure TypeScript, no I/O      │      │                              │
+│                              │      │ • Segment signals            │
+│ • Distance zone weighting    │      │ • Business category inputs   │
+│ • 6 target market segments   │      │ • Competitor equivalents     │
+│ • 7 business categories      │      │ • Confidence inputs          │
+│ • Competitor equivalence     │      └──────────────────────────────┘
+│ • Confidence & uncertainty   │
+└──────────────────────────────┘
 ```
+### Data Normalization Layer
+
+GAYATAMA does not score raw OpenStreetMap tags directly. The normalization layer converts messy OSM tags into stable internal categories, removes duplicates, calculates distance zones, and assigns data quality signals before the scoring engine runs.
+
+Raw OSM tags are normalized into internal POI categories:
+
+| OSM Tag Example | Internal Category | Used For |
+|---|---|---|
+| `amenity=school`, `amenity=college`, `amenity=university` | `education` | Student / family demand |
+| `office=*`, `amenity=bank`, `building=commercial` | `workplace` | Office worker demand |
+| `shop=convenience`, `shop=supermarket` | `retail_anchor` | Daily traffic signal |
+| `amenity=cafe`, `amenity=restaurant`, `amenity=fast_food` | `food_beverage` | Demand and competition |
+| `shop=laundry` | `laundry_service` | Competition and service demand |
+| `tourism=hotel`, `tourism=attraction` | `tourism` | Tourist demand |
+| `highway=bus_stop`, `railway=station`, `public_transport=*` | `transport` | Commuter demand |
+| Unmapped tags | `other` | Stored but lightly weighted |
 
 ### Repository layout
 
@@ -240,8 +270,8 @@ licence requires.
 Choosing open data over a commercial POI provider was a deliberate design
 decision with consequences we accept — coverage varies by region, and
 GAYATAMA's Data Quality factor exists precisely to model that variation rather
-than paper over it. The reasoning, and how OSM's `check_date` tags feed the
-freshness weighting, is documented in
+than paper over it. Where available, OSM's `check_date` and related freshness tags feed the freshness weighting. 
+The reasoning is documented in
 **[docs/data-sources.md](docs/data-sources.md)**.
 
 ## Limitations
