@@ -15,9 +15,22 @@ implementation without turning the build red.
 
 ---
 
+## Basis of the MVP weights
+
+The MVP weights are rule-based baselines, not statistically fitted parameters. They are based on explicit design assumptions:
+
+- Customer demand should dominate the final score because a business location is only useful if enough relevant customers are nearby.
+- Distance should decay gradually because nearby facilities usually matter more than distant ones.
+- Competition should be judged relative to demand, not as a raw count.
+- Missing or stale open data should reduce confidence rather than automatically reduce the business score.
+- Operational risks should not dominate the score unless they create hard warnings, because some risks can be checked or mitigated before opening.
+
+These values are intentionally documented as calibratable assumptions. Future versions should recalibrate them using field surveys, entrepreneur interviews, transaction data, or observed business outcomes.
+
 ## Table of contents
 
 - [System-wide rules](#system-wide-rules)
+- [Basis of the MVP weights](#basis-of-the-mvp-weights)
 - [1. Location Potential Score](#1-location-potential-score)
 - [2. Business Type Recommendation](#2-business-type-recommendation)
 - [3. Competitor Analysis](#3-competitor-analysis)
@@ -114,6 +127,8 @@ different customers. There is no such thing as a good location in the abstract.
 - Target business category
 - Facilities and businesses within a 1,500 m radius
 - Road, transport, parking, and site-risk data
+
+Some inputs are available from OpenStreetMap, while flood risk, zoning, and legal access may require imported datasets or manual field validation in the MVP.
 
 ### Components
 
@@ -305,6 +320,16 @@ K = Σ ( Distance Weight
       × Competitor Scale )
 ```
 
+### Operating-Hours Factor
+
+| Condition | Factor |
+|---|---:|
+| Hours strongly overlap | 1.00 |
+| Partial overlap | 0.60 |
+| Minimal overlap | 0.30 |
+| Unknown hours | 0.80 |
+| Closed during target hours | 0.10 |
+
 #### Worked example — coffee shop
 
 | Competitors | Calculation | Contribution |
@@ -422,6 +447,8 @@ Segment Score = min(100, Σ ( Facility Points
 | Small | 0.60 |
 | Medium or unknown | 1.00 |
 | Large | 1.40 |
+
+When explicit size data is unavailable, facility scale defaults to Medium / 1.00. Large is used only when OSM tags, mapped area, or known facility type justify it, such as a hospital, university campus, mall, station, or large apartment complex.
 
 ### Interpretation
 
@@ -571,7 +598,7 @@ cannot present a confident answer built on data that does not support one.
 These are surfaced **regardless of how high the score is**. A location can be
 commercially excellent and still be one you must not build on.
 
-- Business zoning appears incompatible
+- Business zoning appears incompatible, when zoning data is available
 - No legal access to the site
 - High flood risk
 - Primary data older than 36 months
