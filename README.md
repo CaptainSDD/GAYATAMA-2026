@@ -177,18 +177,22 @@ worth stating explicitly:
 
 GAYATAMA does not score raw OpenStreetMap tags directly. The normalization layer converts messy OSM tags into stable internal categories, removes duplicates, calculates distance zones, and assigns data quality signals before the scoring engine runs.
 
-Raw OSM tags are normalized into internal POI categories:
+Raw OSM tags are normalized into internal facility kinds:
 
-| OSM Tag Example | Internal Category | Used For |
+| OSM tag examples | Internal kind | Used for |
 |---|---|---|
-| `amenity=school`, `amenity=college`, `amenity=university` | `education` | Student / family demand |
-| `office=*`, `amenity=bank`, `building=commercial` | `workplace` | Office worker demand |
-| `shop=convenience`, `shop=supermarket` | `retail_anchor` | Daily traffic signal |
-| `amenity=cafe`, `amenity=restaurant`, `amenity=fast_food` | `food_beverage` | Demand and competition |
-| `shop=laundry` | `laundry_service` | Competition and service demand |
-| `tourism=hotel`, `tourism=attraction` | `tourism` | Tourist demand |
-| `highway=bus_stop`, `railway=station`, `public_transport=*` | `transport` | Commuter demand |
-| Unmapped tags | `other` | Stored but lightly weighted |
+| `amenity=university`, `amenity=college` | `campus` | Student, office and general demand |
+| `amenity=school` | `school` | Student and resident demand |
+| `office=*`, `building=office` | `office` | Office and general demand |
+| `landuse=residential`, `building=apartments` | `housing` | Resident demand |
+| `building=dormitory`, `tourism=guest_house`, `tourism=hostel` | `boarding_house` | Student and resident demand |
+| `highway=bus_stop`, `railway=station`, `public_transport=station` | `transit` | Commuter demand and accessibility |
+| `amenity=cafe`, `amenity=restaurant`, `shop=laundry`, … | `cafe`, `restaurant`, `laundry`, … | Competition |
+| `shop=convenience`, `shop=supermarket` | `convenience`, `supermarket` | Competition for minimarkets; support for other categories |
+| `amenity=atm`, `amenity=marketplace`, `amenity=clinic`, … | `atm`, `marketplace`, `clinic`, … | Supporting Facility Fit |
+| Unmapped tags | `other` | Stored, not scored |
+
+The full mapping is in [docs/data-sources.md](docs/data-sources.md#tag-mapping).
 
 ### Repository layout
 

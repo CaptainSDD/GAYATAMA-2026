@@ -3,9 +3,11 @@
 Base URL (development): `http://localhost:3000`
 All endpoints are prefixed `/api/v1`.
 
-> **Status.** This document specifies the intended contract. Endpoints are
-> implemented against it; where an endpoint is not yet built it is marked
-> _planned_.
+> **Status.** Implemented in `apps/api`, except endpoints marked _planned_.
+> Example values are illustrative. The scores, margins, ranges, bands, statuses
+> and competition figures in them are recomputed by the scoring engine's test
+> suite (`packages/scoring/test/api-examples.test.ts`); names, IDs and text are
+> not.
 
 ---
 
@@ -13,11 +15,43 @@ All endpoints are prefixed `/api/v1`.
 
 - All requests and responses are JSON.
 - All scores are numbers in `[0, 100]`, unrounded — clients round for display.
-- Coordinates are WGS84 decimal degrees.
-- Every response carries `modelVersion`, identifying the constant set used, so a
-  stored result stays reproducible after recalibration.
+  Examples in this document show two decimal places for readability.
+- Every threshold (bands, recommendation statuses, the confidence floor) is
+  applied to the unrounded value.
+- Coordinates are WGS84 decimal degrees and must fall inside Indonesia:
+  latitude −11.5 to 6.5, longitude 94.5 to 141.5.
+- Every scored response carries `modelVersion`, identifying the constant set
+  used, so a stored result stays reproducible after recalibration.
 - Request bodies are validated with Zod; a failure returns `400` with the
-  offending field paths.
+  offending field paths. Unknown fields are rejected.
+
+### Score object
+
+Every scored result, in every endpoint, uses the same shape. A client renders
+all of them the same way, and never has a score without its interval.
+
+```json
+{ "value": 75.15, "band": "suitable", "confidence": 81, "margin": 8, "range": [67, 83] }
+```
+
+| Field | Meaning |
+|-------|---------|
+| `value` | Unrounded score, 0–100 |
+| `band` | `highly_suitable` (≥ 80) · `suitable` (≥ 70, < 80) · `moderately_suitable` (≥ 60, < 70) · `risky` (≥ 50, < 60) · `not_recommended` (< 50) |
+| `confidence` | Confidence Score, 0–100 — see [methodology](methodology.md#confidence-score-and-warnings) |
+| `margin` | `round(5 + 0.15 × (100 − confidence))` |
+| `range` | `[round(value − margin), round(value + margin)]`, clamped to `[0, 100]` |
+
+### Data source object
+
+Every response built on OpenStreetMap data carries its attribution:
+
+```json
+{ "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false }
+```
+
+`stale` is `true` when Overpass was unavailable and an expired cache entry was
+served instead; `fetchedAt` then shows how old the data is.
 
 ### Business category identifiers
 
@@ -37,10 +71,11 @@ All endpoints are prefixed `/api/v1`.
 
 | Code | Status | Meaning |
 |------|--------|---------|
-| `VALIDATION_FAILED` | 400 | Malformed request body |
+| `VALIDATION_FAILED` | 400 | Malformed body, invalid field, unknown field, or a coordinate outside Indonesia. `details.issues` lists each problem |
+| `NOT_FOUND` | 404 | Unknown route |
 | `INSUFFICIENT_DATA` | 422 | Confidence below 40 — no definitive recommendation given |
-| `UPSTREAM_TIMEOUT` | 504 | Overpass did not respond and no cache was available |
 | `RATE_LIMITED` | 429 | Client exceeded the throttle |
+| `UPSTREAM_TIMEOUT` | 504 | Overpass did not respond and nothing was cached for the area |
 
 `INSUFFICIENT_DATA` is a deliberate design choice, not a failure: below a
 confidence of 40 the system refuses to answer rather than guessing. See
@@ -72,7 +107,7 @@ endpoint.
   "businessType": "laundry",
 
   "score": {
-    "value": 75.3,
+    "value": 75.15,
     "band": "suitable",
     "confidence": 81,
     "margin": 8,
@@ -82,7 +117,7 @@ endpoint.
   "components": {
     "demandFit":         { "value": 74.75, "weight": 0.35 },
     "accessibility":     { "value": 67.0,  "weight": 0.20 },
-    "competition":       { "value": 75.75, "weight": 0.20 },
+    "competition":       { "value": 75.71, "weight": 0.20 },
     "supportingFacility":{ "value": 73.0,  "weight": 0.15 },
     "risk":              { "value": 95.0,  "weight": 0.10 }
   },
@@ -99,18 +134,21 @@ endpoint.
   "competition": {
     "rawCount": 5,
     "equivalentCount": 2.06,
-    "density": "moderate",
+    "density": "low",
     "saturationRatio": 0.55,
     "reading": "healthy",
-    "radiusMeters": 1500
+    "radiusMeters": 1500,
+    "strongest": [
+      { "id": "node/4012345678", "name": "Laundry Kilat", "kind": "laundry", "distanceMeters": 420, "contribution": 0.6 }
+    ]
   },
 
   "strengths": [
-    { "factor": "resident_density", "detail": "3 housing clusters and 4 boarding houses within 800 m" }
+    { "factor": "risk", "detail": "Risk and Operability scores 95/100" },
+    { "factor": "competition", "detail": "Competition Opportunity scores 76/100" },
+    { "factor": "demandFit", "detail": "Demand Fit scores 75/100" }
   ],
-  "risks": [
-    { "factor": "public_transport", "detail": "Nearest transit stop is 1.1 km away" }
-  ],
+  "risks": [],
   "warnings": [],
 
   "evidence": {
@@ -123,14 +161,22 @@ endpoint.
     "attribution": "© OpenStreetMap contributors",
     "licence": "ODbL 1.0",
     "fetchedAt": "2026-09-09T13:22:41Z",
-    "cacheHit": true
+    "cacheHit": true,
+    "stale": false
   }
 }
 ```
 
-`score.value` is unrounded; `score.range` is already rounded because it is a
-display artefact. `dataSource.fetchedAt` is required for ODbL-compliant
-attribution in exported reports — see [data-sources.md](data-sources.md).
+- `score.value` is unrounded; `score.range` is already rounded because it is a
+  display artefact.
+- `competition.strongest` lists up to five competitors by contribution to the
+  Competitor Equivalent Count.
+- `strengths` are up to three components scoring 60 or more; `risks` are up to
+  three scoring below 60.
+- `warnings` entries are `{ code, message }`. Codes: `flood_risk_proxy`,
+  `stale_data` — see [hard warnings](methodology.md#hard-warnings-the-engine-raises).
+- `dataSource.fetchedAt` is required for ODbL-compliant attribution in exported
+  reports — see [data-sources.md](data-sources.md).
 
 ---
 
@@ -151,42 +197,126 @@ I open here?".
 {
   "modelVersion": "0.1.0",
   "location": { "lat": -7.301234, "lng": 112.717890 },
-  "confidence": 81,
 
   "recommendations": [
     {
       "businessType": "laundry",
-      "score": 75.3,
-      "band": "suitable",
+      "score": { "value": 75.15, "band": "suitable", "confidence": 81, "margin": 8, "range": [67, 83] },
       "status": "primary",
       "dominantSegment": "resident",
       "rationale": "Resident score 82 with healthy competitor saturation (0.55)",
       "differentiator": "Lower footfall dependence than food or beverages"
+    },
+    {
+      "businessType": "salon",
+      "score": { "value": 71.6, "band": "suitable", "confidence": 81, "margin": 8, "range": [64, 80] },
+      "status": "primary",
+      "dominantSegment": "resident",
+      "rationale": "Resident score 82 with low competitor saturation (0.31)",
+      "differentiator": "Relies on repeat local customers rather than passing trade"
+    },
+    {
+      "businessType": "minimarket",
+      "score": { "value": 69.2, "band": "moderately_suitable", "confidence": 81, "margin": 8, "range": [61, 77] },
+      "status": "alternative",
+      "dominantSegment": "resident",
+      "rationale": "Resident score 82 with healthy competitor saturation (0.72)",
+      "differentiator": "Needs the most stock and shelf space to open"
     }
   ],
 
-  "equivalent": [["minimarket", "salon"]],
+  "equivalent": [["salon", "minimarket"]],
 
   "notRecommended": [
-    { "businessType": "pharmacy", "score": 48.2, "reason": "Health segment score 20; no hospital or clinic within 1500 m" }
+    {
+      "businessType": "beverages",
+      "score": { "value": 57.9, "band": "risky", "confidence": 81, "margin": 8, "range": [50, 66] },
+      "status": "not_recommended",
+      "reason": "Competition Opportunity is 16/100, its weakest component"
+    },
+    {
+      "businessType": "pharmacy",
+      "score": { "value": 52.4, "band": "risky", "confidence": 81, "margin": 8, "range": [44, 60] },
+      "status": "not_recommended",
+      "reason": "Supporting Facility Fit is 22/100, its weakest component"
+    }
   ],
 
+  "warnings": [],
+
   "segments": { "student": 77, "office": 48, "resident": 82, "commuter": 35, "health": 20, "general": 55 },
-  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true }
+  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false }
 }
 ```
 
-`recommendations` holds at most three entries. `equivalent` groups categories
-whose scores differ by 3 points or less — presenting these as a strict ranking
-would imply a precision the model does not have.
+### `status` values
+
+Each category's status comes from its unrounded score and the location's
+confidence, following the
+[recommendation rules](methodology.md#recommendation-rules):
+
+| `status` | Score | Confidence | Listed in |
+|----------|-------|------------|-----------|
+| `primary` | ≥ 70 | ≥ 60 | `recommendations` |
+| `alternative` | ≥ 60 and < 70 | ≥ 60 | `recommendations` |
+| `needs_validation` | ≥ 60 | ≥ 40 and < 60 | `recommendations` |
+| `not_recommended` | < 60 | any | `notRecommended` |
+
+Below a confidence of 40 no ranking is returned; the endpoint responds `422`
+`INSUFFICIENT_DATA` (see [Errors](#errors)).
+
+`band` describes the score alone. `status` also accounts for confidence and the
+recommendation threshold of 60, so a category scoring 55 has band `risky` and
+status `not_recommended`.
+
+### Confidence and `needs_validation`
+
+None of the four Confidence Score inputs in model 0.1.0 depends on the business
+category, so every entry carries the same `confidence` and `margin`. They are
+repeated per entry so each score renders exactly like `/analysis`.
+
+Because confidence is shared, a location with confidence from 40 to 59 returns
+no `primary` or `alternative` entries — every category scoring 60 or more is
+`needs_validation`, with the wider interval that low confidence produces:
+
+```json
+{
+  "businessType": "laundry",
+  "score": { "value": 75.15, "band": "suitable", "confidence": 52, "margin": 12, "range": [63, 87] },
+  "status": "needs_validation",
+  "dominantSegment": "resident",
+  "rationale": "Resident score 82, but facility data around this location is incomplete",
+  "differentiator": "Lower footfall dependence than food or beverages"
+}
+```
+
+A client must present `needs_validation` as "verify on site before deciding",
+never as a recommendation.
+
+### Lists and grouping
+
+- `recommendations` holds at most three entries: the highest-scoring categories
+  with a score of 60 or more, in descending order.
+- `notRecommended` lists every category scoring below 60, in descending order.
+  Each `reason` names the category's weakest component.
+- A category that scores 60 or more but ranks fourth or lower appears in
+  neither list.
+- `equivalent` groups entries of `recommendations` whose scores are within 3
+  points of the next entry in the ranking. Groups chain: if A–B and B–C are
+  each within 3 points, A, B and C form one group. Presenting these as a strict
+  ranking would imply a precision the model does not have.
+- `warnings` carries the location's
+  [hard warnings](methodology.md#hard-warnings-the-engine-raises), as in
+  `/analysis`. They apply to every category and are returned regardless of
+  score.
 
 ---
 
 ## `GET /api/v1/pois`
 
-Raw normalised facilities around a point. Used by the map layer, and by the
-client-side what-if simulator, which needs the facility set in memory to
-recompute locally without further requests.
+Normalised facilities and site conditions around a point. Used by the map layer,
+and by the client-side what-if simulator, which reruns the scoring engine in the
+browser without further requests.
 
 ### Query parameters
 
@@ -200,23 +330,33 @@ recompute locally without further requests.
 
 ```json
 {
+  "location": { "lat": -7.301234, "lng": 112.717890 },
+  "asOf": "2026-09-11",
+  "site": { "roadClass": "tertiary", "pedestrianFeatureCount": 4 },
   "facilities": [
     {
       "id": "node/1234567890",
-      "type": "campus",
+      "kind": "campus",
       "name": "Universitas Negeri Surabaya",
-      "lat": -7.3021, "lng": 112.7165,
-      "distanceMeters": 250,
+      "lat": -7.3021,
+      "lng": 112.7165,
+      "scale": "large",
+      "checkDate": "2026-03-14",
+      "lastEditDate": "2025-11-02T08:15:00Z",
+      "distanceMeters": 181.0,
       "zone": "a",
-      "scale": "medium",
       "dataQuality": 1.0,
-      "accessFactor": 1.0,
-      "lastVerified": "2026-03-14"
+      "accessFactor": 1.0
     }
   ],
-  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true }
+  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false }
 }
 ```
+
+Facilities are sorted by distance. Each carries the engine's own fields — the
+`Facility` type in `@gayatama/scoring` — plus its distance, zone, Data Quality
+and Access Factor from this location. With `location`, `site` and `asOf`, the
+response is a complete engine input.
 
 ---
 
@@ -241,8 +381,8 @@ produced.
 
 ## Rate limiting
 
-Enforced per IP by `@nestjs/throttler`. Overpass is a volunteer-funded shared
-service and the cache is what keeps GAYATAMA a well-behaved client of it.
+Enforced per client IP by `@nestjs/throttler`. Overpass is a volunteer-funded
+shared service and the cache is what keeps GAYATAMA a well-behaved client of it.
 
 | Endpoint | Limit |
 |----------|-------|
@@ -250,7 +390,9 @@ service and the cache is what keeps GAYATAMA a well-behaved client of it.
 | `/pois` | 60 requests / minute |
 | `/health` | unlimited |
 
-Exceeding a limit returns `429` with a `Retry-After` header.
+Exceeding a limit returns `429` with a `Retry-After` header. Behind a proxy
+such as Cloud Run, set `TRUST_PROXY_HOPS=1` so limits apply to each visitor
+rather than to the proxy's address.
 
 ---
 

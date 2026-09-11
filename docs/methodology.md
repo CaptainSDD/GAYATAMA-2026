@@ -27,6 +27,45 @@ The MVP weights are rule-based baselines, not statistically fitted parameters. T
 
 These values are intentionally documented as calibratable assumptions. Future versions should recalibrate them using field surveys, entrepreneur interviews, transaction data, or observed business outcomes.
 
+### What the structure rests on
+
+The numbers are GAYATAMA's own judgement. The structure they sit in is not: each
+part follows an established idea from retail location analysis, GIS decision
+analysis, or research on open map data quality. The table separates the
+borrowed idea from the chosen numbers, so each can be challenged on its own
+terms. Full citations are in [References](#references).
+
+| Part of the model | Established idea it follows | Source | GAYATAMA's own choice |
+|-------------------|-----------------------------|--------|-----------------------|
+| Location Score as a weighted sum of components | Weighted linear combination, a standard method in GIS-based multicriteria suitability analysis | Malczewski (1999, 2006) | The five components and the 35 / 20 / 20 / 15 / 10 weights |
+| Facilities count less the farther away they are | Distance decay: the likelihood that a customer uses a store falls with distance, which is how trade areas are modelled | Huff (1964) | Three stepped zone weights (1.00 / 0.60 / 0.25) in place of a continuous decay curve |
+| Zone edges at 300 m, 800 m and 1,500 m | Walking catchments; the half-mile (about 800 m) circle is a common planning convention, and how well it fits real catchments has been tested | Guerra, Cervero & Tischler (2012) | The exact boundaries, applied to every category |
+| Some competition counts in a location's favour (validation bonus) | Retail agglomeration: similar and complementary shops can draw more customers together than apart, and competing sellers tend to locate near each other | Nelson (1958); Hotelling (1929) | The bonus sizes (−10 / +5 / 0 / −5) |
+| Data Quality factor from `check_date` and edit metadata | Intrinsic quality assessment: judging volunteered map data by its own properties when no reference dataset is available | Senaratne et al. (2017) | The factor values (1.00 / 0.85 / 0.65 / 0.40 / 0.00) |
+| Confidence Score; missing data lowers confidence rather than the score | OpenStreetMap completeness is uneven between places, and gaps in coverage have been found to correlate with deprivation | Haklay (2010); Barrington-Leigh & Millard-Ball (2017) | The four confidence inputs, their weights, and the floor of 40 |
+| Scores shown with a range (`75 ± 8`) | Communicating uncertainty about a number explicitly, including as a range | van der Bles et al. (2019) | The margin formula |
+| Zoning hard warning | Indonesian spatial plans (RTRW) determine permitted land use | UU No. 26 Tahun 2007 tentang Penataan Ruang | Using `landuse=*` as a stand-in until RTRW data is integrated |
+
+Three limits on these sources, stated so they are not over-read:
+
+- **They support the shape of the model, not its numbers.** No source above
+  supplies a weight, threshold, or factor value used here.
+- **The coverage studies measure roads, not businesses.** Haklay (2010) and
+  Barrington-Leigh & Millard-Ball (2017) assess road and map coverage. No source
+  here measures how completely OpenStreetMap records shops and services in
+  Indonesia.
+- **The saturation formula has no published source.** `Capacity = Demand Fit / T`
+  and the `T` values are GAYATAMA's own construction.
+
+### Testing the weights
+
+Because the weights are chosen rather than measured, their influence should be
+tested rather than assumed. The standard check for a weighted suitability model
+is sensitivity analysis: change one weight at a time, rescale the others so they
+still sum to 100%, and observe whether the verdict or the ranking changes
+(Chen, Yu & Khan, 2010). A recommendation that flips under a small change in
+weights is uncertain whatever its score. GAYATAMA has not yet run this analysis.
+
 ## Table of contents
 
 - [System-wide rules](#system-wide-rules)
@@ -38,6 +77,9 @@ These values are intentionally documented as calibratable assumptions. Future ve
 - [5. Business Simulation & Report](#5-business-simulation--report)
 - [Confidence Score and warnings](#confidence-score-and-warnings)
 - [Implementation notes](#implementation-notes)
+- [Proposed in model 0.1.0](#proposed-in-model-010)
+- [Revision notes](#revision-notes)
+- [References](#references)
 
 ---
 
@@ -50,9 +92,9 @@ facility's influence decays with distance rather than cutting off abruptly.
 
 | Zone | Distance | Weight |
 |------|----------|--------|
-| A | 0–300 m | 1.00 |
-| B | 301–800 m | 0.60 |
-| C | 801–1,500 m | 0.25 |
+| A | Up to 300 m | 1.00 |
+| B | More than 300 m, up to 800 m | 0.60 |
+| C | More than 800 m, up to 1,500 m | 0.25 |
 
 Where routing data is available, distance is measured along the street or
 pedestrian network. Straight-line (haversine) distance is a documented fallback
@@ -536,8 +578,8 @@ excluded on purpose — it does not alter whether customers exist.
 | Change | Effect |
 |--------|--------|
 | **Add parking** | Parking sub-score changes (e.g. 20 → 70); Accessibility and Location Score recompute |
-| **Change opening hours** | Competitors whose hours do not overlap exert only 10–40% of their normal pressure, not 100% |
-| **Add delivery / pickup** | For laundry and food, Zone C weight rises from 0.25 to 0.35. The resulting Location Score gain is **capped at 5 points** until transaction data exists to justify more |
+| **Change opening hours** | Competitors whose hours barely overlap exert 30% of their normal pressure, and those closed during the business's hours 10%, not 100% — see [Operating-hours overlap](#operating-hours-overlap) |
+| **Add delivery / pickup** | For laundry and food, the Zone C weight for customer segments rises from 0.25 to 0.35. The resulting Location Score gain is **capped at 5 points** until transaction data exists to justify more |
 | **Change rent** | Does **not** affect the Location Potential Score. It affects Financial Feasibility, if that module is enabled |
 
 The delivery cap is a deliberate guard against the simulator being used to
@@ -622,6 +664,144 @@ commercially excellent and still be one you must not build on.
 
 ---
 
+## Proposed in model 0.1.0
+
+> **Status: proposed, pending team review.** The original specification names
+> these components and inputs but does not define how to compute them. The
+> engine needs a definition to run, so these are proposed baselines. Like every
+> other number in this document they live in `constants.ts` and are covered by
+> tests (`test/proposed.test.ts`). None of them comes from a published source.
+
+### Accessibility
+
+```
+Accessibility = 0.35 × Road + 0.25 × Transit + 0.20 × Walkability + 0.20 × Parking
+```
+
+| Sub-score | How it is measured |
+|-----------|--------------------|
+| Road | Class of the nearest road: primary 100, secondary 90, tertiary 75, residential 55, service 30. Unknown: 50 |
+| Transit | 100 × distance weight × Access Factor of the nearest transit stop — 100 in Zone A, 60 in Zone B, 25 in Zone C. No stop within 1,500 m: 0 |
+| Walkability | 50 + 10 for each mapped sidewalk, footway or crossing within 300 m, capped at 100. None counted: 50 |
+| Parking | 20 + 5 for each parking space within 300 m, capped at 100. A car park without a `capacity` tag counts as 10 spaces, weighted by Data Quality and Access Factor. On-site spaces from the simulator count at full weight |
+
+The parking formula reproduces the simulator example: adding 10 on-site spaces
+moves Parking from 20 to 70.
+
+### Supporting Facility Fit
+
+```
+Supporting Facility Fit = min(100, Σ ( Points × Distance Weight × Access Factor
+                                     × Data Quality × Facility Scale ))
+```
+
+| Facility | Beverages | Food | Laundry | Stationery | Minimarket | Salon | Pharmacy |
+|----------|----------:|-----:|--------:|-----------:|-----------:|------:|---------:|
+| ATM | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
+| Bank | 8 | 8 | 8 | 12 | 8 | 8 | 8 |
+| Traditional market (*pasar*) | 20 | 25 | 10 | 10 | 10 | 15 | 15 |
+| Convenience store or supermarket | 12 | 12 | 12 | 12 | 0 | 12 | 12 |
+| Place of worship | 8 | 10 | 5 | 5 | 8 | 5 | 5 |
+| Clinic or doctor | 0 | 5 | 0 | 5 | 5 | 0 | 30 |
+| Government office | 5 | 10 | 0 | 25 | 0 | 0 | 0 |
+
+A convenience store scores zero for a minimarket because it is a competitor
+there, not support.
+
+### Risk and Operability
+
+```
+Risk and Operability = clamp(100 − penalties, 0, 100)
+```
+
+| Condition | Penalty |
+|-----------|--------:|
+| Mapped river, canal or stream within 100 m | −20 |
+| Mapped waterway more than 100 m and up to 300 m away | −10 |
+| Industrial land use within 100 m | −15 |
+
+These are proxies from OpenStreetMap, not authoritative risk data, and reports
+must label them as such.
+
+### Hard warnings the engine raises
+
+| Warning | Rule |
+|---------|------|
+| `flood_risk_proxy` | A mapped waterway within 50 m |
+| `stale_data` | More than half of the dated records within 1,500 m are older than 36 months |
+
+Incompatible zoning and missing legal access have no data source yet. The
+engine does not raise them; reports list them as field checks.
+
+### Competitor similarity and scale
+
+| Category | Direct (1.00) | Close substitute (0.60) | Indirect substitute (0.30) |
+|----------|---------------|-------------------------|----------------------------|
+| Beverages | Café or coffee shop | Bubble tea or tea outlet | Food court; restaurant or fast food tagged as serving coffee |
+| Food | Restaurant, fast food, food court | — | Café |
+| Laundry | Laundry | Dry cleaning | — |
+| Photocopy / stationery | Copy shop, printer, stationery shop | — | — |
+| Minimarket | Convenience store | Supermarket | — |
+| Salon | Hairdresser | Beauty salon | — |
+| Pharmacy | Pharmacy | Chemist or drugstore | — |
+
+Competitor Scale uses the Facility Scale factors: small 0.60, medium or unknown
+1.00, large 1.40.
+
+### Operating-hours overlap
+
+The Operating-Hours Factor compares each competitor's weekly hours with the
+business's own:
+
+| Share of the business's hours the competitor is also open | Factor |
+|------------------------------------------------------------|-------:|
+| 75% or more | 1.00 |
+| 40% to under 75% | 0.60 |
+| More than 0%, under 40% | 0.30 |
+| 0% — closed during the business's hours | 0.10 |
+| Competitor hours unknown | 0.80 |
+
+Until the operator sets their own hours, every competitor with known hours
+counts as fully overlapping.
+
+### Data Quality from OpenStreetMap metadata
+
+| Evidence | Factor |
+|----------|-------:|
+| Lifecycle prefix (`disused:`, `was:`, `demolished:`) | 0.00 |
+| Category doubtful | 0.40 |
+| Survey date (`check_date`, `survey:date`) within 12 months | 1.00 |
+| Survey date more than 12 and up to 24 months old | 0.85 |
+| Survey date more than 24 months old | 0.40 |
+| No survey date; last edit within 24 months | 0.65 |
+| No survey date; last edit more than 24 months ago | 0.40 |
+| No dates; the record has a name | 0.65 |
+| No dates and no name | 0.40 |
+
+Ages are measured against an `asOf` date given to the engine, so the same data
+always produces the same score.
+
+### Confidence Score inputs
+
+| Input | How it is measured |
+|-------|--------------------|
+| Data Completeness (40%) | Share of six expected groups present within 1,500 m: education, workplaces, housing, transit, commerce, and a known road class |
+| Data Freshness (25%) | Mean Data Quality of the open facilities within 1,500 m, × 100 |
+| Cross-source Validation (20%) | Fixed at 50: all data comes from OpenStreetMap, so there is no second source to compare against yet |
+| Area Coverage (15%) | Share of the three zones containing at least one usable facility |
+
+Because Cross-source Validation is fixed at 50, confidence cannot exceed 90 in
+model 0.1.0.
+
+### Strengths, weaknesses and delivery
+
+- **Strengths** are the up to three highest components scoring 60 or more;
+  **weaknesses** are the up to three lowest scoring below 60.
+- **Delivery** raises the Zone C weight from 0.25 to 0.35 for customer segments
+  only — delivery extends reach to customers, not to competitors.
+
+---
+
 ## Revision notes
 
 Deviations from the original internal specification, recorded here so the
@@ -631,3 +811,46 @@ change is visible rather than silent:
   result of 75.25 for the laundry example. The correct sum is 75.30
   (`26.25 + 13.40 + 15.20 + 10.95 + 9.50`). Both round to 75, so the stated
   verdict was unaffected. The corrected figure is used here and in the tests.
+
+---
+
+## References
+
+- Barrington-Leigh, C., & Millard-Ball, A. (2017). The world's user-generated
+  road map is more than 80% complete. *PLOS ONE, 12*(8), e0180698.
+  https://doi.org/10.1371/journal.pone.0180698
+- Chen, Y., Yu, J., & Khan, S. (2010). Spatial sensitivity analysis of
+  multi-criteria weights in GIS-based land suitability evaluation.
+  *Environmental Modelling & Software, 25*(12), 1582–1591.
+  https://doi.org/10.1016/j.envsoft.2010.06.001
+- Guerra, E., Cervero, R., & Tischler, D. (2012). Half-mile circle: Does it best
+  represent transit station catchments? *Transportation Research Record:
+  Journal of the Transportation Research Board, 2276*(1), 101–109.
+  https://doi.org/10.3141/2276-12
+- Haklay, M. (2010). How good is volunteered geographical information? A
+  comparative study of OpenStreetMap and Ordnance Survey datasets.
+  *Environment and Planning B: Planning and Design, 37*(4), 682–703.
+  https://doi.org/10.1068/b35097
+- Hotelling, H. (1929). Stability in competition. *The Economic Journal,
+  39*(153), 41–57. https://doi.org/10.2307/2224214
+- Huff, D. L. (1964). Defining and estimating a trading area. *Journal of
+  Marketing, 28*(3), 34–38. https://doi.org/10.1177/002224296402800307
+- Malczewski, J. (1999). *GIS and multicriteria decision analysis*. John Wiley &
+  Sons.
+- Malczewski, J. (2006). GIS-based multicriteria decision analysis: A survey of
+  the literature. *International Journal of Geographical Information Science,
+  20*(7), 703–726. https://doi.org/10.1080/13658810600661508
+- Nelson, R. L. (1958). *The selection of retail locations*. F. W. Dodge.
+- Republik Indonesia. (2007). *Undang-Undang Nomor 26 Tahun 2007 tentang
+  Penataan Ruang*. https://peraturan.go.id/id/uu-no-26-tahun-2007
+- Senaratne, H., Mobasheri, A., Ali, A. L., Capineri, C., & Haklay, M. (2017). A
+  review of volunteered geographic information quality assessment methods.
+  *International Journal of Geographical Information Science, 31*(1), 139–167.
+  https://doi.org/10.1080/13658816.2016.1189556
+- van der Bles, A. M., van der Linden, S., Freeman, A. L. J., Mitchell, J.,
+  Galvao, A. B., Zaval, L., & Spiegelhalter, D. J. (2019). Communicating
+  uncertainty about facts, numbers and science. *Royal Society Open Science,
+  6*(5), 181870. https://doi.org/10.1098/rsos.181870
+
+Data: © OpenStreetMap contributors, licensed under ODbL 1.0 — see
+[data-sources.md](data-sources.md).

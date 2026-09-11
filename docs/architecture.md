@@ -83,12 +83,12 @@ Instead, the cache key snaps the coordinate to a **geohash grid at precision 7**
 (roughly 150 × 150 m). Every click within the same cell reuses the same cached
 POI set.
 
-The trade-off is stated plainly: a location near a cell boundary reuses the
-neighbouring cell's POI set, so its facility distances are computed from the
-cell centre rather than the exact click. At precision 7 the error is bounded by
-roughly 75 m — well inside Zone A's 300 m band, so zone assignment is unchanged
-for all but facilities sitting almost exactly on a zone boundary. Scoring still
-uses the user's exact coordinate; only the POI *fetch* is shared.
+The fetch is centred on the cell, not on the click, so it must still cover the
+full 1,500 m circle around any point in the cell. The query radius is therefore
+1,500 m plus the distance from the cell centre to its farthest corner — about
+108 m at Surabaya's latitude, so roughly 1,608 m in total. Scoring then measures
+every facility from the user's exact coordinate and ignores anything beyond
+1,500 m. Snapping changes what is fetched and cached, never what is scored.
 
 For a demo where judges will click repeatedly around the same neighbourhood,
 this converts most interactions into cache hits and keeps the interface
@@ -141,24 +141,32 @@ Step 10 is the payoff from decision 1.
 ```
 src/
 ├── index.ts              Public API surface
-├── constants.ts          Zone weights, category weights, T values, thresholds
-├── types.ts              Facility, Competitor, Segment, ScoreResult
+├── constants.ts          Every weight, factor and threshold
+├── types.ts              Facility, LocationInput, LocationScoreResult, …
+├── math.ts               Clamping and float-safe threshold comparison
 ├── distance.ts           Haversine, zone assignment, distance weighting
-├── quality.ts            Data Quality and Access Factor derivation
+├── quality.ts            Data Quality, Access Factor, Facility Scale
+├── evaluate.ts           Measures every facility against the location
 ├── segments.ts           Six target market segment scores
 ├── demand.ts             Segment scores → per-category Demand Fit
+├── hours.ts              Opening-hours overlap
 ├── competition.ts        Competitor Equivalent Count, saturation, opportunity
 ├── accessibility.ts      Road, transit, walkability, parking
-├── risk.ts               Risk and Operability
+├── supporting.ts         Supporting Facility Fit
+├── risk.ts               Risk and Operability, hard warnings
 ├── confidence.ts         Confidence Score and uncertainty margin
 ├── location-score.ts     Weighted composition of the five components
 ├── recommend.ts          Rank all seven categories
 └── simulate.ts           What-if parameter overrides
+test/                     Worked examples from methodology.md and api.md
 ```
 
 Every constant lives in `constants.ts` rather than inline, so recalibration is a
 single-file change and the numbers can be diffed against
 [methodology.md](methodology.md).
+
+The package builds twice — ES modules for the Vite frontend and CommonJS for the
+NestJS API — so both apps load the same compiled engine.
 
 ### `apps/api`
 
@@ -222,11 +230,12 @@ worse than one that fails clearly.
 
 | Failure | Behaviour |
 |---------|-----------|
-| Overpass times out | Serve stale cache if any exists, flagged as stale with a reduced Confidence Score; otherwise return a typed error the UI explains |
-| Overpass rate-limits (429) | Exponential backoff, then the above |
-| Firestore unavailable | Degrade to direct Overpass queries — slower, still correct. Caching is an optimisation, not a dependency |
-| Area has almost no OSM data | Not an error. Confidence falls, the interval widens, and below 40 the recommendation is suppressed with an explanation |
-| Coordinate outside any mapped area | Rejected at validation with a clear message |
+| Overpass times out or fails | Serve the expired cache entry if one exists, flagged `stale: true` with its original `fetchedAt`; otherwise return `504 UPSTREAM_TIMEOUT`, which the UI explains |
+| Overpass rate-limits (429) or overloads (5xx) | Retry once after 1.5 seconds, then the above |
+| Site-conditions query fails | Score road, walkability and risk inputs as unknown (neutral) rather than failing the request |
+| Firestore unavailable | Degrade to the in-memory cache — slower after a restart, still correct. Caching is an optimisation, not a dependency |
+| Area has almost no OSM data | Confidence falls and the interval widens; below 40 the API answers `422 INSUFFICIENT_DATA` with an explanation instead of a score |
+| Coordinate outside Indonesia | Rejected at validation with `400 VALIDATION_FAILED` |
 
 The third row matters: no single Firestore outage should be able to take the
 demo down during judging.

@@ -1,7 +1,7 @@
 # @gayatama/api
 
-NestJS backend. Fetches OpenStreetMap POIs through Overpass, caches them in
-Firestore, and runs `@gayatama/scoring` over the result.
+NestJS backend. Fetches OpenStreetMap POIs through Overpass, caches them, and
+runs `@gayatama/scoring` over the result.
 
 ## Responsibilities
 
@@ -10,7 +10,9 @@ both this API and the frontend import — so what remains here is only the work
 that genuinely requires a server:
 
 - Query Overpass (slow, rate-limited, better not exposed to browsers directly)
-- Cache POI results in Firestore, keyed by a snapped geohash cell
+- Normalise OpenStreetMap tags into the engine's facility kinds
+- Cache POI results, keyed by a snapped geohash cell — in memory, and in
+  Firestore when Firebase is configured
 - Hold the Firebase service account credential, which cannot live in a browser
 - Validate input and rate-limit clients
 
@@ -23,19 +25,35 @@ engine belongs in the engine.
 npm run dev:api     # from the repo root → http://localhost:3000
 ```
 
-Requires `.env` at the repo root. See
+Reads `.env` from the repo root. Firebase is optional: without it the POI cache
+is in memory and is lost on restart. See
 [../../docs/installation.md](../../docs/installation.md).
 
 ## Structure
 
 ```
 src/
-├── config/      Typed, validated environment configuration
-├── firebase/    Admin SDK initialisation, Firestore accessor
-├── overpass/    Query builder, HTTP client, tag normaliser
-├── poi/         Read-through cache; geohash key derivation
-├── analysis/    Orchestration — calls the engine, assembles responses
-└── common/      Filters, interceptors, Zod validation pipe
+├── main.ts          Bootstrap
+├── setup.ts         Global prefix, CORS, proxy trust
+├── app.module.ts    Configuration, rate limiting, error filter
+├── config/          Validated environment variables
+├── firebase/        Admin SDK initialisation (optional)
+├── overpass/        Query builder, HTTP client, tag normaliser, opening hours, site conditions
+├── poi/             Read-through cache and geohash cell logic
+├── analysis/        Endpoints, request schemas, response presenters
+└── common/          Error contract, Zod validation pipe, geohash
+test/                Unit tests and end-to-end tests against a fake Overpass client
 ```
+
+## Testing
+
+```bash
+npm test --workspace @gayatama/api
+```
+
+The tests never reach the real Overpass API. The end-to-end suite starts the
+full Nest application with a fake Overpass client and checks every endpoint and
+error code. `@gayatama/scoring` must be built first; the root `npm test` does
+this.
 
 Endpoint reference: [../../docs/api.md](../../docs/api.md).

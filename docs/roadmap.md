@@ -56,8 +56,8 @@ scoring change.
 
 ### Flood risk from authoritative data
 
-The Risk and Operability component currently uses proxy signals — elevation and
-proximity to mapped waterways. Indonesia's authoritative source is
+The Risk and Operability component currently uses proxy signals — proximity to
+mapped waterways and industrial land use. Indonesia's authoritative source is
 [InaRISK (BNPB)](https://inarisk.bnpb.go.id/), which requires a separate
 integration.
 
