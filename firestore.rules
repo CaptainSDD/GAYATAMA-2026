@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // POI cache: server-side only. The Admin SDK bypasses these rules;
+    // this denies every client path to it.
+    match /poiCache/{cell} {
+      allow read, write: if false;
+    }
+
+    // Saved reports: readable by anyone holding the ID, but not listable —
+    // `read` would also let anyone download every report. Writes go via the API.
+    match /reports/{reportId} {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
