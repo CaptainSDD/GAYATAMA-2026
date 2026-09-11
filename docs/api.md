@@ -47,11 +47,16 @@ all of them the same way, and never has a score without its interval.
 Every response built on OpenStreetMap data carries its attribution:
 
 ```json
-{ "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false }
+{ "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "siteConditions": "available" }
 ```
 
-`stale` is `true` when Overpass was unavailable and an expired cache entry was
-served instead; `fetchedAt` then shows how old the data is.
+- `stale` is `true` when Overpass was unavailable and an expired cache entry was
+  served instead; `fetchedAt` then shows how old the data is.
+- `siteConditions` is `"unavailable"` when the query for conditions at the site
+  itself — road class, pedestrian features, waterways, industrial land use —
+  failed and nothing was cached. Those inputs are then scored as unknown and
+  Data Completeness falls, so the result is incomplete and a client must say
+  so. Requesting again later can return the full result.
 
 ### Business category identifiers
 
@@ -162,7 +167,8 @@ endpoint.
     "licence": "ODbL 1.0",
     "fetchedAt": "2026-09-09T13:22:41Z",
     "cacheHit": true,
-    "stale": false
+    "stale": false,
+    "siteConditions": "available"
   }
 }
 ```
@@ -245,7 +251,7 @@ I open here?".
   "warnings": [],
 
   "segments": { "student": 77, "office": 48, "resident": 82, "commuter": 35, "health": 20, "general": 55 },
-  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false }
+  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "siteConditions": "available" }
 }
 ```
 
@@ -349,7 +355,7 @@ browser without further requests.
       "accessFactor": 1.0
     }
   ],
-  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false }
+  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "siteConditions": "available" }
 }
 ```
 

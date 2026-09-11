@@ -5,6 +5,11 @@ import type { OverpassElement } from './overpass-element';
 
 const USER_AGENT = 'GAYATAMA/0.1 (+https://github.com/CaptainSDD/GAYATAMA-2026)';
 const RETRY_DELAY_MS = 1500;
+/**
+ * Overpass gives each IP address two query slots (see /api/status) and answers
+ * 429 beyond that, so this client never runs more than two queries at once.
+ */
+const MAX_CONCURRENT_QUERIES = 2;
 
 export class OverpassRequestError extends Error {
   constructor(
@@ -17,12 +22,15 @@ export class OverpassRequestError extends Error {
 
 /**
  * Thin client for the Overpass API. Overpass is a volunteer-funded shared
- * service: requests identify GAYATAMA, and a rate-limited or overloaded
- * response is retried once after a pause rather than hammered.
+ * service: requests identify GAYATAMA, run at most two at a time, and a
+ * rate-limited or overloaded response is retried once after a pause rather
+ * than hammered.
  */
 @Injectable()
 export class OverpassClient {
   private readonly logger = new Logger(OverpassClient.name);
+  private active = 0;
+  private readonly waiting: (() => void)[] = [];
 
   constructor(private readonly config: ConfigService<Env, true>) {}
 
@@ -33,12 +41,28 @@ export class OverpassClient {
 
   async query(query: string): Promise<OverpassElement[]> {
     try {
-      return await this.send(query);
+      return await this.withSlot(() => this.send(query));
     } catch (error) {
       if (!(error instanceof OverpassRequestError) || !error.retryable) throw error;
       this.logger.warn(`${error.message}; retrying once`);
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-      return this.send(query);
+      return this.withSlot(() => this.send(query));
+    }
+  }
+
+  /** Waits for a free query slot, runs the task, then hands the slot to the next waiting query. */
+  private async withSlot<T>(task: () => Promise<T>): Promise<T> {
+    if (this.active < MAX_CONCURRENT_QUERIES) {
+      this.active += 1;
+    } else {
+      await new Promise<void>((resolve) => this.waiting.push(resolve));
+    }
+    try {
+      return await task();
+    } finally {
+      const next = this.waiting.shift();
+      if (next !== undefined) next();
+      else this.active -= 1;
     }
   }
 

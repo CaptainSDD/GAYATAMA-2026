@@ -1,7 +1,7 @@
 # @gayatama/web
 
-React + Vite frontend. Map picker, score breakdown, business ranking, target
-market panel, what-if simulator, and report export.
+React + Vite frontend: map picker, score breakdown, business type
+recommendations, and the target market and competitor panels.
 
 ## Development
 
@@ -9,38 +9,50 @@ market panel, what-if simulator, and report export.
 npm run dev:web     # from the repo root → http://localhost:5173
 ```
 
-Runs without Firebase configured — scoring works, caching and saved reports do
-not. Expect slower POI requests and occasional Overpass rate limits in that
-mode.
+The web app reads everything through the API, so start that too — `npm run dev`
+runs both. When the API is not at `http://localhost:3000`, set
+`VITE_API_BASE_URL` in the root `.env`.
 
-## Why the simulator feels instant
+Every analysis has its own URL (`?lat=…&lng=…&type=…`), so a result can be
+shared as a link.
 
-`@gayatama/scoring` is a pure package with no dependencies, so the browser runs
-it directly. The POI set from the original request stays in memory, and moving a
-what-if slider recomputes the score locally — no network round trip per tick.
+The what-if simulator and report export are not built yet.
 
 ## Structure
 
 ```
 src/
+├── App.tsx            Layout; keeps the selected point and business type in the URL
+├── components/        Tabs, loading and error states, notices, attribution
 ├── features/
-│   ├── map/          Leaflet picker, zone rings, facility markers
-│   ├── score/        Score gauge, component breakdown, confidence interval
-│   ├── recommend/    Ranked category list
-│   ├── segments/     Target market panel with facility evidence
-│   ├── competition/  Competitor list and saturation display
-│   ├── simulate/     What-if controls (local recompute)
-│   └── report/       Consolidated report and PDF export
-├── lib/              API client, query hooks, Firebase web SDK
-└── components/       Shared UI primitives
+│   ├── map/           Leaflet picker, zone rings, business type and location controls
+│   ├── location/      Tabs for a selected location
+│   ├── score/         Score with its interval, component breakdown, warnings
+│   ├── recommend/     All seven business types ranked, with statuses
+│   ├── segments/      Customer segments and the facilities behind them
+│   └── competition/   Competitor equivalents, saturation, strongest competitors
+└── lib/               API client and types, query hooks, formatting, labels
 ```
 
 ## Interface rules
 
-Two constraints inherited from the methodology, enforced in the UI layer:
+Constraints inherited from the methodology, enforced in the UI layer:
 
-- **A score is never shown without its confidence interval.** `75 ± 8`, never
-  a bare `75`.
-- **OpenStreetMap attribution is present on every map view and every exported
-  report.** This is an ODbL licence obligation, not a courtesy — see
+- **A score is never shown without its confidence interval.** `75 ± 8`, never a
+  bare `75`. When rounding would carry a score into the next band (69.6 → 70),
+  it is shown to one decimal so the number never contradicts its label.
+- **Incomplete data is said out loud.** When the API reports stale data or site
+  conditions it could not load, the result carries a notice.
+- **Segment scores are never presented as population counts.**
+- **OpenStreetMap attribution is present on every map view and every result.**
+  This is an ODbL licence obligation, not a courtesy — see
   [../../docs/data-sources.md](../../docs/data-sources.md).
+
+## Tests
+
+```bash
+npm run test -w @gayatama/web
+```
+
+Unit tests cover the logic behind the interface: URL state, API errors and
+retries, score formatting, and segment evidence.

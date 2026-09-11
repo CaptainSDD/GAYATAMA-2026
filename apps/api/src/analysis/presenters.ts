@@ -20,6 +20,11 @@ import type { PoiSnapshot } from '../poi/poi.service';
 
 // Maps engine results onto the response shapes in docs/api.md.
 
+/** The POI snapshot a response was built from, plus whether site conditions could be loaded. */
+export interface SourceSnapshot extends PoiSnapshot {
+  siteAvailable: boolean;
+}
+
 const COMPONENT_LABELS: Record<ComponentKey, string> = {
   demandFit: 'Demand Fit',
   accessibility: 'Accessibility',
@@ -63,14 +68,15 @@ const WARNING_MESSAGES: Record<WarningCode, string> = {
 
 const whole = (value: number): string => Math.round(value).toString();
 
-export function presentDataSource(snapshot: PoiSnapshot) {
+export function presentDataSource(source: SourceSnapshot) {
   return {
     provider: 'OpenStreetMap',
     attribution: '© OpenStreetMap contributors',
     licence: 'ODbL 1.0',
-    fetchedAt: snapshot.fetchedAt,
-    cacheHit: snapshot.cacheHit,
-    stale: snapshot.stale,
+    fetchedAt: source.fetchedAt,
+    cacheHit: source.cacheHit,
+    stale: source.stale,
+    siteConditions: source.siteAvailable ? 'available' : 'unavailable',
   };
 }
 
@@ -78,7 +84,7 @@ function presentWarnings(warnings: readonly HardWarning[]) {
   return warnings.map(({ code }) => ({ code, message: WARNING_MESSAGES[code] }));
 }
 
-export function presentAnalysis(result: LocationScoreResult, location: LatLng, snapshot: PoiSnapshot) {
+export function presentAnalysis(result: LocationScoreResult, location: LatLng, source: SourceSnapshot) {
   const { competition } = result;
   return {
     modelVersion: result.modelVersion,
@@ -116,7 +122,7 @@ export function presentAnalysis(result: LocationScoreResult, location: LatLng, s
     })),
     warnings: presentWarnings(result.warnings),
     evidence: result.evidence,
-    dataSource: presentDataSource(snapshot),
+    dataSource: presentDataSource(source),
   };
 }
 
@@ -133,7 +139,7 @@ function reason(entry: RankedCategory): string {
   return `${COMPONENT_LABELS[weakest]} is ${whole(entry.components[weakest])}/100, its weakest component`;
 }
 
-export function presentRecommendation(result: RecommendationResult, location: LatLng, snapshot: PoiSnapshot) {
+export function presentRecommendation(result: RecommendationResult, location: LatLng, source: SourceSnapshot) {
   return {
     modelVersion: result.modelVersion,
     location,
@@ -154,12 +160,12 @@ export function presentRecommendation(result: RecommendationResult, location: La
     })),
     warnings: presentWarnings(result.warnings),
     segments: result.segments,
-    dataSource: presentDataSource(snapshot),
+    dataSource: presentDataSource(source),
   };
 }
 
 /** Facilities plus site conditions: everything the browser needs to rerun the engine locally. */
-export function presentPois(evaluated: readonly EvaluatedFacility[], input: LocationInput, snapshot: PoiSnapshot) {
+export function presentPois(evaluated: readonly EvaluatedFacility[], input: LocationInput, source: SourceSnapshot) {
   return {
     location: input.location,
     asOf: input.asOf,
@@ -173,6 +179,6 @@ export function presentPois(evaluated: readonly EvaluatedFacility[], input: Loca
         dataQuality: entry.dataQuality,
         accessFactor: entry.accessFactor,
       })),
-    dataSource: presentDataSource(snapshot),
+    dataSource: presentDataSource(source),
   };
 }

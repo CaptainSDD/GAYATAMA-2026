@@ -24,10 +24,20 @@ export interface PoiSnapshot {
   stale: boolean;
 }
 
+export interface SiteLookup {
+  site: SiteConditions;
+  /** False when the site query failed with nothing cached, so every site input is scored as unknown. */
+  available: boolean;
+}
+
 @Injectable()
 export class PoiService {
   private readonly logger = new Logger(PoiService.name);
   private readonly siteCache = new Map<string, { site: SiteConditions; fetchedAt: number }>();
+  // Requests that arrive while the same cell is loading share its Overpass
+  // query instead of each sending their own.
+  private readonly pendingFacilities = new Map<string, Promise<PoiSnapshot>>();
+  private readonly pendingSites = new Map<string, Promise<SiteLookup>>();
 
   constructor(
     private readonly overpass: OverpassClient,
@@ -41,8 +51,26 @@ export class PoiService {
    * circle around any point in the cell is included; scoring then measures from
    * the exact point.
    */
-  async facilitiesAround(point: LatLng): Promise<PoiSnapshot> {
+  facilitiesAround(point: LatLng): Promise<PoiSnapshot> {
     const cell = encodeGeohash(point, POI_CELL_PRECISION);
+    return this.shared(this.pendingFacilities, cell, () => this.loadFacilities(cell));
+  }
+
+  /** Conditions at the site itself. A failure here is not fatal: unknown inputs are scored as unknown. */
+  siteConditions(point: LatLng): Promise<SiteLookup> {
+    const key = encodeGeohash(point, SITE_CELL_PRECISION);
+    return this.shared(this.pendingSites, key, () => this.loadSite(key, point));
+  }
+
+  private shared<T>(pending: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
+    const existing = pending.get(key);
+    if (existing !== undefined) return existing;
+    const task = load().finally(() => pending.delete(key));
+    pending.set(key, task);
+    return task;
+  }
+
+  private async loadFacilities(cell: string): Promise<PoiSnapshot> {
     const cached = await this.cache.get(cell);
     if (cached !== null && this.isFresh(Date.parse(cached.fetchedAt))) {
       return { facilities: cached.facilities, fetchedAt: cached.fetchedAt, cacheHit: true, stale: false };
@@ -66,11 +94,9 @@ export class PoiService {
     }
   }
 
-  /** Conditions at the site itself. A failure here is not fatal: unknown inputs score as neutral. */
-  async siteConditions(point: LatLng): Promise<SiteConditions> {
-    const key = encodeGeohash(point, SITE_CELL_PRECISION);
+  private async loadSite(key: string, point: LatLng): Promise<SiteLookup> {
     const cached = this.siteCache.get(key);
-    if (cached !== undefined && this.isFresh(cached.fetchedAt)) return cached.site;
+    if (cached !== undefined && this.isFresh(cached.fetchedAt)) return { site: cached.site, available: true };
 
     try {
       const elements = await this.overpass.query(buildSiteQuery(point, this.overpass.queryTimeoutSeconds));
@@ -81,10 +107,10 @@ export class PoiService {
         const oldest = this.siteCache.keys().next().value;
         if (oldest !== undefined) this.siteCache.delete(oldest);
       }
-      return site;
+      return { site, available: true };
     } catch (error) {
       this.logger.warn(`Site query failed for ${key}, scoring site inputs as unknown: ${String(error)}`);
-      return cached?.site ?? {};
+      return cached !== undefined ? { site: cached.site, available: true } : { site: {}, available: false };
     }
   }
 

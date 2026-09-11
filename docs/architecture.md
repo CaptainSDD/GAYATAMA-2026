@@ -187,17 +187,18 @@ src/
 ```
 src/
 ├── main.tsx
-├── App.tsx
+├── App.tsx               Layout; the selected point and business type live in the URL
 ├── features/
-│   ├── map/              Leaflet picker, zone rings, facility markers
-│   ├── score/            Score gauge, component breakdown, confidence interval
-│   ├── recommend/        Ranked category list
+│   ├── map/              Leaflet picker, zone rings, business type and location controls
+│   ├── location/         Tabs for a selected location
+│   ├── score/            Score with its interval, component breakdown, warnings
+│   ├── recommend/        All seven categories ranked, with statuses
 │   ├── segments/         Target market panel with facility evidence
-│   ├── competition/      Competitor list and saturation display
-│   ├── simulate/         What-if controls (local recompute)
-│   └── report/           Consolidated report and PDF export
-├── lib/                  API client, query hooks, Firebase web SDK
-└── components/           Shared UI primitives
+│   ├── competition/      Competitor equivalents, saturation, strongest competitors
+│   ├── simulate/         What-if controls (local recompute) — planned
+│   └── report/           Consolidated report and PDF export — planned
+├── lib/                  API client and types, query hooks, formatting, labels
+└── components/           Shared UI: tabs, loading and error states, notices
 ```
 
 ---
@@ -279,8 +280,8 @@ worse than one that fails clearly.
 | Failure | Behaviour |
 |---------|-----------|
 | Overpass times out or fails | Serve the expired cache entry if one exists, flagged `stale: true` with its original `fetchedAt`; otherwise return `504 UPSTREAM_TIMEOUT`, which the UI explains |
-| Overpass rate-limits (429) or overloads (5xx) | Retry once after 1.5 seconds, then the above |
-| Site-conditions query fails | Score road, walkability and risk inputs as unknown (neutral) rather than failing the request |
+| Overpass rate-limits (429) or overloads (5xx) | Retry once after 1.5 seconds, then the above. To avoid causing 429s, the API runs at most two Overpass queries at a time — the number of slots Overpass gives one IP address — and requests for a cell that is already loading share its query |
+| Site-conditions query fails | Score road, walkability and risk inputs as unknown rather than failing the request, and flag `siteConditions: "unavailable"` so the interface can say the result is incomplete |
 | Firestore unavailable | Degrade to the in-memory cache — slower after a restart, still correct. Caching is an optimisation, not a dependency |
 | Area has almost no OSM data | Confidence falls and the interval widens; below 40 the API answers `422 INSUFFICIENT_DATA` with an explanation instead of a score |
 | Coordinate outside Indonesia | Rejected at validation with `400 VALIDATION_FAILED` |
