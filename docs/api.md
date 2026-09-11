@@ -362,7 +362,10 @@ response is a complete engine input.
 
 ## `POST /api/v1/reports` _(planned)_
 
-Persist an analysis so it can be shared or compared later. Returns an ID.
+Persist an analysis or a recommendation so it can be shared or compared later.
+Returns an ID. The report stores the complete engine input alongside the
+response, so its scores can be recomputed later — see the
+[data model](architecture.md#data-model-firestore).
 
 ## `GET /api/v1/reports/:id` _(planned)_
 

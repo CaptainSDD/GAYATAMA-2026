@@ -100,7 +100,8 @@ the rules below matter more than the key does.
 
 ### 4. Firestore security rules
 
-`firestore.rules`:
+The rules live in [`firestore.rules`](../firestore.rules) at the repository
+root, and `firebase.json` points the Firebase CLI at them:
 
 ```
 rules_version = '2';
@@ -127,12 +128,12 @@ service cloud.firestore {
 }
 ```
 
-Deploy them:
+Deploy them from the repository root:
 
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules --project your-project-id
 ```
 
 ---

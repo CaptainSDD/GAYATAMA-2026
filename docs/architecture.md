@@ -109,15 +109,15 @@ A location analysis, end to end:
        │
 4. api: snap coordinate → geohash-7 cache key
        │
-5. api: Firestore lookup
+5. api: cache lookup — memory, then Firestore
        │
        ├── HIT and fresh (< POI_CACHE_TTL_SECONDS) ──┐
        │                                             │
        └── MISS or stale                             │
               │                                      │
-              ├─ Overpass query (1.5 km radius)      │
+              ├─ Overpass query (≈1,608 m radius)    │
               ├─ normalise tags → typed facilities   │
-              └─ write to Firestore cache ───────────┤
+              └─ write to memory and Firestore ──────┤
                                                      ▼
 6. api: @gayatama/scoring — compute against the EXACT user coordinate
        │
@@ -204,22 +204,70 @@ src/
 
 ## Data model (Firestore)
 
-| Collection | Document ID | Contents |
-|------------|-------------|----------|
-| `poiCache` | geohash-7 cell | Normalised facilities, `fetchedAt`, source query hash |
-| `reports` | auto ID | Saved analysis: coordinate, category, scores, model version, `createdAt` |
+Firestore holds two collections. There are no user accounts, so no document
+refers to a user — see [roadmap](roadmap.md#user-accounts-saved-projects-team-sharing).
 
-`poiCache` is the reason the API exists. `reports` exists so a user can compare
-locations across sessions and so a report remains reproducible after weights
-change — which is why each document stores the model version that produced it.
+### `poiCache/{cell}`
+
+The POI cache. The document ID is the geohash-7 cell the facilities were
+fetched for.
+
+| Field | Type | Contents |
+|-------|------|----------|
+| `facilities` | string | JSON array of normalised facilities — the engine's `Facility` type. Stored as one string so Firestore does not index every nested field |
+| `fetchedAt` | string | ISO 8601 time of the Overpass query |
+| `source` | string | Always `"overpass"` |
+
+- An entry is fresh for `POI_CACHE_TTL_SECONDS` (default 7 days). After that it
+  is refetched, and served stale only if Overpass is unavailable — see
+  [Failure modes](#failure-modes).
+- An in-memory cache of up to 500 cells sits in front of Firestore, so repeated
+  clicks handled by the same API instance never reach the database.
+- A cell whose facilities exceed 900 KB is not written, keeping each document
+  under Firestore's 1 MiB limit; it stays in the memory cache only.
+- Site conditions (road class, pedestrian features, waterway, industrial land
+  use) are not stored in Firestore. They are cached in memory per geohash-8
+  cell for the same period.
+
+### `reports/{reportId}` _(planned)_
+
+A saved result, written by `POST /api/v1/reports` and read by ID. Firestore
+generates the document ID.
+
+| Field | Type | Contents |
+|-------|------|----------|
+| `kind` | string | `"analysis"` or `"recommend"` — the endpoint whose response was saved |
+| `businessType` | string or null | The category for `analysis`; `null` for `recommend` |
+| `modelVersion` | string | Engine version that produced `response` |
+| `input` | string | JSON of the complete engine input: `location`, `facilities`, `site` and `asOf` — the engine's `LocationInput` |
+| `options` | string or null | JSON of the operator options applied (parking, opening hours, delivery) when the report was saved from the simulator |
+| `response` | string | JSON of the API response exactly as returned, including its `dataSource` attribution |
+| `createdAt` | timestamp | When the report was saved |
+
+Why a report stores its full input:
+
+- **The POI cache is not a record.** Its entries are overwritten whenever an
+  area is refetched, so a report holding only scores could never be recomputed.
+- **With the input, a report is reproducible.** Running the engine version named
+  in `modelVersion` on `input` reproduces the scores in `response`; running a
+  newer version on the same `input` shows exactly what a recalibration changed.
+- **Segment scores, confidence, warnings and statuses need no separate fields.**
+  They are already in `response`, in the shapes [api.md](api.md) documents.
+
+Firestore limits a document to 1 MiB, so the API must refuse to save a larger
+report rather than truncate it.
 
 ### Security rules
 
-- `poiCache` — no client access. Server-side only, via the Admin SDK.
-- `reports` — a client may read a report by ID; writes go through the API.
+The rules are versioned in [`firestore.rules`](../firestore.rules) at the
+repository root — see [installation.md](installation.md#4-firestore-security-rules).
 
-Rules are versioned in `firestore.rules`. See
-[installation.md](installation.md#firebase-setup).
+- `poiCache` — no client access. The API reads and writes it through the Admin
+  SDK, which bypasses the rules.
+- `reports` — a client may fetch one report by ID but may not list the
+  collection, so knowing one ID reveals nothing about other reports. Writes go
+  through the API.
+- Every other path is denied.
 
 ---
 
