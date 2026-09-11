@@ -74,7 +74,12 @@ describe('API (end to end, fake Overpass)', () => {
     expect(Object.keys(body.components)).toEqual(['demandFit', 'accessibility', 'competition', 'supportingFacility', 'risk']);
     expect(body.competition.radiusMeters).toBe(1500);
     expect(body.evidence.facilityCount).toBe(15);
-    expect(body.dataSource).toMatchObject({ attribution: '© OpenStreetMap contributors', licence: 'ODbL 1.0', stale: false });
+    expect(body.dataSource).toMatchObject({
+      attribution: '© OpenStreetMap contributors',
+      licence: 'ODbL 1.0',
+      stale: false,
+      siteConditions: 'available',
+    });
   });
 
   it('POST /recommend ranks categories under the documented rules', async () => {

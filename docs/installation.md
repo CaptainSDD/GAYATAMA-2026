@@ -82,21 +82,18 @@ GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/outside/repo/serviceAccount.json
 `.env` as a second line of defence — but the primary defence is keeping the file
 elsewhere.
 
-### 3. Web credentials (`apps/web`)
+### 3. Web app (`apps/web`)
 
-**Project settings → General → Your apps → Web app.** Copy the config values:
+The web app needs no Firebase configuration: it reads everything through the
+API. Only the API's address is configurable:
 
 ```bash
 # .env
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_APP_ID=...
+VITE_API_BASE_URL=http://localhost:3000
 ```
 
-These are **public by design**. A Firebase web API key identifies the project;
-it does not authorise access. Security comes from Firestore rules, which is why
-the rules below matter more than the key does.
+The Firestore security rules below still matter: they are what stops any
+client from reading or writing the database directly.
 
 ### 4. Firestore security rules
 

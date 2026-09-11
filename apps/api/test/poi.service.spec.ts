@@ -34,6 +34,8 @@ function setup(ttlSeconds = 3600) {
   return { service, overpass, cache };
 }
 
+const poiQueries = (overpass: FakeOverpass) => overpass.queries.filter((query) => query.includes('out center meta'));
+
 describe('PoiService.facilitiesAround', () => {
   it('fetches on a miss, then serves the cell from cache', async () => {
     const { service, overpass } = setup();
@@ -44,7 +46,19 @@ describe('PoiService.facilitiesAround', () => {
     expect(first).toMatchObject({ cacheHit: false, stale: false });
     expect(first.facilities).toHaveLength(15);
     expect(second).toMatchObject({ cacheHit: true, stale: false, fetchedAt: first.fetchedAt });
-    expect(overpass.queries.filter((query) => query.includes('out center meta'))).toHaveLength(1);
+    expect(poiQueries(overpass)).toHaveLength(1);
+  });
+
+  it('shares one Overpass query between requests that arrive while a cell is loading', async () => {
+    const { service, overpass } = setup();
+
+    const [first, second] = await Promise.all([
+      service.facilitiesAround(ORIGIN),
+      service.facilitiesAround({ lat: ORIGIN.lat + 0.00001, lng: ORIGIN.lng }),
+    ]);
+
+    expect(second).toBe(first);
+    expect(poiQueries(overpass)).toHaveLength(1);
   });
 
   it('queries 1,500 m plus the half-diagonal of the cell', async () => {
@@ -72,20 +86,39 @@ describe('PoiService.facilitiesAround', () => {
     overpass.poi = new Error('Overpass down');
     await expect(service.facilitiesAround(ORIGIN)).rejects.toMatchObject({ code: 'UPSTREAM_TIMEOUT' });
   });
+
+  it('retries a failed cell on the next request instead of reusing the failure', async () => {
+    const { service, overpass } = setup();
+    overpass.poi = new Error('Overpass down');
+    await expect(service.facilitiesAround(ORIGIN)).rejects.toMatchObject({ code: 'UPSTREAM_TIMEOUT' });
+
+    overpass.poi = neighbourhood();
+    await expect(service.facilitiesAround(ORIGIN)).resolves.toMatchObject({ cacheHit: false, stale: false });
+    expect(poiQueries(overpass)).toHaveLength(2);
+  });
 });
 
 describe('PoiService.siteConditions', () => {
   it('derives and caches site conditions', async () => {
     const { service, overpass } = setup();
-    expect(await service.siteConditions(ORIGIN)).toEqual({ roadClass: 'service', pedestrianFeatureCount: 2 });
+    expect(await service.siteConditions(ORIGIN)).toEqual({
+      site: { roadClass: 'service', pedestrianFeatureCount: 2 },
+      available: true,
+    });
     await service.siteConditions(ORIGIN);
     expect(overpass.queries).toHaveLength(1);
   });
 
-  it('scores site inputs as unknown when the query fails', async () => {
+  it('shares one query between concurrent requests for the same site', async () => {
+    const { service, overpass } = setup();
+    await Promise.all([service.siteConditions(ORIGIN), service.siteConditions(ORIGIN)]);
+    expect(overpass.queries).toHaveLength(1);
+  });
+
+  it('reports site inputs as unavailable when the query fails', async () => {
     const { service, overpass } = setup();
     overpass.site = new Error('Overpass down');
-    expect(await service.siteConditions(ORIGIN)).toEqual({});
+    expect(await service.siteConditions(ORIGIN)).toEqual({ site: {}, available: false });
   });
 });
 
