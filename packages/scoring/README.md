@@ -2,7 +2,8 @@
 
 The scoring engine. Pure TypeScript, **zero runtime dependencies**, no I/O.
 
-Facility data in, scores out. Every function is deterministic.
+Facility data in, scores out. Every function is deterministic: the engine never
+reads the clock, so the date the data is evaluated against is an input.
 
 ## The rule that keeps this package useful
 
@@ -17,37 +18,57 @@ Three properties depend on that rule holding:
   about what a location scores.
 - Every branch is unit-testable without mocks, fixtures, or a network.
 
+The build enforces part of this: the source compiles without Node.js or browser
+type definitions, so code that reaches for `fetch`, `process` or the DOM fails
+to build.
+
 ## Usage
 
 ```ts
-import { scoreLocation, recommendBusinessTypes } from '@gayatama/scoring';
+import { recommendBusinessTypes, scoreLocation, simulate } from '@gayatama/scoring';
 
-const result = scoreLocation({
-  facilities,          // normalised POIs with distance, quality, access
-  businessType: 'laundry',
-});
+const input = {
+  location: { lat: -7.3012, lng: 112.7179 },
+  facilities,                      // normalised POIs from the API
+  site: { roadClass: 'tertiary' }, // conditions at the site itself
+  asOf: '2026-09-11',              // date the data is evaluated against
+};
 
-result.score;          // 75.3  — unrounded
-result.confidence;     // 81
-result.margin;         // 8     — display as 75 ± 8
-result.components;     // the five weighted components
+const result = scoreLocation(input, 'laundry');
+result.score;        // { value, band, confidence, margin, range } — display as 75 ± 8
+result.components;   // the five weighted components
+result.competition;  // competitor-equivalents, saturation, strongest competitors
+result.warnings;     // hard warnings, raised regardless of score
+
+recommendBusinessTypes(input);                            // all seven categories, ranked
+simulate(input, 'laundry', { onSiteParkingSpaces: 10 });  // what-if
 ```
+
+When confidence is below 40, `result.insufficientData` is `true` and no
+definitive recommendation may be shown.
 
 ## Development
 
 ```bash
-npm run build       # compile to dist/
+npm run build       # ES modules to dist/esm, CommonJS to dist/cjs
 npm test            # run the suite
 npm run test:watch
-npm run typecheck
+npm run typecheck   # source and tests
 ```
+
+Both apps import the compiled `dist/`, so the package must be built before
+either app runs. The root `npm run dev` builds it first.
 
 ## Testing contract
 
-Every worked example in [../../docs/methodology.md](../../docs/methodology.md)
-exists here as an assertion. If the documented methodology and the
-implementation diverge, the build fails. That is the mechanism that keeps the
-documentation trustworthy rather than aspirational.
+- `test/methodology.test.ts` asserts every worked example in
+  [docs/methodology.md](../../docs/methodology.md).
+- `test/api-examples.test.ts` recomputes the example responses in
+  [docs/api.md](../../docs/api.md).
+- `test/proposed.test.ts` covers the formulas the original specification did not
+  define — see "Proposed in model 0.1.0" in the methodology.
+
+If the documentation and the implementation diverge, the suite fails.
 
 All constants live in `src/constants.ts`, isolated so that recalibration is a
 single-file change reviewable against the methodology document.

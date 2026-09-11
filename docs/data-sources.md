@@ -81,13 +81,33 @@ than hiding it — see [Coverage and confidence](#coverage-and-confidence).
 
 | Category | OSM tags |
 |----------|----------|
-| Beverages / coffee | `amenity=cafe`, `cuisine=coffee_shop`, `cuisine=bubble_tea`, `shop=beverages` |
+| Beverages / coffee | `amenity=cafe`, `cuisine=coffee_shop`, `cuisine=bubble_tea` |
 | Food | `amenity=restaurant`, `amenity=fast_food`, `amenity=food_court` |
 | Laundry | `shop=laundry`, `shop=dry_cleaning` |
 | Photocopy / stationery | `shop=copyshop`, `shop=stationery`, `craft=printer` |
 | Minimarket | `shop=convenience`, `shop=supermarket` |
 | Salon / barbershop | `shop=hairdresser`, `shop=beauty` |
 | Pharmacy | `amenity=pharmacy`, `shop=chemist` |
+
+How closely each one competes — direct, close or indirect substitute — is in
+[methodology.md](methodology.md#competitor-similarity-and-scale). A restaurant
+or fast-food outlet tagged `drink:coffee=yes` counts as an indirect substitute
+for a coffee shop. `shop=beverages` is deliberately not used: in OpenStreetMap it
+is a shop selling packaged drinks, not a café.
+
+### Supporting facilities
+
+| Facility | OSM tags |
+|----------|----------|
+| ATM | `amenity=atm` |
+| Bank | `amenity=bank` |
+| Traditional market (*pasar*) | `amenity=marketplace` |
+| Place of worship | `amenity=place_of_worship` |
+| Clinic or doctor | `amenity=clinic`, `amenity=doctors` |
+| Government office | `office=government`, `amenity=townhall` |
+
+Supporting facilities feed Supporting Facility Fit — see
+[methodology.md](methodology.md#supporting-facility-fit).
 
 ### Accessibility
 
@@ -154,11 +174,11 @@ Stated so that no one assumes otherwise:
 | Missing | Consequence | Status |
 |---------|-------------|--------|
 | **Population demographics** | Segment scores are relative strength indicators, never headcounts. The engine has no field capable of returning a population figure | By design — see [methodology](methodology.md#the-constraint-that-makes-this-honest) |
-| **Flood risk** | The Risk component currently uses proxy signals only (elevation, `waterway` proximity). Indonesia's authoritative source is [InaRISK (BNPB)](https://inarisk.bnpb.go.id/) | [Roadmap](roadmap.md) |
+| **Flood risk** | The Risk component currently uses proxy signals only (`waterway` proximity). OpenStreetMap has no general elevation data. Indonesia's authoritative source is [InaRISK (BNPB)](https://inarisk.bnpb.go.id/) | [Roadmap](roadmap.md) |
 | **Zoning / RTRW** | Not in OSM. `landuse=*` is a weak proxy and is labelled as such in reports | [Roadmap](roadmap.md) |
 | **Foot traffic** | No open source exists. This is what commercial providers actually sell | Out of scope |
 | **Rent prices** | Not modelled; explicitly excluded from the score | Out of scope — see [methodology](methodology.md#what-if-simulation) |
-| **Verified opening hours** | OSM `opening_hours` is sparse. The Operating-Hours Factor defaults to neutral when absent | Partial |
+| **Verified opening hours** | OSM `opening_hours` is sparse. When a competitor's hours are absent, its Operating-Hours Factor is 0.80 | Partial |
 
 ---
 

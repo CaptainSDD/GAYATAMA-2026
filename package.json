@@ -12,12 +12,15 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
-    "dev:web": "npm run dev --workspace @gayatama/web",
-    "dev:api": "npm run dev --workspace @gayatama/api",
+    "dev": "npm run build -w @gayatama/scoring && concurrently --names scoring,api,web --prefix-colors blue,magenta,green \"npm run dev -w @gayatama/scoring\" \"npm run dev -w @gayatama/api\" \"npm run dev -w @gayatama/web\"",
+    "dev:web": "npm run build -w @gayatama/scoring && npm run dev -w @gayatama/web",
+    "dev:api": "npm run build -w @gayatama/scoring && npm run dev -w @gayatama/api",
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run build -w @gayatama/scoring && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run build -w @gayatama/scoring && npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4"
   }
 }

@@ -41,9 +41,10 @@ npm run dev:web      # frontend only  → http://localhost:5173
 npm run dev:api      # backend only   → http://localhost:3000
 ```
 
-The frontend runs without Firebase configured. Scoring works; caching and saved
-reports do not, and every POI request goes straight to Overpass. That is enough
-to develop the UI, but expect it to be slow and to hit rate limits.
+The API runs without Firebase configured. POI results are then cached in memory
+only, so the cache is lost whenever the API restarts and the first request for
+each area goes to Overpass. That is enough for development; configure Firebase
+before a demo so the cache survives restarts.
 
 ---
 
@@ -112,10 +113,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Saved reports: readable by anyone holding the ID; writes go via the API.
+    // Saved reports: readable by anyone holding the ID, but not listable —
+    // `read` would also let anyone download every report. Writes go via the API.
     match /reports/{reportId} {
-      allow read: if true;
-      allow write: if false;
+      allow get: if true;
+      allow list, write: if false;
     }
 
     match /{document=**} {
@@ -180,25 +182,39 @@ firebase deploy --only hosting
 
 ### Backend → Cloud Run
 
+The API depends on the workspace's scoring package, so its image is built from
+the `Dockerfile` at the repository root:
+
 ```bash
 gcloud run deploy gayatama-api \
-  --source apps/api \
+  --source . \
   --region asia-southeast2 \
   --allow-unauthenticated \
-  --set-env-vars "NODE_ENV=production,CORS_ORIGINS=https://your-app.web.app" \
+  --set-env-vars "NODE_ENV=production,TRUST_PROXY_HOPS=1,CORS_ORIGINS=https://your-app.web.app,FIREBASE_PROJECT_ID=your-project-id" \
   --set-secrets "FIREBASE_SERVICE_ACCOUNT_JSON=gayatama-sa:latest"
 ```
+
+`TRUST_PROXY_HOPS=1` lets the rate limiter see each visitor's IP address rather
+than the address of Cloud Run's proxy. Locally, leave it unset (it defaults to
+0).
 
 In production, pass the service account through **Secret Manager** using
 `FIREBASE_SERVICE_ACCOUNT_JSON` rather than mounting a file.
 
-On Cloud Run the API can also use the runtime's default service account, in
-which case no explicit credential is needed at all — grant the Cloud Run service
-account the *Cloud Datastore User* role and leave both Firebase credential
-variables empty.
+On Cloud Run the API can also use the runtime's default service account: grant
+it the *Cloud Datastore User* role, set `FIREBASE_PROJECT_ID`, and leave
+`FIREBASE_SERVICE_ACCOUNT_JSON` empty. Without `FIREBASE_PROJECT_ID` the API does
+not use Firestore at all.
 
 After deploying the API, set `VITE_API_BASE_URL` to the Cloud Run URL and
 rebuild the frontend.
+
+### Before judging: warm the cache
+
+The first request for an area waits on Overpass — about 5 seconds for central
+Surabaya — and depends on a shared public service being available at that
+moment. With Firebase configured, request `/api/v1/pois` once for every location
+you plan to demo, so those answers come from Firestore during judging.
 
 ---
 
@@ -206,8 +222,11 @@ rebuild the frontend.
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `Cannot find module '@gayatama/scoring'` | Engine not built, or install run in a subdirectory | `npm install` at the repo root, then `npm run build --workspace @gayatama/scoring` |
-| API starts but every POI request fails | Firebase credentials missing or wrong project | Check `FIREBASE_PROJECT_ID` matches the service account's `project_id` |
+| `Cannot find module '@gayatama/scoring'` | Engine not built | `npm run build --workspace @gayatama/scoring`. The root `npm run dev` and `npm test` build it first |
+| Log: "Firebase is not configured" | `FIREBASE_PROJECT_ID` is empty | Expected in development; the POI cache is in memory. Set it to persist the cache |
+| Log: "Firestore read failed" or "Firestore write failed" | Wrong credentials or project | Check `FIREBASE_PROJECT_ID` matches the service account's `project_id` |
+| Requests return `504 UPSTREAM_TIMEOUT` | Overpass unreachable or overloaded, and nothing cached for the area | Retry shortly, or point `OVERPASS_URL` at an alternative instance |
+| Every visitor is rate-limited together in production | The proxy is not trusted | Set `TRUST_PROXY_HOPS=1` |
 | CORS errors in the browser | Frontend origin not allowed | Add it to `CORS_ORIGINS`, comma-separated |
 | Overpass returns 429 | Rate limited | Raise `POI_CACHE_TTL_SECONDS`, or use an alternative instance |
 | Map tiles blank | OSM tile policy throttling | Expected under heavy reload; switch tile provider for production |
