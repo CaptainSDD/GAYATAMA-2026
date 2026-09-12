@@ -116,8 +116,8 @@ export function scoreEvaluated(
   let facilityCount = 0;
   for (const entry of evaluated) {
     if (entry.facility.closed) continue;
-    zones[entry.zone] += 1;
-    facilityCount += 1;
+    zones[entry.zone] += entry.count;
+    facilityCount += entry.count;
   }
 
   const result: LocationScoreResult = {

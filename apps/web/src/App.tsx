@@ -4,6 +4,7 @@ import { LocationView } from './features/location/LocationView';
 import { LocationControls } from './features/map/LocationControls';
 import { MapPicker } from './features/map/MapPicker';
 import { DEFAULT_CENTER, parseSelection, roundPoint, serializeSelection, type Selection } from './lib/location';
+import { USE_GOOGLE_MAP } from './lib/map-config';
 
 export function App() {
   const [selection, setSelection] = useState<Selection>(() => parseSelection(window.location.search));
@@ -25,7 +26,7 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <h1 className="brand">GAYATAMA</h1>
-        <p className="tagline">Location intelligence for micro-entrepreneurs, built on open data</p>
+        <p className="tagline">Location intelligence for micro-entrepreneurs</p>
       </header>
 
       <main className="layout">
@@ -65,8 +66,8 @@ function Intro() {
         <li>Read the score together with its range — a location scores <strong>75 ± 8</strong>, never a bare 75.</li>
       </ol>
       <p className="muted">
-        Scores come from OpenStreetMap data within 1.5 km. Where that data is thin, GAYATAMA says so instead of
-        guessing.
+        Scores come from {USE_GOOGLE_MAP ? 'Google Maps business counts and OpenStreetMap data' : 'OpenStreetMap data'}{' '}
+        within 1.5 km. Where that data is thin, GAYATAMA says so instead of guessing.
       </p>
     </section>
   );

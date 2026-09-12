@@ -5,6 +5,7 @@ import {
   type BusinessType,
   type ComponentKey,
   type EvaluatedFacility,
+  type Facility,
   type HardWarning,
   type LatLng,
   type LocationInput,
@@ -16,14 +17,23 @@ import {
   type SegmentScores,
   type WarningCode,
 } from '@gayatama/scoring';
+import { OVERTURE_ID_PREFIX, OVERTURE_KINDS, OVERTURE_SOURCE } from '../overture/overture-place';
+import type { PlaceCountsLookup } from '../places/place-counts.service';
+import { GOOGLE_COUNTED_KINDS } from '../places/place-types';
 import type { PoiSnapshot } from '../poi/poi.service';
 
 // Maps engine results onto the response shapes in docs/api.md.
 
-/** The POI snapshot a response was built from, plus whether site conditions could be loaded. */
+/** Google counts for a response: used, or the reason OpenStreetMap was used for every kind. */
+export type PlacesSource = PlaceCountsLookup | { status: 'not_requested' };
+
+/** The POI snapshot a response was built from, whether site conditions could be loaded, and Google counts. */
 export interface SourceSnapshot extends PoiSnapshot {
   siteAvailable: boolean;
+  places: PlacesSource;
 }
+
+const OPENSTREETMAP_SOURCE = 'openstreetmap';
 
 const COMPONENT_LABELS: Record<ComponentKey, string> = {
   demandFit: 'Demand Fit',
@@ -66,7 +76,40 @@ const WARNING_MESSAGES: Record<WarningCode, string> = {
   stale_data: 'Most mapped facilities nearby have not been updated in over 36 months.',
 };
 
+const ZONE_ORDER = ['a', 'b', 'c'];
+
 const whole = (value: number): string => Math.round(value).toString();
+
+function facilitySource(facility: Facility): string {
+  return facility.id.startsWith(OVERTURE_ID_PREFIX) ? OVERTURE_SOURCE : OPENSTREETMAP_SOURCE;
+}
+
+/** CDLA Permissive 2.0 asks for its text to accompany shared data; Overture asks to be credited. */
+function presentOverture(overture: PoiSnapshot['overture']) {
+  if (overture === null) return null;
+  return {
+    provider: 'Overture Maps Foundation',
+    attribution: 'Overture Maps Foundation',
+    licence: 'CDLA-Permissive-2.0',
+    release: overture.release,
+    kinds: [...OVERTURE_KINDS],
+  };
+}
+
+/** Google Maps Platform policies require "Google Maps" attribution wherever its counts feed a result. */
+function presentPlaces(places: PlacesSource) {
+  if (places.status !== 'used') {
+    return { provider: 'Google Maps', status: places.status, attribution: null, fetchedAt: null, cacheHit: null, kinds: [] };
+  }
+  return {
+    provider: 'Google Maps',
+    status: places.status,
+    attribution: 'Google Maps',
+    fetchedAt: places.fetchedAt,
+    cacheHit: places.cacheHit,
+    kinds: [...GOOGLE_COUNTED_KINDS],
+  };
+}
 
 export function presentDataSource(source: SourceSnapshot) {
   return {
@@ -76,7 +119,10 @@ export function presentDataSource(source: SourceSnapshot) {
     fetchedAt: source.fetchedAt,
     cacheHit: source.cacheHit,
     stale: source.stale,
+    via: source.via,
     siteConditions: source.siteAvailable ? 'available' : 'unavailable',
+    places: presentPlaces(source.places),
+    overture: presentOverture(source.overture),
   };
 }
 
@@ -104,11 +150,15 @@ export function presentAnalysis(result: LocationScoreResult, location: LatLng, s
       saturationRatio: competition.saturationRatio,
       reading: competition.reading,
       radiusMeters: competition.radiusMeters,
+      // A counted group has no single position, so its distance is null and its zone says where it lies.
       strongest: competition.competitors.slice(0, 5).map((competitor) => ({
         id: competitor.facility.id,
         name: competitor.facility.name ?? null,
         kind: competitor.facility.kind,
-        distanceMeters: Math.round(competitor.distanceMeters),
+        zone: competitor.zone,
+        distanceMeters: competitor.countedFrom === undefined ? Math.round(competitor.distanceMeters) : null,
+        count: competitor.count,
+        source: competitor.countedFrom ?? facilitySource(competitor.facility),
         contribution: competitor.contribution,
       })),
     },
@@ -164,13 +214,14 @@ export function presentRecommendation(result: RecommendationResult, location: La
   };
 }
 
-/** Facilities plus site conditions: everything the browser needs to rerun the engine locally. */
+/** Facilities, counted facilities and site conditions: everything the browser needs to rerun the engine locally. */
 export function presentPois(evaluated: readonly EvaluatedFacility[], input: LocationInput, source: SourceSnapshot) {
   return {
     location: input.location,
     asOf: input.asOf,
     site: input.site ?? {},
-    facilities: [...evaluated]
+    facilities: evaluated
+      .filter((entry) => entry.countedFrom === undefined)
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
       .map((entry) => ({
         ...entry.facility,
@@ -179,6 +230,22 @@ export function presentPois(evaluated: readonly EvaluatedFacility[], input: Loca
         dataQuality: entry.dataQuality,
         accessFactor: entry.accessFactor,
       })),
+    facilityCounts: evaluated
+      .flatMap((entry) =>
+        entry.countedFrom === undefined
+          ? []
+          : [
+              {
+                kind: entry.facility.kind,
+                zone: entry.zone,
+                count: entry.count,
+                scale: entry.facility.scale ?? 'medium',
+                source: entry.countedFrom,
+                dataQuality: entry.dataQuality,
+              },
+            ],
+      )
+      .sort((a, b) => ZONE_ORDER.indexOf(a.zone) - ZONE_ORDER.indexOf(b.zone)),
     dataSource: presentDataSource(source),
   };
 }

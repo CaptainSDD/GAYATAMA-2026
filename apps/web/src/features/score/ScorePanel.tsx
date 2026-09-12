@@ -1,6 +1,6 @@
 import { COMPONENT_KEYS, confidenceReading } from '@gayatama/scoring';
 import { Attribution, DataNotices, WarningList } from '../../components/Notices';
-import type { AnalysisResponse, Factor } from '../../lib/api-types';
+import type { AnalysisResponse, DataSource, Factor } from '../../lib/api-types';
 import {
   BAND_LABELS,
   BUSINESS_TYPE_LABELS,
@@ -68,9 +68,10 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
       <section className="section">
         <h3>Evidence</h3>
         <p>
-          {analysis.evidence.facilityCount} mapped facilities within 1.5 km — Zone A {analysis.evidence.zones.a}, Zone B{' '}
+          {analysis.evidence.facilityCount} facilities within 1.5 km — Zone A {analysis.evidence.zones.a}, Zone B{' '}
           {analysis.evidence.zones.b}, Zone C {analysis.evidence.zones.c}.
         </p>
+        <p className="muted">{sourceSummary(dataSource)}</p>
       </section>
 
       <p className="disclaimer">
@@ -81,6 +82,16 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
       <Attribution dataSource={dataSource} modelVersion={analysis.modelVersion} />
     </article>
   );
+}
+
+/** Which source each kind of facility came from. */
+function sourceSummary(dataSource: DataSource): string {
+  const shops = dataSource.overture === null ? 'OpenStreetMap' : 'OpenStreetMap and Overture Maps';
+  if (dataSource.places.status === 'used') {
+    return `Businesses, schools, offices and transit stops are counted by Google Maps. Housing and parking come from OpenStreetMap; photocopy, printing and stationery shops from ${shops}.`;
+  }
+  if (dataSource.overture === null) return 'Every facility comes from OpenStreetMap.';
+  return `Facilities come from OpenStreetMap; photocopy, printing and stationery shops from ${shops}.`;
 }
 
 function FactorList({ title, factors }: { title: string; factors: Factor[] }) {

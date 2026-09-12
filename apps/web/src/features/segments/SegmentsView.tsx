@@ -13,7 +13,7 @@ interface SegmentsViewProps {
 
 export function SegmentsView({ analysis, point }: SegmentsViewProps) {
   const pois = usePois(point);
-  const evidence = pois.data === undefined ? null : segmentEvidence(pois.data.facilities);
+  const evidence = pois.data === undefined ? null : segmentEvidence(pois.data.facilities, pois.data.facilityCounts);
   const businessLabel = BUSINESS_TYPE_LABELS[analysis.businessType];
   const weights = SEGMENT_WEIGHTS[analysis.businessType];
   const ordered = [...SEGMENTS].sort((a, b) => analysis.segments[b].score - analysis.segments[a].score);
@@ -21,14 +21,14 @@ export function SegmentsView({ analysis, point }: SegmentsViewProps) {
   const evidenceText = (kinds: KindCount[] | undefined): string => {
     if (pois.isError) return 'The facility list behind this score could not be loaded.';
     if (kinds === undefined) return 'Loading the facilities behind this score…';
-    if (kinds.length === 0) return 'No mapped facilities indicate this group.';
-    return `Mapped nearby: ${kinds.map(({ kind, count }) => `${FACILITY_KIND_LABELS[kind]} ×${count}`).join(', ')}`;
+    if (kinds.length === 0) return 'No facilities found nearby indicate this group.';
+    return `Found nearby: ${kinds.map(({ kind, count }) => `${FACILITY_KIND_LABELS[kind]} ×${count}`).join(', ')}`;
   };
 
   return (
     <div className="segments">
       <p className="muted">
-        How strong each customer group is around this location, judged from facilities mapped within 1.5 km. These
+        How strong each customer group is around this location, judged from facilities within 1.5 km. These
         are strength indicators, not population counts: GAYATAMA has no demographic data and does not estimate any.
       </p>
 

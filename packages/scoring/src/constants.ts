@@ -39,6 +39,12 @@ export const DATA_QUALITY = {
   closed: 0,
 } as const;
 
+/**
+ * PROPOSED: Data Quality of a counted facility. A count carries no per-record
+ * date, so it takes the existing "date unknown but record is reasonably complete" band.
+ */
+export const COUNTED_DATA_QUALITY = DATA_QUALITY.undatedComplete;
+
 /** Age limits in months for the Data Quality bands and the stale-data warning. */
 export const DATA_AGE_MONTHS = { recent: 12, aging: 24, staleWarning: 36 } as const;
 
