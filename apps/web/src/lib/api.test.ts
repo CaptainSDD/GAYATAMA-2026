@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError, shouldRetry, toApiError } from './api';
-import { errorMessage, isRetryable } from './copy';
+import { errorMessage, errorTitle, isRetryable } from './copy';
 
 describe('API errors', () => {
   it('keeps the code and details from the documented error body', () => {
@@ -13,7 +13,7 @@ describe('API errors', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.code).toBe('INSUFFICIENT_DATA');
     expect(error.details).toEqual({ facilitiesFound: 3, confidence: 22 });
-    expect(errorMessage(error)).toContain('confidence 22/100');
+    expect(errorMessage(error)).toContain('keyakinan 22/100');
     expect(isRetryable(error)).toBe(false);
   });
 
@@ -23,11 +23,12 @@ describe('API errors', () => {
     expect(error.status).toBe(502);
   });
 
-  it('gives a readable message for every documented code', () => {
+  it('gives a readable message and headline for every documented code', () => {
     for (const code of ['VALIDATION_FAILED', 'RATE_LIMITED', 'UPSTREAM_TIMEOUT', 'NETWORK_ERROR']) {
       expect(errorMessage(new ApiError(400, code, ''))).not.toBe('');
+      expect(errorTitle(new ApiError(400, code, ''))).not.toBe('');
     }
-    expect(errorMessage(new Error('boom'))).toBe('Something went wrong. Please try again.');
+    expect(errorMessage(new Error('boom'))).toBe('Terjadi kesalahan. Silakan coba lagi.');
   });
 });
 
