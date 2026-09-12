@@ -13,18 +13,29 @@ const longitude = (base: z.ZodNumber) =>
 
 const businessType = z.enum(BUSINESS_TYPES as unknown as [BusinessType, ...BusinessType[]]);
 
+/**
+ * The client shows the results on a Google map. Google Maps Platform terms
+ * forbid using Google data with any other map, so Google counts are used only
+ * when this is true.
+ */
+const googleMap = z.boolean().default(false);
+
 export const recommendRequestSchema = z
-  .object({ lat: latitude(z.number()), lng: longitude(z.number()) })
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), googleMap })
   .strict();
 
 export const analysisRequestSchema = z
-  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType })
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap })
   .strict();
 
 export const poisQuerySchema = z.object({
   lat: latitude(z.coerce.number()),
   lng: longitude(z.coerce.number()),
   radius: z.coerce.number().positive().max(ANALYSIS_RADIUS_METERS).default(ANALYSIS_RADIUS_METERS),
+  googleMap: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type RecommendRequest = z.infer<typeof recommendRequestSchema>;

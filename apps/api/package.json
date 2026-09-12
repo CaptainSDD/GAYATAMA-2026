@@ -9,7 +9,9 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "test": "jest",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "osm:snapshots": "ts-node scripts/build-osm-snapshots.ts",
+    "overture:places": "ts-node scripts/build-overture-places.ts"
   },
   "dependencies": {
     "@gayatama/scoring": "*",

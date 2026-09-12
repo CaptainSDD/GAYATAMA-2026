@@ -7,6 +7,7 @@ import { LocationView } from './features/location/LocationView';
 import { LocationControls } from './features/map/LocationControls';
 import { MapPicker } from './features/map/MapPicker';
 import { DEFAULT_CENTER, parseSelection, roundPoint, serializeSelection, type Selection } from './lib/location';
+import { USE_GOOGLE_MAP } from './lib/map-config';
 
 export function App() {
   const [selection, setSelection] = useState<Selection>(() => parseSelection(window.location.search));
@@ -87,7 +88,8 @@ function Intro() {
         </li>
         <li>
           <span>
-            Pilih jenis usaha yang Anda rencanakan — atau buka tab “Buka apa” untuk membandingkan ketujuhnya sekaligus.
+            Pilih jenis usaha yang Anda rencanakan — atau buka tab “Rekomendasi” untuk membandingkan ketujuhnya
+            sekaligus.
           </span>
         </li>
         <li>
@@ -97,8 +99,9 @@ function Intro() {
         </li>
       </ol>
       <p className="muted">
-        Skor dihitung dari data OpenStreetMap dalam radius 1,5 km. Kalau datanya tipis, LOKABIS mengatakannya
-        terus terang, bukan menebak.
+        Skor dihitung dari{' '}
+        {USE_GOOGLE_MAP ? 'jumlah usaha Google Maps dan data OpenStreetMap' : 'data OpenStreetMap'} dalam radius 1,5
+        km. Kalau datanya tipis, LOKABIS mengatakannya terus terang, bukan menebak.
       </p>
     </section>
   );

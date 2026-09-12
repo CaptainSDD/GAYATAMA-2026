@@ -16,6 +16,11 @@ The web app reads everything through the API, so start that too — `npm run dev
 runs both. When the API is not at `http://localhost:3000`, set
 `VITE_API_BASE_URL` in the root `.env`.
 
+With `VITE_GOOGLE_MAPS_API_KEY` in the root `.env`, the map is a Google map and
+requests set `googleMap`, so the API may add Google business counts. Without it,
+the map is an OpenStreetMap map and Google data is never requested — see
+[../../docs/installation.md](../../docs/installation.md#google-maps-platform-optional).
+
 Every analysis has its own URL (`?lat=…&lng=…&type=…`), so a result can be
 shared as a link.
 
@@ -28,7 +33,7 @@ src/
 ├── App.tsx            Layout; keeps the selected point and business type in the URL
 ├── components/        Tabs, cards, skeletons, icons, theme toggle, share, notices
 ├── features/
-│   ├── map/           Leaflet picker, zone rings, facility markers, controls
+│   ├── map/           OpenStreetMap or Google map picker, zone rings, facility markers, controls
 │   ├── location/      Tabs for a selected location
 │   ├── score/         Score gauge with its interval, component breakdown, warnings
 │   ├── recommend/     All seven business types ranked, with statuses
@@ -56,6 +61,15 @@ Constraints inherited from the methodology, enforced in the UI layer:
   maps a `Band`, `SegmentRole`, `SaturationReading` or `ConfidenceReading` onto
   a CSS token. No threshold is written a second time in the interface, so
   recalibrating `packages/scoring/src/constants.ts` recolours the UI on its own.
+- **Incomplete data is said out loud.** When the API reports stale data, site
+  conditions it could not load, or Google counts it could not use, the result
+  carries a notice.
+- **Segment scores are never presented as population counts.**
+- **OpenStreetMap attribution is present on every result and on the
+  OpenStreetMap map.** This is an ODbL licence obligation, not a courtesy — see
+  [../../docs/data-sources.md](../../docs/data-sources.md).
+- **Google data appears only on a Google map, with "Google Maps" attribution.**
+  Both are Google Maps Platform requirements.
 
 ## Colour system
 
@@ -76,12 +90,6 @@ none of them — green, amber, orange and red all carry meaning on the scale.
 
 Keeping the accent rare is the point. Used on more than the handful of elements
 listed above, it stops reading as an accent and the eye loses its anchor.
-- **Incomplete data is said out loud.** When the API reports stale data or site
-  conditions it could not load, the result carries a notice.
-- **Segment scores are never presented as population counts.**
-- **OpenStreetMap attribution is present on every map view and every result.**
-  This is an ODbL licence obligation, not a courtesy — see
-  [../../docs/data-sources.md](../../docs/data-sources.md).
 
 ## Tests
 

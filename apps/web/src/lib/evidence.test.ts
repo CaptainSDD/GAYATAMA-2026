@@ -1,6 +1,6 @@
 import type { FacilityKind } from '@gayatama/scoring';
 import { describe, expect, it } from 'vitest';
-import type { PoiFacility } from './api-types';
+import type { PoiFacility, PoiFacilityCount } from './api-types';
 import { segmentEvidence } from './evidence';
 
 let nextId = 1;
@@ -36,5 +36,23 @@ describe('segmentEvidence', () => {
 
   it('leaves out closed records, which carry no weight', () => {
     expect(segmentEvidence([facility('hospital', 0)]).health).toEqual([]);
+  });
+
+  it('adds each counted group by its count', () => {
+    const counted = (kind: FacilityKind, count: number): PoiFacilityCount => ({
+      kind,
+      zone: 'b',
+      count,
+      scale: 'medium',
+      source: 'google',
+      dataQuality: 0.65,
+    });
+
+    const evidence = segmentEvidence([facility('school')], [counted('school', 3), counted('campus', 2)]);
+
+    expect(evidence.student).toEqual([
+      { kind: 'school', count: 4 },
+      { kind: 'campus', count: 2 },
+    ]);
   });
 });

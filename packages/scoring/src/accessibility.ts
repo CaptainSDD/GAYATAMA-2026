@@ -29,7 +29,7 @@ export function parkingScore(evaluated: readonly EvaluatedFacility[], onSitePark
   for (const entry of evaluated) {
     if (entry.facility.kind !== 'parking' || entry.distanceMeters > PARKING.radiusMeters) continue;
     const capacity = Math.max(0, entry.facility.capacity ?? PARKING.defaultCapacity);
-    spaces += capacity * entry.dataQuality * entry.accessFactor;
+    spaces += capacity * entry.dataQuality * entry.accessFactor * entry.count;
   }
   return Math.min(100, PARKING.base + PARKING.perSpace * spaces);
 }

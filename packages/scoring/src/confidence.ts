@@ -24,9 +24,11 @@ export function confidenceScore(evaluated: readonly EvaluatedFacility[], site: S
   if (site.roadClass !== undefined) groupsPresent += 1;
   const completeness = (groupsPresent / (EXPECTED_FACILITY_GROUPS.length + 1)) * 100;
 
+  // Mean Data Quality of open facilities, where a counted entry weighs as many facilities as it stands for.
   const open = evaluated.filter((entry) => !entry.facility.closed);
+  const openCount = open.reduce((sum, entry) => sum + entry.count, 0);
   const freshness =
-    open.length === 0 ? 0 : (open.reduce((sum, entry) => sum + entry.dataQuality, 0) / open.length) * 100;
+    openCount === 0 ? 0 : (open.reduce((sum, entry) => sum + entry.dataQuality * entry.count, 0) / openCount) * 100;
 
   const crossSourceValidation = CROSS_SOURCE_VALIDATION_NEUTRAL;
   const areaCoverage = (new Set(usable.map((entry) => entry.zone)).size / ZONE_COUNT) * 100;
