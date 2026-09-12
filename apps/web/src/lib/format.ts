@@ -35,5 +35,5 @@ export function formatCoordinate({ lat, lng }: LatLng): string {
 export function formatDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  return date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 }

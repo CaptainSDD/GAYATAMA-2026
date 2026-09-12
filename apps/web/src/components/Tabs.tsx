@@ -3,6 +3,8 @@ import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 export interface TabItem<K extends string> {
   key: K;
   label: string;
+  /** Decorative: the label already names the tab. */
+  icon?: ReactNode;
 }
 
 interface TabsProps<K extends string> {
@@ -62,7 +64,8 @@ export function Tabs<K extends string>({ label, tabs, active, onChange, children
             onClick={() => onChange(tab.key)}
             onKeyDown={(event) => onKeyDown(event, index)}
           >
-            {tab.label}
+            {tab.icon}
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>

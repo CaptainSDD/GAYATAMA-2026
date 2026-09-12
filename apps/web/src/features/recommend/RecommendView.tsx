@@ -1,9 +1,13 @@
 import { BUSINESS_TYPES, type BusinessType } from '@gayatama/scoring';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { Card } from '../../components/Card';
+import { CompassIcon } from '../../components/Icons';
 import { Attribution, DataNotices, WarningList } from '../../components/Notices';
-import { Loading, QueryError } from '../../components/QueryState';
+import { QueryError } from '../../components/QueryState';
 import { ScoreInline } from '../../components/ScoreInline';
+import { ScoreSkeleton } from '../../components/Skeleton';
 import type { RecommendResponse } from '../../lib/api-types';
+import { bandTone, toneChip, toneColor } from '../../lib/band-color';
 import { BUSINESS_TYPE_LABELS, SEGMENT_LABELS, STATUS_LABELS } from '../../lib/copy';
 
 interface RecommendViewProps {
@@ -12,7 +16,7 @@ interface RecommendViewProps {
 }
 
 export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
-  if (query.isPending) return <Loading message="Scoring all seven business types…" />;
+  if (query.isPending) return <ScoreSkeleton />;
   if (query.isError) return <QueryError error={query.error} onRetry={() => void query.refetch()} />;
 
   const { recommendations, notRecommended, equivalent, warnings, dataSource, modelVersion } = query.data;
@@ -23,9 +27,9 @@ export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
 
   return (
     <div className="recommend">
-      <p className="muted">
-        All seven business types, scored for this location. Up to three scoring 60 or more are recommended; types
-        within 3 points of each other are equally suitable, not a strict ranking.
+      <p className="lead">
+        Ketujuh jenis usaha, dinilai untuk lokasi ini. Maksimal tiga yang bernilai 60 ke atas ditampilkan sebagai
+        rekomendasi. Jenis usaha yang selisihnya 3 poin atau kurang dianggap sama-sama cocok, bukan diurutkan.
       </p>
 
       <DataNotices dataSource={dataSource} onRefresh={() => void query.refetch()} refreshing={query.isFetching} />
@@ -33,36 +37,52 @@ export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
 
       {needsValidation && (
         <p className="notice">
-          Data around this location is incomplete, so nothing here can be recommended with confidence. Treat these as
-          leads to check on site.
+          Data di sekitar lokasi ini belum lengkap, jadi belum ada yang bisa direkomendasikan dengan yakin. Anggap
+          daftar ini sebagai petunjuk awal yang masih perlu dicek langsung di lapangan.
         </p>
       )}
 
       {recommendations.length === 0 ? (
-        <p className="notice">No business type scores 60 or more at this location.</p>
+        <p className="notice">Tidak ada jenis usaha yang mencapai nilai 60 di lokasi ini.</p>
       ) : (
         <ol className="recommendation-list">
-          {recommendations.map((entry) => {
+          {recommendations.map((entry, index) => {
             const peers = peersOf(entry.businessType);
+            const tone = bandTone(entry.score.band);
             return (
-              <li key={entry.businessType} className="recommendation">
+              <li
+                key={entry.businessType}
+                className="recommendation"
+                style={{ ['--accent' as string]: toneColor(tone) }}
+              >
                 <div className="recommendation-head">
-                  <h3>{BUSINESS_TYPE_LABELS[entry.businessType]}</h3>
+                  <h3>
+                    <span className="recommendation-rank" aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    {BUSINESS_TYPE_LABELS[entry.businessType]}
+                  </h3>
                   <ScoreInline score={entry.score} />
                 </div>
-                <p className={`status status-${entry.status}`}>{STATUS_LABELS[entry.status]}</p>
+                <p>
+                  <span className={toneChip(tone)}>{STATUS_LABELS[entry.status]}</span>
+                </p>
                 <p>{entry.rationale}.</p>
                 <p className="muted">
-                  Main customers: {SEGMENT_LABELS[entry.dominantSegment]}. {entry.differentiator}.
+                  Pelanggan utama: {SEGMENT_LABELS[entry.dominantSegment]}. {entry.differentiator}.
                 </p>
                 {peers.length > 0 && (
-                  <p className="muted">
-                    Within 3 points of {peers.map((peer) => BUSINESS_TYPE_LABELS[peer]).join(' and ')} — treat them as
-                    equally suitable.
+                  <p className="equivalence">
+                    <CompassIcon size={16} />
+                    <span>
+                      Selisihnya 3 poin atau kurang dengan{' '}
+                      {peers.map((peer) => BUSINESS_TYPE_LABELS[peer]).join(' dan ')} — perlakukan sebagai sama-sama
+                      cocok, bukan lebih unggul.
+                    </span>
                   </p>
                 )}
                 <button type="button" className="button-link" onClick={() => onAnalyse(entry.businessType)}>
-                  See the full analysis
+                  Lihat analisis lengkapnya
                 </button>
               </li>
             );
@@ -73,14 +93,13 @@ export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
       {unlisted > 0 && (
         <p className="muted">
           {unlisted === 1
-            ? '1 more business type also scores 60 or more but ranks below the top three.'
-            : `${unlisted} more business types also score 60 or more but rank below the top three.`}
+            ? '1 jenis usaha lain juga bernilai 60 ke atas, tapi berada di bawah tiga besar.'
+            : `${unlisted} jenis usaha lain juga bernilai 60 ke atas, tapi berada di bawah tiga besar.`}
         </p>
       )}
 
       {notRecommended.length > 0 && (
-        <section className="section">
-          <h3>Not recommended here</h3>
+        <Card title="Tidak direkomendasikan di sini">
           <ul className="not-recommended">
             {notRecommended.map((entry) => (
               <li key={entry.businessType}>
@@ -92,7 +111,7 @@ export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
 
       <Attribution dataSource={dataSource} modelVersion={modelVersion} />
