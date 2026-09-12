@@ -1,7 +1,8 @@
 # @gayatama/api
 
-NestJS backend. Fetches OpenStreetMap POIs through Overpass, caches them, and
-runs `@gayatama/scoring` over the result.
+NestJS backend. Fetches OpenStreetMap POIs — through Geoapify Places when
+`GEOAPIFY_API_KEY` is set, otherwise Overpass — caches them, and runs
+`@gayatama/scoring` over the result.
 
 ## Responsibilities
 
@@ -9,8 +10,11 @@ This service is deliberately thin. Scoring lives in `@gayatama/scoring`, which
 both this API and the frontend import — so what remains here is only the work
 that genuinely requires a server:
 
-- Query Overpass (slow, rate-limited, better not exposed to browsers directly)
-- Normalise OpenStreetMap tags into the engine's facility kinds
+- Query the POI source: Geoapify Places for facilities, Overpass for site
+  conditions (slow, rate-limited, better not exposed to browsers directly)
+- Hold the Geoapify API key, which must stay off the browser
+- Normalise OpenStreetMap tags into the engine's facility kinds — Geoapify
+  passes the original OSM tags through, so one normaliser serves both sources
 - Cache POI results, keyed by a snapped geohash cell — in memory, and in
   Firestore when Firebase is configured
 - Hold the Firebase service account credential, which cannot live in a browser
