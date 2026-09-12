@@ -25,45 +25,48 @@ export interface SourceSnapshot extends PoiSnapshot {
   siteAvailable: boolean;
 }
 
+// The prose below is user-facing copy, so it is Indonesian to match the
+// interface. Field names, codes and enums stay English, as docs/api.md says.
+
 const COMPONENT_LABELS: Record<ComponentKey, string> = {
-  demandFit: 'Demand Fit',
-  accessibility: 'Accessibility',
-  competition: 'Competition Opportunity',
-  supportingFacility: 'Supporting Facility Fit',
-  risk: 'Risk and Operability',
+  demandFit: 'Kecocokan Permintaan',
+  accessibility: 'Aksesibilitas',
+  competition: 'Peluang Persaingan',
+  supportingFacility: 'Fasilitas Pendukung',
+  risk: 'Risiko & Operasional',
 };
 
 const SEGMENT_LABELS: Record<Segment, string> = {
-  student: 'Student',
-  office: 'Office',
-  resident: 'Resident',
-  commuter: 'Commuter',
-  health: 'Health',
-  general: 'General',
+  student: 'Pelajar & mahasiswa',
+  office: 'Pekerja kantor',
+  resident: 'Penghuni sekitar',
+  commuter: 'Pengguna transportasi',
+  health: 'Pengunjung fasilitas kesehatan',
+  general: 'Pengunjung umum',
 };
 
 const SATURATION_WORDS: Record<SaturationReading, string> = {
-  not_saturated: 'low',
-  healthy: 'healthy',
-  becoming_saturated: 'rising',
-  saturated: 'high',
-  heavily_saturated: 'very high',
+  not_saturated: 'rendah',
+  healthy: 'sehat',
+  becoming_saturated: 'mulai naik',
+  saturated: 'tinggi',
+  heavily_saturated: 'sangat tinggi',
 };
 
 const DIFFERENTIATORS: Record<BusinessType, string> = {
-  beverages: 'Depends on passing trade and student footfall',
-  food: 'Serves several customer segments, but faces the densest competition',
-  laundry: 'Lower footfall dependence than food or beverages',
-  stationery: 'Tied closely to schools and campuses, so quieter during holidays',
-  minimarket: 'Needs the most stock and shelf space to open',
-  salon: 'Relies on repeat local customers rather than passing trade',
-  pharmacy: 'Needs a licensed pharmacist and nearby health facilities',
+  beverages: 'Bergantung pada orang yang lewat dan lalu-lalang pelajar',
+  food: 'Melayani beberapa kelompok pelanggan, tapi persaingannya paling padat',
+  laundry: 'Tidak terlalu bergantung pada orang lewat dibanding makanan atau minuman',
+  stationery: 'Terikat erat pada sekolah dan kampus, jadi sepi saat libur',
+  minimarket: 'Butuh modal stok dan ruang rak paling besar untuk buka',
+  salon: 'Mengandalkan pelanggan tetap di sekitar, bukan orang yang kebetulan lewat',
+  pharmacy: 'Butuh apoteker berizin dan fasilitas kesehatan di dekatnya',
 };
 
 const WARNING_MESSAGES: Record<WarningCode, string> = {
   flood_risk_proxy:
-    'A mapped river, canal or stream is within 50 m. This is a proxy, not flood data: check the flood history on site.',
-  stale_data: 'Most mapped facilities nearby have not been updated in over 36 months.',
+    'Ada sungai, kanal, atau saluran air terpetakan dalam radius 50 m. Ini perkiraan dari peta, bukan data banjir resmi: periksa riwayat banjir langsung di lokasi.',
+  stale_data: 'Sebagian besar fasilitas terpetakan di sekitar sini belum diperbarui lebih dari 36 bulan.',
 };
 
 const whole = (value: number): string => Math.round(value).toString();
@@ -114,11 +117,11 @@ export function presentAnalysis(result: LocationScoreResult, location: LatLng, s
     },
     strengths: result.strengths.map(({ component, value }) => ({
       factor: component,
-      detail: `${COMPONENT_LABELS[component]} scores ${whole(value)}/100`,
+      detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
     })),
     risks: result.weaknesses.map(({ component, value }) => ({
       factor: component,
-      detail: `${COMPONENT_LABELS[component]} scores ${whole(value)}/100`,
+      detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
     })),
     warnings: presentWarnings(result.warnings),
     evidence: result.evidence,
@@ -127,16 +130,18 @@ export function presentAnalysis(result: LocationScoreResult, location: LatLng, s
 }
 
 function rationale(entry: RankedCategory, segments: SegmentScores): string {
-  const segment = `${SEGMENT_LABELS[entry.dominantSegment]} score ${whole(segments[entry.dominantSegment])}`;
-  if (entry.status === 'needs_validation') return `${segment}, but facility data around this location is incomplete`;
-  return `${segment} with ${SATURATION_WORDS[entry.saturationReading]} competitor saturation (${entry.saturationRatio.toFixed(2)})`;
+  const segment = `${SEGMENT_LABELS[entry.dominantSegment]} bernilai ${whole(segments[entry.dominantSegment])}`;
+  if (entry.status === 'needs_validation') {
+    return `${segment}, tapi data fasilitas di sekitar lokasi ini belum lengkap`;
+  }
+  return `${segment}, dengan kejenuhan kompetitor ${SATURATION_WORDS[entry.saturationReading]} (${entry.saturationRatio.toFixed(2)})`;
 }
 
 function reason(entry: RankedCategory): string {
   const weakest = COMPONENT_KEYS.reduce((lowest, key) =>
     entry.components[key] < entry.components[lowest] ? key : lowest,
   );
-  return `${COMPONENT_LABELS[weakest]} is ${whole(entry.components[weakest])}/100, its weakest component`;
+  return `${COMPONENT_LABELS[weakest]} hanya ${whole(entry.components[weakest])}/100, komponen terlemahnya`;
 }
 
 export function presentRecommendation(result: RecommendationResult, location: LatLng, source: SourceSnapshot) {

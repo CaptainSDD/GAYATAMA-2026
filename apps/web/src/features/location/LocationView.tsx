@@ -1,6 +1,7 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useState } from 'react';
+import { CompassIcon, GaugeIcon, StoreIcon, UsersIcon } from '../../components/Icons';
 import { Loading, QueryError } from '../../components/QueryState';
 import { Tabs, type TabItem } from '../../components/Tabs';
 import type { AnalysisResponse } from '../../lib/api-types';
@@ -13,11 +14,13 @@ import { SegmentsView } from '../segments/SegmentsView';
 
 type TabKey = 'score' | 'recommend' | 'customers' | 'competitors';
 
+// Labels name the question each tab answers. "Buka apa" read as a fragment
+// rather than a heading, so it is spelled out.
 const TABS: readonly TabItem<TabKey>[] = [
-  { key: 'score', label: 'Score' },
-  { key: 'recommend', label: 'What to open' },
-  { key: 'customers', label: 'Customers' },
-  { key: 'competitors', label: 'Competitors' },
+  { key: 'score', label: 'Skor Lokasi', icon: <GaugeIcon size={18} /> },
+  { key: 'recommend', label: 'Rekomendasi', icon: <CompassIcon size={18} /> },
+  { key: 'customers', label: 'Pelanggan', icon: <UsersIcon size={18} /> },
+  { key: 'competitors', label: 'Kompetitor', icon: <StoreIcon size={18} /> },
 ];
 
 interface LocationViewProps {
@@ -36,13 +39,13 @@ export function LocationView({ point, businessType, onBusinessTypeChange }: Loca
   if (!inCoverage) {
     return (
       <p className="notice" role="status">
-        This point is outside Indonesia. GAYATAMA’s map data and business categories cover Indonesian locations only.
+        Titik ini berada di luar Indonesia. Data peta dan kategori usaha LOKABIS hanya mencakup lokasi di Indonesia.
       </p>
     );
   }
 
   return (
-    <Tabs label="Location analysis" tabs={TABS} active={tab} onChange={setTab}>
+    <Tabs label="Analisis lokasi" tabs={TABS} active={tab} onChange={setTab}>
       {tab === 'recommend' ? (
         <RecommendView
           query={recommendation}
@@ -65,7 +68,7 @@ interface AnalysisTabProps {
 }
 
 function AnalysisTab({ tab, query, point }: AnalysisTabProps) {
-  if (query.isPending) return <Loading message="Analysing this location…" />;
+  if (query.isPending) return <Loading message="Menganalisis lokasi ini…" />;
   if (query.isError) return <QueryError error={query.error} onRetry={() => void query.refetch()} />;
 
   switch (tab) {
