@@ -5,6 +5,7 @@ import {
   type BusinessType,
   type ComponentKey,
   type EvaluatedFacility,
+  type Facility,
   type HardWarning,
   type LatLng,
   type LocationInput,
@@ -16,57 +17,101 @@ import {
   type SegmentScores,
   type WarningCode,
 } from '@gayatama/scoring';
+import { OVERTURE_ID_PREFIX, OVERTURE_KINDS, OVERTURE_SOURCE } from '../overture/overture-place';
+import type { PlaceCountsLookup } from '../places/place-counts.service';
+import { GOOGLE_COUNTED_KINDS } from '../places/place-types';
 import type { PoiSnapshot } from '../poi/poi.service';
 
 // Maps engine results onto the response shapes in docs/api.md.
 
-/** The POI snapshot a response was built from, plus whether site conditions could be loaded. */
+/** Google counts for a response: used, or the reason OpenStreetMap was used for every kind. */
+export type PlacesSource = PlaceCountsLookup | { status: 'not_requested' };
+
+/** The POI snapshot a response was built from, whether site conditions could be loaded, and Google counts. */
 export interface SourceSnapshot extends PoiSnapshot {
   siteAvailable: boolean;
+  places: PlacesSource;
 }
 
+// The prose below is user-facing copy, so it is Indonesian to match the
+// interface. Field names, codes and enums stay English, as docs/api.md says.
+const OPENSTREETMAP_SOURCE = 'openstreetmap';
+
 const COMPONENT_LABELS: Record<ComponentKey, string> = {
-  demandFit: 'Demand Fit',
-  accessibility: 'Accessibility',
-  competition: 'Competition Opportunity',
-  supportingFacility: 'Supporting Facility Fit',
-  risk: 'Risk and Operability',
+  demandFit: 'Kecocokan Permintaan',
+  accessibility: 'Aksesibilitas',
+  competition: 'Peluang Persaingan',
+  supportingFacility: 'Fasilitas Pendukung',
+  risk: 'Risiko & Operasional',
 };
 
 const SEGMENT_LABELS: Record<Segment, string> = {
-  student: 'Student',
-  office: 'Office',
-  resident: 'Resident',
-  commuter: 'Commuter',
-  health: 'Health',
-  general: 'General',
+  student: 'Pelajar & mahasiswa',
+  office: 'Pekerja kantor',
+  resident: 'Penghuni sekitar',
+  commuter: 'Pengguna transportasi',
+  health: 'Pengunjung fasilitas kesehatan',
+  general: 'Pengunjung umum',
 };
 
 const SATURATION_WORDS: Record<SaturationReading, string> = {
-  not_saturated: 'low',
-  healthy: 'healthy',
-  becoming_saturated: 'rising',
-  saturated: 'high',
-  heavily_saturated: 'very high',
+  not_saturated: 'rendah',
+  healthy: 'sehat',
+  becoming_saturated: 'mulai naik',
+  saturated: 'tinggi',
+  heavily_saturated: 'sangat tinggi',
 };
 
 const DIFFERENTIATORS: Record<BusinessType, string> = {
-  beverages: 'Depends on passing trade and student footfall',
-  food: 'Serves several customer segments, but faces the densest competition',
-  laundry: 'Lower footfall dependence than food or beverages',
-  stationery: 'Tied closely to schools and campuses, so quieter during holidays',
-  minimarket: 'Needs the most stock and shelf space to open',
-  salon: 'Relies on repeat local customers rather than passing trade',
-  pharmacy: 'Needs a licensed pharmacist and nearby health facilities',
+  beverages: 'Bergantung pada orang yang lewat dan lalu-lalang pelajar',
+  food: 'Melayani beberapa kelompok pelanggan, tapi persaingannya paling padat',
+  laundry: 'Tidak terlalu bergantung pada orang lewat dibanding makanan atau minuman',
+  stationery: 'Terikat erat pada sekolah dan kampus, jadi sepi saat libur',
+  minimarket: 'Butuh modal stok dan ruang rak paling besar untuk buka',
+  salon: 'Mengandalkan pelanggan tetap di sekitar, bukan orang yang kebetulan lewat',
+  pharmacy: 'Butuh apoteker berizin dan fasilitas kesehatan di dekatnya',
 };
 
 const WARNING_MESSAGES: Record<WarningCode, string> = {
   flood_risk_proxy:
-    'A mapped river, canal or stream is within 50 m. This is a proxy, not flood data: check the flood history on site.',
-  stale_data: 'Most mapped facilities nearby have not been updated in over 36 months.',
+    'Ada sungai, kanal, atau saluran air terpetakan dalam radius 50 m. Ini perkiraan dari peta, bukan data banjir resmi: periksa riwayat banjir langsung di lokasi.',
+  stale_data: 'Sebagian besar fasilitas terpetakan di sekitar sini belum diperbarui lebih dari 36 bulan.',
 };
 
+const ZONE_ORDER = ['a', 'b', 'c'];
+
 const whole = (value: number): string => Math.round(value).toString();
+
+function facilitySource(facility: Facility): string {
+  return facility.id.startsWith(OVERTURE_ID_PREFIX) ? OVERTURE_SOURCE : OPENSTREETMAP_SOURCE;
+}
+
+/** CDLA Permissive 2.0 asks for its text to accompany shared data; Overture asks to be credited. */
+function presentOverture(overture: PoiSnapshot['overture']) {
+  if (overture === null) return null;
+  return {
+    provider: 'Overture Maps Foundation',
+    attribution: 'Overture Maps Foundation',
+    licence: 'CDLA-Permissive-2.0',
+    release: overture.release,
+    kinds: [...OVERTURE_KINDS],
+  };
+}
+
+/** Google Maps Platform policies require "Google Maps" attribution wherever its counts feed a result. */
+function presentPlaces(places: PlacesSource) {
+  if (places.status !== 'used') {
+    return { provider: 'Google Maps', status: places.status, attribution: null, fetchedAt: null, cacheHit: null, kinds: [] };
+  }
+  return {
+    provider: 'Google Maps',
+    status: places.status,
+    attribution: 'Google Maps',
+    fetchedAt: places.fetchedAt,
+    cacheHit: places.cacheHit,
+    kinds: [...GOOGLE_COUNTED_KINDS],
+  };
+}
 
 export function presentDataSource(source: SourceSnapshot) {
   return {
@@ -76,7 +121,10 @@ export function presentDataSource(source: SourceSnapshot) {
     fetchedAt: source.fetchedAt,
     cacheHit: source.cacheHit,
     stale: source.stale,
+    via: source.via,
     siteConditions: source.siteAvailable ? 'available' : 'unavailable',
+    places: presentPlaces(source.places),
+    overture: presentOverture(source.overture),
   };
 }
 
@@ -104,21 +152,25 @@ export function presentAnalysis(result: LocationScoreResult, location: LatLng, s
       saturationRatio: competition.saturationRatio,
       reading: competition.reading,
       radiusMeters: competition.radiusMeters,
+      // A counted group has no single position, so its distance is null and its zone says where it lies.
       strongest: competition.competitors.slice(0, 5).map((competitor) => ({
         id: competitor.facility.id,
         name: competitor.facility.name ?? null,
         kind: competitor.facility.kind,
-        distanceMeters: Math.round(competitor.distanceMeters),
+        zone: competitor.zone,
+        distanceMeters: competitor.countedFrom === undefined ? Math.round(competitor.distanceMeters) : null,
+        count: competitor.count,
+        source: competitor.countedFrom ?? facilitySource(competitor.facility),
         contribution: competitor.contribution,
       })),
     },
     strengths: result.strengths.map(({ component, value }) => ({
       factor: component,
-      detail: `${COMPONENT_LABELS[component]} scores ${whole(value)}/100`,
+      detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
     })),
     risks: result.weaknesses.map(({ component, value }) => ({
       factor: component,
-      detail: `${COMPONENT_LABELS[component]} scores ${whole(value)}/100`,
+      detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
     })),
     warnings: presentWarnings(result.warnings),
     evidence: result.evidence,
@@ -127,16 +179,18 @@ export function presentAnalysis(result: LocationScoreResult, location: LatLng, s
 }
 
 function rationale(entry: RankedCategory, segments: SegmentScores): string {
-  const segment = `${SEGMENT_LABELS[entry.dominantSegment]} score ${whole(segments[entry.dominantSegment])}`;
-  if (entry.status === 'needs_validation') return `${segment}, but facility data around this location is incomplete`;
-  return `${segment} with ${SATURATION_WORDS[entry.saturationReading]} competitor saturation (${entry.saturationRatio.toFixed(2)})`;
+  const segment = `${SEGMENT_LABELS[entry.dominantSegment]} bernilai ${whole(segments[entry.dominantSegment])}`;
+  if (entry.status === 'needs_validation') {
+    return `${segment}, tapi data fasilitas di sekitar lokasi ini belum lengkap`;
+  }
+  return `${segment}, dengan kejenuhan kompetitor ${SATURATION_WORDS[entry.saturationReading]} (${entry.saturationRatio.toFixed(2)})`;
 }
 
 function reason(entry: RankedCategory): string {
   const weakest = COMPONENT_KEYS.reduce((lowest, key) =>
     entry.components[key] < entry.components[lowest] ? key : lowest,
   );
-  return `${COMPONENT_LABELS[weakest]} is ${whole(entry.components[weakest])}/100, its weakest component`;
+  return `${COMPONENT_LABELS[weakest]} hanya ${whole(entry.components[weakest])}/100, komponen terlemahnya`;
 }
 
 export function presentRecommendation(result: RecommendationResult, location: LatLng, source: SourceSnapshot) {
@@ -164,13 +218,14 @@ export function presentRecommendation(result: RecommendationResult, location: La
   };
 }
 
-/** Facilities plus site conditions: everything the browser needs to rerun the engine locally. */
+/** Facilities, counted facilities and site conditions: everything the browser needs to rerun the engine locally. */
 export function presentPois(evaluated: readonly EvaluatedFacility[], input: LocationInput, source: SourceSnapshot) {
   return {
     location: input.location,
     asOf: input.asOf,
     site: input.site ?? {},
-    facilities: [...evaluated]
+    facilities: evaluated
+      .filter((entry) => entry.countedFrom === undefined)
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
       .map((entry) => ({
         ...entry.facility,
@@ -179,6 +234,22 @@ export function presentPois(evaluated: readonly EvaluatedFacility[], input: Loca
         dataQuality: entry.dataQuality,
         accessFactor: entry.accessFactor,
       })),
+    facilityCounts: evaluated
+      .flatMap((entry) =>
+        entry.countedFrom === undefined
+          ? []
+          : [
+              {
+                kind: entry.facility.kind,
+                zone: entry.zone,
+                count: entry.count,
+                scale: entry.facility.scale ?? 'medium',
+                source: entry.countedFrom,
+                dataQuality: entry.dataQuality,
+              },
+            ],
+      )
+      .sort((a, b) => ZONE_ORDER.indexOf(a.zone) - ZONE_ORDER.indexOf(b.zone)),
     dataSource: presentDataSource(source),
   };
 }

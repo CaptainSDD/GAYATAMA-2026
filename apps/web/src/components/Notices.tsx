@@ -1,5 +1,6 @@
 import type { DataSource, Warning } from '../lib/api-types';
 import { formatDateTime } from '../lib/format';
+import { AlertIcon } from './Icons';
 
 interface DataNoticesProps {
   dataSource: DataSource;
@@ -7,19 +8,41 @@ interface DataNoticesProps {
   refreshing: boolean;
 }
 
-/** Tells the reader when a result rests on incomplete or out-of-date data. */
+/**
+ * Tells the reader when a result rests on incomplete or out-of-date data.
+ * Interface rule: this is never hidden or collapsed away.
+ */
 export function DataNotices({ dataSource, onRefresh, refreshing }: DataNoticesProps) {
+  const retry = (
+    <button type="button" className="button-secondary" onClick={onRefresh} disabled={refreshing}>
+      {refreshing ? 'Memuat…' : 'Coba muat ulang'}
+    </button>
+  );
+
   return (
     <>
+      {dataSource.places.status === 'unavailable' && (
+        <div className="notice" role="status">
+          <p>
+            Jumlah usaha dari Google Maps gagal dimuat, jadi semua fasilitas memakai data OpenStreetMap, yang sering
+            tidak mencatat usaha-usaha kecil. Skor di bawah mungkin belum lengkap.
+          </p>
+          {retry}
+        </div>
+      )}
+      {dataSource.places.status === 'not_configured' && (
+        <p className="notice" role="status">
+          Jumlah usaha dari Google Maps belum disiapkan di server, jadi semua fasilitas memakai data OpenStreetMap,
+          yang sering tidak mencatat usaha-usaha kecil.
+        </p>
+      )}
       {dataSource.siteConditions === 'unavailable' && (
         <div className="notice" role="status">
           <p>
-            Road, walkability and flood-proxy data for this spot could not be loaded, so those inputs count as unknown
-            and these scores are incomplete.
+            Data jalan, kemudahan jalan kaki, dan perkiraan banjir untuk titik ini gagal dimuat. Input itu dihitung
+            sebagai tidak diketahui, jadi skor di bawah belum lengkap.
           </p>
-          <button type="button" className="button-secondary" onClick={onRefresh} disabled={refreshing}>
-            {refreshing ? 'Loading…' : 'Try loading it again'}
-          </button>
+          {retry}
         </div>
       )}
       {dataSource.stale && <StaleDataNotice fetchedAt={dataSource.fetchedAt} />}
@@ -30,7 +53,7 @@ export function DataNotices({ dataSource, onRefresh, refreshing }: DataNoticesPr
 export function StaleDataNotice({ fetchedAt }: { fetchedAt: string }) {
   return (
     <p className="notice">
-      OpenStreetMap is unavailable, so this uses cached data from {formatDateTime(fetchedAt)}.
+      OpenStreetMap sedang tidak bisa dihubungi, jadi ini memakai data tersimpan dari {formatDateTime(fetchedAt)}.
     </p>
   );
 }
@@ -39,7 +62,9 @@ export function WarningList({ warnings }: { warnings: readonly Warning[] }) {
   if (warnings.length === 0) return null;
   return (
     <div className="warnings" role="alert">
-      <h3>Warnings</h3>
+      <h3>
+        <AlertIcon size={16} /> Peringatan
+      </h3>
       <ul>
         {warnings.map((warning) => (
           <li key={warning.code}>{warning.message}</li>
@@ -49,11 +74,20 @@ export function WarningList({ warnings }: { warnings: readonly Warning[] }) {
   );
 }
 
-/** ODbL requires attribution wherever OpenStreetMap data is shown. */
+/**
+ * ODbL requires attribution wherever OpenStreetMap data is shown, Google Maps
+ * Platform policies require "Google Maps" wherever its counts feed a result, and
+ * Overture asks to be credited for its data.
+ */
 export function Attribution({ dataSource, modelVersion }: { dataSource: DataSource; modelVersion?: string }) {
   return (
     <footer className="attribution">
-      Data © OpenStreetMap contributors, {dataSource.licence} · fetched {formatDateTime(dataSource.fetchedAt)}
+      Data © OpenStreetMap contributors, {dataSource.licence} ·{' '}
+      {dataSource.via === 'snapshot'
+        ? `snapshot ${formatDateTime(dataSource.fetchedAt)}`
+        : `diambil ${formatDateTime(dataSource.fetchedAt)}`}
+      {dataSource.places.status === 'used' && ` · Jumlah usaha: ${dataSource.places.attribution ?? 'Google Maps'}`}
+      {dataSource.overture !== null && ` · Fotokopi & ATK: ${dataSource.overture.attribution}`}
       {modelVersion !== undefined && ` · model ${modelVersion}`}
     </footer>
   );

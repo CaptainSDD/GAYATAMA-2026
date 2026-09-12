@@ -2,7 +2,7 @@
 
 # GAYATAMA
 
-**Location intelligence for micro-entrepreneurs — built on open data, honest about uncertainty.**
+**Location intelligence for micro-entrepreneurs — open data first, honest about uncertainty.**
 
 [![SDG 8](https://img.shields.io/badge/SDG-8.3_Decent_Work_&_Economic_Growth-A21942)](https://sdgs.un.org/goals/goal8)
 [![SDG 9](https://img.shields.io/badge/SDG-9.3_Industry_&_Innovation-FD6925)](https://sdgs.un.org/goals/goal9)
@@ -104,11 +104,11 @@ more balanced and participatory local economic planning.
 | Layer | Technology | Why |
 |-------|-----------|-----|
 | Frontend | React 19, TypeScript, Vite | Fast iteration, strict typing across the whole codebase |
-| Mapping | Leaflet + React Leaflet, OpenStreetMap tiles | No API key is required for the MVP. Rate limiting, caching, and graceful fallback are used to reduce dependency on public OpenStreetMap infrastructure |
+| Mapping | Leaflet + React Leaflet with OpenStreetMap tiles; Google Maps through `@vis.gl/react-google-maps` when a browser key is set | Runs with no API key. With keys the map is a Google map, because Google's terms allow Google data to be shown only on one |
 | Server state | TanStack Query | Request deduplication and caching for slow geospatial queries |
 | Backend | NestJS 11, TypeScript | Modular architecture with dependency injection; keeps the geospatial, scoring, and caching concerns genuinely separated |
 | Database | Cloud Firestore | POI cache and saved reports; serverless, so there is no instance to keep alive during judging |
-| POI data | OpenStreetMap via Geoapify Places API, with Overpass for site conditions and as POI fallback | Open, global, and attributable — Geoapify is a hosted OpenStreetMap source, unlike the public Overpass instances it offers an availability guarantee. See [Data sources](#data-sources-and-attribution) |
+| POI data | OpenStreetMap: live through the Overpass API, with fallback instances; offline snapshots for the demo areas. Overture Maps shops for photocopy, printing and stationery in the demo areas. Optionally, Google Maps business counts from the Places Aggregate API | OpenStreetMap is open, global and attributable, and the demo does not depend on a shared public service. Google counts fill its small-business gaps, and any Google failure falls back to it — see [Data sources](#data-sources-and-attribution) |
 | Scoring | `@gayatama/scoring` — a shared, dependency-free TypeScript package | See below |
 | Validation | Zod | One schema definition validating both API boundaries and engine inputs |
 | Testing | Vitest (engine, web), Jest (API) | The scoring engine is pure, so it is exhaustively unit-testable |
@@ -133,9 +133,9 @@ worth stating explicitly:
 ┌──────────────────────────────┐         ┌──────────────────────────────┐
 │  apps/web  (React + Vite)    │         │  apps/api  (NestJS)          │
 │                              │  HTTP   │                              │
-│  • Leaflet map picker        │ ──────► │  • Request validation        │
+│  • Map: OpenStreetMap/Google │ ──────► │  • Request validation        │
 │  • Score breakdown panel     │ ◄────── │  • POI cache lookup          │
-│  • Business ranking          │         │  • Overpass fetch on miss    │
+│  • Business ranking          │         │  • Overpass, Google counts   │
 │  • What-if simulator         │         │  • Scoring orchestration     │
 │  • Report / PDF export       │         │  • Rate limiting             │
 │                              │         │  • Report / PDF endpoint     │
@@ -244,39 +244,53 @@ npm run typecheck         # type-check without emitting
 
 ### Configuration
 
-`.env.example` documents every variable. The two that need real values before
-the app is fully functional:
+`.env.example` documents every variable. The ones worth setting:
 
 | Variable | Needed for | Notes |
 |----------|-----------|-------|
 | `FIREBASE_PROJECT_ID` + credentials | POI caching, saved reports | See [installation.md](docs/installation.md#firebase-setup) |
-| `OVERPASS_URL` | POI lookups | Defaults to the public instance; rate-limited |
+| `OVERPASS_URL` | POI lookups outside the demo areas | Defaults to the main public instance; `OVERPASS_FALLBACK_URLS` lists the instances tried when it fails |
+| `GOOGLE_PLACES_API_KEY`, `VITE_GOOGLE_MAPS_API_KEY` | Optional: the Google map and Google business counts | A server key and a browser key, each restricted — see [installation.md](docs/installation.md#google-maps-platform-optional) |
 
 > **Security note.** A Firebase service account key grants full database access.
 > It must never be committed — `.gitignore` blocks the usual filenames, but keep
 > the file outside this repository entirely and pass it via
 > `GOOGLE_APPLICATION_CREDENTIALS`. In deployment, use
-> `FIREBASE_SERVICE_ACCOUNT_JSON` as a platform secret.
+> `FIREBASE_SERVICE_ACCOUNT_JSON` as a platform secret. Google API keys belong in
+> `.env` or a platform secret too, never in the repository.
 
 Full setup, including Firestore rules and deployment:
 **[docs/installation.md](docs/installation.md)**.
 
 ## Data sources and attribution
 
-Facility and business data comes from **[OpenStreetMap](https://www.openstreetmap.org/)**,
-queried through the [Overpass API](https://overpass-api.de/).
+Facility and business data comes from **[OpenStreetMap](https://www.openstreetmap.org/)**:
+live through the [Overpass API](https://overpass-api.de/) and, for the demo
+areas, from offline snapshots of a [Geofabrik](https://download.geofabrik.de/)
+extract, so the demo keeps working when public Overpass instances are down.
+
+When the web app draws a Google map, the number of businesses and facilities of
+each kind in each distance zone comes from the **Google Maps Places Aggregate
+API**, for the kinds Google covers. Every other kind, and every Google failure,
+falls back to OpenStreetMap, and results that use Google counts say
+"Google Maps".
+
+In the demo areas, photocopy, printing and stationery shops — which OpenStreetMap
+maps thinly and Google has no place type for — also come from
+**[Overture Maps](https://overturemaps.org/)** Places, under the Community Data
+License Agreement – Permissive 2.0, credited as "Overture Maps Foundation".
 
 OpenStreetMap data is © OpenStreetMap contributors and licensed under the
 **[Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/)**.
-Attribution is displayed on every map view and in every exported report, as the
-licence requires.
+Attribution, with the date of the data, is displayed under every result and on
+the OpenStreetMap map, as the licence requires.
 
-Choosing open data over a commercial POI provider was a deliberate design
-decision with consequences we accept — coverage varies by region, and
-GAYATAMA's Data Quality factor exists precisely to model that variation rather
-than paper over it. Where available, OSM's `check_date` and related freshness tags feed the freshness weighting. 
-The reasoning is documented in
-**[docs/data-sources.md](docs/data-sources.md)**.
+OpenStreetMap stays the base by design: the app runs fully without any key or
+paid quota. Its coverage varies by region, and GAYATAMA's Data Quality factor
+exists precisely to model that variation rather than paper over it. Where
+available, OSM's `check_date` and related freshness tags feed the freshness
+weighting. The reasoning, and the Google terms that shape the design, are
+documented in **[docs/data-sources.md](docs/data-sources.md)**.
 
 ## Limitations
 
@@ -286,8 +300,9 @@ than none:
 - **A score is not a guarantee of profit.** It is one input into a decision that
   also involves rent, capital, supply chains, licensing, and the operator's own
   skill — none of which GAYATAMA models.
-- **Coverage depends on OpenStreetMap density.** Results are strongest in mapped
-  urban areas. Where data is sparse, the Confidence Score falls and the
+- **Coverage depends on map data density.** Without Google counts, results rest
+  on OpenStreetMap, which misses many small Indonesian businesses, and are
+  strongest in well-mapped urban areas. Where data is sparse, the Confidence Score falls and the
   uncertainty range widens; it does not silently degrade into a confident wrong
   answer.
 - **Baseline weights are calibrated judgement, not fitted parameters.** The
