@@ -8,6 +8,7 @@
 | npm | ≥ 10 | Ships with Node 20+. Workspaces are required, so npm 7+ is a hard floor |
 | Git | any recent | |
 | Firebase project | — | Free (Spark) tier is sufficient for development |
+| Google Cloud project with billing | — | Optional: the Google map and Google business counts |
 
 Verify:
 
@@ -45,6 +46,9 @@ The API runs without Firebase configured. POI results are then cached in memory
 only, so the cache is lost whenever the API restarts and the first request for
 each area goes to Overpass. That is enough for development; configure Firebase
 before a demo so the cache survives restarts.
+
+Without Google keys, the web app draws an OpenStreetMap map and every facility
+comes from OpenStreetMap — see [Google Maps Platform](#google-maps-platform-optional).
 
 ---
 
@@ -137,21 +141,153 @@ firebase deploy --only firestore:rules --project your-project-id
 
 ## Overpass API
 
-No key or account is required. The default public instance is configured out of
-the box:
+No key or account is required. The main public instance and two fallback
+instances are configured by default:
 
 ```bash
 OVERPASS_URL=https://overpass-api.de/api/interpreter
+OVERPASS_FALLBACK_URLS=https://overpass.kumi.systems/api/interpreter,https://overpass.private.coffee/api/interpreter
 OVERPASS_TIMEOUT_MS=30000
 ```
 
-Public instances are rate-limited and shared. During development the Firestore
-cache absorbs most of this; if you hit 429s repeatedly, either raise
-`POI_CACHE_TTL_SECONDS` or switch to an alternative instance
-(`https://overpass.kumi.systems/api/interpreter`).
+When an instance cannot be reached, rate-limits or is overloaded, the API tries
+the next one; set `OVERPASS_FALLBACK_URLS` to an empty value to use
+`OVERPASS_URL` alone. Public instances are shared and can all be unavailable at
+the same time — the areas in [OSM snapshots](#osm-snapshots) do not depend on
+them.
 
 Please respect the [Overpass usage policy](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html)
 — it is a volunteer-funded service.
+
+---
+
+## Google Maps Platform (optional)
+
+With Google keys, the web app draws a Google map and the API adds Google
+business counts — see [data-sources.md](data-sources.md#google-maps-business-counts).
+Without them, everything runs on OpenStreetMap.
+
+### 1. Enable the APIs
+
+In the [Google Cloud console](https://console.cloud.google.com/), select or
+create a project and link a billing account. Under **APIs & Services →
+Library**, enable **Places Aggregate API** and **Maps JavaScript API**.
+
+### 2. Create two keys
+
+Under **APIs & Services → Credentials → Create credentials → API key**, create
+one key for each side, and restrict each:
+
+| Key | Application restriction | API restriction |
+|-----|-------------------------|-----------------|
+| Server key | None: Cloud Run has no fixed outbound IP address | Places Aggregate API only |
+| Browser key | Websites: `http://localhost:5173/*` and your production origin, such as `https://your-app.web.app/*` | Maps JavaScript API only |
+
+> **The browser key is visible to anyone who opens the web app.** The website
+> restriction is what stops others from using it. The server key must never
+> reach the browser, and neither key may be committed.
+
+### 3. Configure
+
+```bash
+# .env
+GOOGLE_PLACES_API_KEY=your-server-key
+VITE_GOOGLE_MAPS_API_KEY=your-browser-key
+
+# Optional. A Map ID for the Google map; defaults to Google's DEMO_MAP_ID, which is for development
+VITE_GOOGLE_MAP_ID=
+# Optional. How long counts stay cached, in seconds: default 604800 (7 days), at most 2592000 (30 days)
+PLACE_COUNT_CACHE_TTL_SECONDS=604800
+GOOGLE_PLACES_TIMEOUT_MS=10000
+```
+
+Restart `npm run dev` after changing `.env`: the API reads it at startup, and
+Vite reads `VITE_` variables when it starts or builds.
+
+### 4. Cap the cost
+
+A new location takes 25 to 75 Places Aggregate requests, and 5,000 a month are
+free. On the Places Aggregate API's **Quotas & System Limits** page, lower the
+requests-per-day limit, and add a budget alert under **Billing → Budgets &
+alerts**. When the quota runs out, the API falls back to OpenStreetMap and the
+interface says so.
+
+---
+
+## OSM snapshots
+
+The areas listed in `apps/api/scripts/osm-areas.json` are answered from
+OpenStreetMap snapshots in `apps/api/data/osm-snapshots` instead of Overpass.
+The API loads every `*.json.gz` file there at startup — set `OSM_SNAPSHOT_DIR`
+to use another directory — and uses a snapshot whenever a query's whole circle
+lies inside it. The committed snapshots work as they are; rebuild them to add an
+area or refresh the data.
+
+**1. Choose the areas.** Edit `apps/api/scripts/osm-areas.json`. With a 3,000 m
+radius, every click within about 1.3 km of the centre is covered.
+
+**2. Download an extract and install pyosmium** in a directory outside the
+repository (here `D:/osm`; any directory works):
+
+```bash
+cd D:/osm
+curl -LO https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf
+python -m venv venv
+venv/Scripts/python -m pip install osmium      # venv/bin/python on macOS and Linux
+```
+
+**3. Extract the areas.** For Java this takes about 40 minutes. Node locations
+are indexed on disk, so it needs little memory but about 3 GB of free disk:
+
+```bash
+venv/Scripts/python <repo>/apps/api/scripts/osm_extract.py \
+  --pbf java-latest.osm.pbf --areas <repo>/apps/api/scripts/osm-areas.json \
+  --out D:/osm/raw --index D:/osm/nodes.idx
+```
+
+**4. Build the snapshots** from the repository root:
+
+```bash
+npm run osm:snapshots -w @gayatama/api -- D:/osm/raw
+```
+
+Commit the resulting files. They are OpenStreetMap data under ODbL 1.0 — see
+[data-sources.md](data-sources.md#licence-and-attribution).
+
+---
+
+## Overture places
+
+The areas listed in `apps/api/scripts/overture-areas.json` get photocopy,
+printing and stationery shops from Overture Maps, stored in
+`apps/api/data/overture-places`. The API loads every `*.json.gz` file there at
+startup — set `OVERTURE_PLACES_DIR` to use another directory. The committed files
+work as they are; rebuild them to add an area or use a newer Overture release.
+No account or large download is needed: each area takes about a minute.
+
+**1. Choose the areas.** Edit `apps/api/scripts/overture-areas.json`. These areas
+are independent of the OSM snapshot areas.
+
+**2. Extract the places** into a directory outside the repository, with DuckDB:
+
+```bash
+cd D:/osm
+python -m venv venv                              # once
+venv/Scripts/python -m pip install duckdb        # venv/bin/python on macOS and Linux
+venv/Scripts/python <repo>/apps/api/scripts/overture_extract.py \
+  --areas <repo>/apps/api/scripts/overture-areas.json --out D:/osm/raw-overture
+```
+
+`--release` selects another Overture release; the default is `2026-08-19.0`.
+
+**3. Build the files** from the repository root:
+
+```bash
+npm run overture:places -w @gayatama/api -- D:/osm/raw-overture
+```
+
+Commit the resulting files. `CDLA-Permissive-2.0.txt` must stay beside them — see
+[data-sources.md](data-sources.md#overture-maps-places).
 
 ---
 
@@ -189,8 +325,10 @@ gcloud run deploy gayatama-api \
   --region asia-southeast2 \
   --allow-unauthenticated \
   --set-env-vars "NODE_ENV=production,TRUST_PROXY_HOPS=1,CORS_ORIGINS=https://your-app.web.app,FIREBASE_PROJECT_ID=your-project-id" \
-  --set-secrets "FIREBASE_SERVICE_ACCOUNT_JSON=gayatama-sa:latest"
+  --set-secrets "FIREBASE_SERVICE_ACCOUNT_JSON=gayatama-sa:latest,GOOGLE_PLACES_API_KEY=gayatama-places-key:latest"
 ```
+
+Leave out `GOOGLE_PLACES_API_KEY` to run without Google counts.
 
 `TRUST_PROXY_HOPS=1` lets the rate limiter see each visitor's IP address rather
 than the address of Cloud Run's proxy. Locally, leave it unset (it defaults to
@@ -205,7 +343,8 @@ it the *Cloud Datastore User* role, set `FIREBASE_PROJECT_ID`, and leave
 not use Firestore at all.
 
 After deploying the API, set `VITE_API_BASE_URL` to the Cloud Run URL and
-rebuild the frontend.
+rebuild the frontend. `VITE_GOOGLE_MAPS_API_KEY` and `VITE_GOOGLE_MAP_ID` are
+also read at build time.
 
 ### Before judging: warm the cache
 
@@ -229,3 +368,6 @@ you plan to demo, so those answers come from Firestore during judging.
 | Overpass returns 429 | Rate limited | Raise `POI_CACHE_TTL_SECONDS`, or use an alternative instance |
 | Map tiles blank | OSM tile policy throttling | Expected under heavy reload; switch tile provider for production |
 | `PERMISSION_DENIED` from Firestore | Rules not deployed | `firebase deploy --only firestore:rules` |
+| Notice: "Business counts from Google Maps could not be loaded" | Google rejected or failed the count requests | The API log gives the reason. `403 PERMISSION_DENIED`: Places Aggregate API not enabled, billing not linked, or excluded by the key's API restriction. `429 RESOURCE_EXHAUSTED`: quota reached |
+| Notice: "Google Maps business counts are not set up on the server" | The web app has a browser key, but the API has no `GOOGLE_PLACES_API_KEY` | Set it and restart the API |
+| The Google map says "This page can't load Google Maps correctly" | Browser key rejected | Check that the key's website restriction includes the page's origin, that Maps JavaScript API is enabled, and that billing is linked |

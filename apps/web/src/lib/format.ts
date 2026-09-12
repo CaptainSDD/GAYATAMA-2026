@@ -1,4 +1,4 @@
-import { band, type LatLng, type ScoreSummary } from '@gayatama/scoring';
+import { band, ZONE_LIMITS_METERS, type LatLng, type ScoreSummary, type Zone } from '@gayatama/scoring';
 
 /**
  * A score for display. Whole numbers normally, but when rounding would carry a
@@ -26,6 +26,13 @@ export function formatPercent(fraction: number): string {
 export function formatDistance(meters: number): string {
   const rounded = Math.round(meters);
   return rounded < 1000 ? `${rounded} m` : `${(meters / 1000).toFixed(1)} km`;
+}
+
+const ZONE_STARTS_METERS: Record<Zone, number> = { a: 0, b: ZONE_LIMITS_METERS.a, c: ZONE_LIMITS_METERS.b };
+
+/** "Zona B, 300 m–800 m". */
+export function formatZone(zone: Zone): string {
+  return `Zona ${zone.toUpperCase()}, ${formatDistance(ZONE_STARTS_METERS[zone])}–${formatDistance(ZONE_LIMITS_METERS[zone])}`;
 }
 
 export function formatCoordinate({ lat, lng }: LatLng): string {

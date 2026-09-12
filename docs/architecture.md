@@ -9,7 +9,7 @@ NestJS API, and a shared scoring engine that both depend on.
 ┌──────────────────────────────┐         ┌──────────────────────────────┐
 │  apps/web  (React + Vite)    │         │  apps/api  (NestJS)          │
 │                              │  HTTP   │                              │
-│  • Leaflet map picker        │ ──────► │  • Overpass client           │
+│  • Map: OpenStreetMap/Google │ ──────► │  • Overpass, Google clients  │
 │  • Score breakdown panel     │ ◄────── │  • Firestore POI cache       │
 │  • Business ranking          │         │  • Scoring orchestration     │
 │  • What-if simulator ────┐   │         │  • Rate limiting             │
@@ -29,6 +29,11 @@ NestJS API, and a shared scoring engine that both depend on.
                         │  Overpass API (OpenStreetMap)│
                         └──────────────────────────────┘
 ```
+
+Google Maps Platform is optional. With keys, the web app draws a Google map and
+the API adds business counts from the Places Aggregate API; without them,
+everything runs on OpenStreetMap — see
+[data-sources.md](data-sources.md#google-maps-business-counts).
 
 ---
 
@@ -66,8 +71,10 @@ narrow and honest:
 
 - Query Overpass (slow, rate-limited, and something we would rather not expose
   a user's browser to directly)
-- Cache results in Firestore
-- Hold the Firebase service account credential, which cannot live in a browser
+- Ask Google for business counts when the client draws a Google map
+- Cache results in Firestore, and Google counts in memory
+- Hold the Firebase service account credential and the Google Places server key,
+  which cannot live in a browser
 - Rate-limit and validate
 
 Business logic that could live in the engine belongs in the engine. Controllers
@@ -103,13 +110,14 @@ A location analysis, end to end:
 ```
 1. User clicks the map
        │
-2. web → POST /api/v1/analysis  { lat, lng, businessType }
+2. web → POST /api/v1/analysis  { lat, lng, businessType, googleMap }
        │
 3. api: validate input (Zod)
        │
 4. api: snap coordinate → geohash-7 cache key
        │
-5. api: cache lookup — memory, then Firestore
+5. api: an OSM snapshot if one covers the area (demo areas; no network);
+   otherwise cache lookup — memory, then Firestore
        │
        ├── HIT and fresh (< POI_CACHE_TTL_SECONDS) ──┐
        │                                             │
@@ -119,18 +127,27 @@ A location analysis, end to end:
               ├─ normalise tags → typed facilities   │
               └─ write to memory and Firestore ──────┤
                                                      ▼
-6. api: @gayatama/scoring — compute against the EXACT user coordinate
+6. api, alongside step 5 when googleMap is true: Google counts for the
+   geohash-8 cell — from memory if fresh, otherwise 25–75 Places Aggregate
+   requests. Counts replace OpenStreetMap facilities of the kinds Google
+   covers; if any request fails, none is used
        │
-7. api → web: scores, component breakdown, facility evidence, confidence
+7. api: @gayatama/scoring — compute against the EXACT user coordinate
        │
-8. web: render breakdown; retain the facility set in memory
+8. api → web: scores, component breakdown, facility evidence, confidence
        │
-9. User moves a what-if slider
+9. web: render breakdown; retain the facility set in memory
        │
-10. web: @gayatama/scoring recomputes locally — no network call
+10. User moves a what-if slider
+       │
+11. web: @gayatama/scoring recomputes locally — no network call
 ```
 
-Step 10 is the payoff from decision 1.
+Step 11 is the payoff from decision 1.
+
+Within the areas prepared with Overture data, step 5 also adds the photocopy,
+printing and stationery shops OpenStreetMap lacks. They are added after the
+cache lookup, so the POI cache only ever holds OpenStreetMap data.
 
 ---
 
@@ -176,10 +193,16 @@ src/
 ├── app.module.ts
 ├── config/               Typed, validated environment configuration
 ├── firebase/             Admin SDK initialisation, Firestore accessor
-├── overpass/             Query builder, HTTP client, tag normaliser
-├── poi/                  Read-through cache; geohash key derivation
+├── osm-snapshots/        Offline OpenStreetMap snapshots for the demo areas
+├── overture/             Overture Maps photocopy, printing and stationery shops for prepared areas
+├── overpass/             Query builder, HTTP client with fallback instances, tag normaliser
+├── places/               Google Places Aggregate client, type mapping, zone counts and their cache
+├── poi/                  Snapshot, cache and Overpass lookup; geohash key derivation
 ├── analysis/             Orchestration — calls the engine, assembles responses
 └── common/               Filters, interceptors, Zod validation pipe
+data/osm-snapshots/       Snapshot files, published under ODbL 1.0
+data/overture-places/     Overture shop files, published under CDLA Permissive 2.0
+scripts/                  Data pipelines: OSM snapshots from a Geofabrik download; Overture places with DuckDB
 ```
 
 ### `apps/web`
@@ -189,7 +212,7 @@ src/
 ├── main.tsx
 ├── App.tsx               Layout; the selected point and business type live in the URL
 ├── features/
-│   ├── map/              Leaflet picker, zone rings, business type and location controls
+│   ├── map/              OpenStreetMap or Google map picker, zone rings, business type and location controls
 │   ├── location/         Tabs for a selected location
 │   ├── score/            Score with its interval, component breakdown, warnings
 │   ├── recommend/        All seven categories ranked, with statuses
@@ -229,6 +252,11 @@ fetched for.
 - Site conditions (road class, pedestrian features, waterway, industrial land
   use) are not stored in Firestore. They are cached in memory per geohash-8
   cell for the same period.
+- Overture shops are never stored in the POI cache; they are added to each
+  answer from the files in `data/overture-places`.
+- Google business counts are never stored in Firestore. They are cached in
+  memory per geohash-8 cell for `PLACE_COUNT_CACHE_TTL_SECONDS`, which Google's
+  terms limit to 30 days.
 
 ### `reports/{reportId}` _(planned)_
 
@@ -258,6 +286,11 @@ Why a report stores its full input:
 Firestore limits a document to 1 MiB, so the API must refuse to save a larger
 report rather than truncate it.
 
+A result built with Google counts cannot be saved as it is: its `input` and
+`response` contain the counts, and Google's terms allow caching them for at most
+30 days. Before reports are implemented, decide whether such a report expires
+after 30 days or keeps only the derived scores.
+
 ### Security rules
 
 The rules are versioned in [`firestore.rules`](../firestore.rules) at the
@@ -279,15 +312,19 @@ worse than one that fails clearly.
 
 | Failure | Behaviour |
 |---------|-----------|
-| Overpass times out or fails | Serve the expired cache entry if one exists, flagged `stale: true` with its original `fetchedAt`; otherwise return `504 UPSTREAM_TIMEOUT`, which the UI explains |
-| Overpass rate-limits (429) or overloads (5xx) | Retry once after 1.5 seconds, then the above. To avoid causing 429s, the API runs at most two Overpass queries at a time — the number of slots Overpass gives one IP address — and requests for a cell that is already loading share its query |
+| An Overpass instance is unreachable, rate-limits (429) or is overloaded (5xx) | Try the next instance in `OVERPASS_FALLBACK_URLS`; with no fallbacks configured, retry once after 1.5 seconds. Logs name the instance and the low-level cause, such as `UND_ERR_CONNECT_TIMEOUT`. To avoid causing 429s, the API runs at most two Overpass queries at a time — the number of slots Overpass gives one IP address — and requests for a cell that is already loading share its query |
+| Overpass times out, or every instance fails | Serve the expired cache entry if one exists, flagged `stale: true` with its original `fetchedAt`; otherwise return `504 UPSTREAM_TIMEOUT`, which the UI explains. A timeout is not retried elsewhere: the request has already waited `OVERPASS_TIMEOUT_MS` |
+| Every public Overpass instance is down | Demo areas keep working: they are answered from OSM snapshots, which need no network |
 | Site-conditions query fails | Score road, walkability and risk inputs as unknown rather than failing the request, and flag `siteConditions: "unavailable"` so the interface can say the result is incomplete |
+| The client draws a Google map, but the API has no Google server key | Use OpenStreetMap for every kind and flag `places.status: "not_configured"` |
+| A Google count request fails, times out or hits the quota | A rate limit, server error or network failure is retried once. If it still fails, cancel the location's remaining count requests, use OpenStreetMap for every kind, and flag `places.status: "unavailable"` so the interface says so. Failures are not cached, so the next request tries Google again |
 | Firestore unavailable | Degrade to the in-memory cache — slower after a restart, still correct. Caching is an optimisation, not a dependency |
 | Area has almost no OSM data | Confidence falls and the interval widens; below 40 the API answers `422 INSUFFICIENT_DATA` with an explanation instead of a score |
 | Coordinate outside Indonesia | Rejected at validation with `400 VALIDATION_FAILED` |
 
-The third row matters: no single Firestore outage should be able to take the
-demo down during judging.
+The Firestore row matters: no single Firestore outage should be able to take the
+demo down during judging. Nor should Google: every Google failure ends in a
+complete OpenStreetMap result.
 
 ---
 

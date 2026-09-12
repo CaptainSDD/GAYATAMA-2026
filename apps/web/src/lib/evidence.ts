@@ -1,5 +1,5 @@
 import { SEGMENT_POINTS, SEGMENTS, type FacilityKind, type Segment } from '@gayatama/scoring';
-import type { PoiFacility } from './api-types';
+import type { PoiFacility, PoiFacilityCount } from './api-types';
 
 export interface KindCount {
   kind: FacilityKind;
@@ -7,21 +7,28 @@ export interface KindCount {
 }
 
 /**
- * The mapped facilities behind each segment score, counted by kind, most
- * frequent first. Records with a Data Quality of 0 (closed businesses) are left
- * out, because the engine gives them no weight.
+ * The facilities behind each segment score, counted by kind, most frequent
+ * first. A counted group adds its whole count. Records with a Data Quality of 0
+ * (closed businesses) are left out, because the engine gives them no weight.
  */
-export function segmentEvidence(facilities: readonly PoiFacility[]): Record<Segment, KindCount[]> {
+export function segmentEvidence(
+  facilities: readonly PoiFacility[],
+  facilityCounts: readonly PoiFacilityCount[] = [],
+): Record<Segment, KindCount[]> {
   const counts = new Map<Segment, Map<FacilityKind, number>>(SEGMENTS.map((segment) => [segment, new Map()]));
+  const entries = [
+    ...facilities.map(({ kind, dataQuality }) => ({ kind, dataQuality, count: 1 })),
+    ...facilityCounts.map(({ kind, dataQuality, count }) => ({ kind, dataQuality, count })),
+  ];
 
-  for (const facility of facilities) {
-    if (facility.dataQuality <= 0) continue;
-    const points = SEGMENT_POINTS[facility.kind];
+  for (const entry of entries) {
+    if (entry.dataQuality <= 0 || entry.count <= 0) continue;
+    const points = SEGMENT_POINTS[entry.kind];
     if (points === undefined) continue;
     for (const segment of SEGMENTS) {
       if ((points[segment] ?? 0) <= 0) continue;
       const kinds = counts.get(segment);
-      kinds?.set(facility.kind, (kinds.get(facility.kind) ?? 0) + 1);
+      kinds?.set(entry.kind, (kinds.get(entry.kind) ?? 0) + entry.count);
     }
   }
 
