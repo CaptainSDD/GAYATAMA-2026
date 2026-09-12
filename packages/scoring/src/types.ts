@@ -101,6 +101,21 @@ export interface Facility extends LatLng {
   servesCoffee?: boolean;
 }
 
+/**
+ * Facilities known only as a number per zone, from a source that reports
+ * counts rather than individual places. PROPOSED in model 0.1.0.
+ */
+export interface FacilityCount {
+  kind: FacilityKind;
+  zone: Zone;
+  /** How many facilities of this kind lie in this zone band. */
+  count: number;
+  /** Defaults to `medium`. */
+  scale?: FacilityScale;
+  /** Where the count came from, such as `google`. */
+  source: string;
+}
+
 /** Conditions at the candidate site itself, derived by the API. */
 export interface SiteConditions {
   /** Class of the nearest road; `undefined` when unknown. */
@@ -116,6 +131,8 @@ export interface SiteConditions {
 export interface LocationInput {
   location: LatLng;
   facilities: readonly Facility[];
+  /** Facilities known only as counts. A kind should come from either facilities or counts, not both. */
+  facilityCounts?: readonly FacilityCount[];
   site?: SiteConditions;
   /** ISO date the data is evaluated against. The engine never reads the clock. */
   asOf: string;
@@ -137,6 +154,10 @@ export interface EvaluatedFacility {
   accessFactor: number;
   dataQuality: number;
   scaleFactor: number;
+  /** How many facilities the entry stands for: 1 for a mapped facility, the count for a counted one. */
+  count: number;
+  /** The source of a counted entry; `undefined` for a mapped facility. */
+  countedFrom?: string;
 }
 
 export type Band = 'highly_suitable' | 'suitable' | 'moderately_suitable' | 'risky' | 'not_recommended';
@@ -175,8 +196,13 @@ export interface ScoreSummary {
 export interface CompetitorContribution {
   facility: Facility;
   distanceMeters: number;
+  zone: Zone;
   similarity: number;
   operatingHoursFactor: number;
+  /** 1 for a mapped competitor; the number of competitors for a counted entry. */
+  count: number;
+  /** The source of a counted entry; `undefined` for a mapped competitor. */
+  countedFrom?: string;
   contribution: number;
 }
 

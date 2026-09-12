@@ -158,7 +158,7 @@ export function errorMessage(error: unknown): string {
     case 'INSUFFICIENT_DATA': {
       const confidence = error.details?.confidence;
       const suffix = typeof confidence === 'number' ? ` (keyakinan ${confidence}/100)` : '';
-      return `Data OpenStreetMap di sekitar titik ini terlalu sedikit untuk memberi jawaban yang bisa dipercaya${suffix}. LOKABIS memilih tidak menebak daripada memberi skor yang terdengar meyakinkan tapi salah.`;
+      return `Data peta di sekitar titik ini terlalu sedikit untuk memberi jawaban yang bisa dipercaya${suffix}. LOKABIS memilih tidak menebak daripada memberi skor yang terdengar meyakinkan tapi salah.`;
     }
     case 'VALIDATION_FAILED':
       return 'Titik ini tidak bisa dianalisis. LOKABIS hanya mencakup lokasi di Indonesia.';

@@ -59,15 +59,17 @@ function postJson<T>(path: string, payload: unknown, signal?: AbortSignal): Prom
   });
 }
 
-export function fetchAnalysis(point: LatLng, businessType: BusinessType, signal?: AbortSignal) {
-  return postJson<AnalysisResponse>('/analysis', { lat: point.lat, lng: point.lng, businessType }, signal);
+// `googleMap` tells the API the results are shown on a Google map, the only case in which it may use Google data.
+
+export function fetchAnalysis(point: LatLng, businessType: BusinessType, googleMap: boolean, signal?: AbortSignal) {
+  return postJson<AnalysisResponse>('/analysis', { lat: point.lat, lng: point.lng, businessType, googleMap }, signal);
 }
 
-export function fetchRecommendation(point: LatLng, signal?: AbortSignal) {
-  return postJson<RecommendResponse>('/recommend', { lat: point.lat, lng: point.lng }, signal);
+export function fetchRecommendation(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
+  return postJson<RecommendResponse>('/recommend', { lat: point.lat, lng: point.lng, googleMap }, signal);
 }
 
-export function fetchPois(point: LatLng, signal?: AbortSignal) {
-  const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
+export function fetchPois(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
+  const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng), googleMap: String(googleMap) });
   return request<PoisResponse>(`/pois?${query.toString()}`, { signal });
 }

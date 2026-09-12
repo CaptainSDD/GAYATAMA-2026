@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayScore, formatDistance, formatPercent, formatRange } from './format';
+import { displayScore, formatDistance, formatPercent, formatRange, formatZone } from './format';
 
 describe('displayScore', () => {
   it('rounds to a whole number when the band is unchanged', () => {
@@ -25,6 +25,11 @@ describe('formatting', () => {
     expect(formatDistance(250.4)).toBe('250 m');
     expect(formatDistance(999.6)).toBe('1.0 km');
     expect(formatDistance(1500)).toBe('1.5 km');
+  });
+
+  it('names a zone with its distance band', () => {
+    expect(formatZone('a')).toBe('Zona A, 0 m–300 m');
+    expect(formatZone('c')).toBe('Zona C, 800 m–1.5 km');
   });
 
   it('formats weights as percentages', () => {

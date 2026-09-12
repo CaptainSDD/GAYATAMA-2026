@@ -136,7 +136,8 @@ Confidence Score.
 | Business permanently closed | 0.00 |
 
 How these map onto OpenStreetMap tags is documented in
-[data-sources.md](data-sources.md).
+[data-sources.md](data-sources.md). Facilities known only as a count take the
+"date unknown" band — see [Counted facilities](#counted-facilities).
 
 ### MVP business categories
 
@@ -764,6 +765,27 @@ business's own:
 Until the operator sets their own hours, every competitor with known hours
 counts as fully overlapping.
 
+### Counted facilities
+
+Some sources report how many facilities of a kind lie in each zone instead of
+listing them; Google's Places Aggregate API is one (see
+[data-sources.md](data-sources.md#google-maps-business-counts)). A count of *n*
+enters every formula as *n* facilities of that kind with these factors:
+
+| Factor | Value | Why |
+|--------|-------|-----|
+| Distance | The zone's outer edge: 300, 800 or 1,500 m | Distance Weight is the same everywhere in a zone. The edge also keeps each zone on the same side of a competitor radius as every facility in it |
+| Access Factor | 1.00 | A count has no position to test for barriers |
+| Data Quality | 0.65 | The "date unknown but record is reasonably complete" band: a count carries no dates, and it includes only operational places |
+| Operating-Hours Factor | 0.80 | Hours unknown |
+| Facility Scale | Large for the types that match large OpenStreetMap tags (university, hospital, mall, rail station); otherwise medium | Consistent with OpenStreetMap facilities |
+
+Every contribution is multiplied by *n*. A count of 3 in Zone B therefore
+contributes exactly what three undated facilities with unknown hours inside Zone
+B would, and the engine's tests assert this for all seven categories
+(`test/counts.test.ts`). The raw competitor count, the evidence counts and Data
+Freshness count each counted facility once.
+
 ### Data Quality from OpenStreetMap metadata
 
 | Evidence | Factor |
@@ -786,8 +808,8 @@ always produces the same score.
 | Input | How it is measured |
 |-------|--------------------|
 | Data Completeness (40%) | Share of six expected groups present within 1,500 m: education, workplaces, housing, transit, commerce, and a known road class |
-| Data Freshness (25%) | Mean Data Quality of the open facilities within 1,500 m, × 100 |
-| Cross-source Validation (20%) | Fixed at 50: all data comes from OpenStreetMap, so there is no second source to compare against yet |
+| Data Freshness (25%) | Mean Data Quality of the open facilities within 1,500 m, each counted facility included once, × 100 |
+| Cross-source Validation (20%) | Fixed at 50. Google counts add coverage, but a count cannot be matched against OpenStreetMap place by place, so nothing is compared yet |
 | Area Coverage (15%) | Share of the three zones containing at least one usable facility |
 
 Because Cross-source Validation is fixed at 50, confidence cannot exceed 90 in

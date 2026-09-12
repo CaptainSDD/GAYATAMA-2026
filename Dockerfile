@@ -31,6 +31,7 @@ COPY --from=build /app/packages/scoring/package.json ./packages/scoring/
 COPY --from=build /app/packages/scoring/dist ./packages/scoring/dist
 COPY --from=build /app/apps/api/package.json ./apps/api/
 COPY --from=build /app/apps/api/dist ./apps/api/dist
+COPY --from=build /app/apps/api/data ./apps/api/data
 
 WORKDIR /app/apps/api
 USER node
