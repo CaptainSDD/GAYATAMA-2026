@@ -12,143 +12,164 @@ import type {
 } from '@gayatama/scoring';
 import { API_BASE_URL, ApiError } from './api';
 
-// Every user-facing label in one place, so an Indonesian translation is a single-file change.
+// Every user-facing label in one place. The interface is Indonesian because the
+// people it is for are Indonesian micro-entrepreneurs; the documentation in
+// docs/ stays English for the competition submission.
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
-  beverages: 'Beverages / coffee shop',
-  food: 'Food stall / quick-service food',
+  beverages: 'Minuman / kedai kopi',
+  food: 'Warung makan / makanan cepat saji',
   laundry: 'Laundry',
-  stationery: 'Photocopy / printing / stationery',
+  stationery: 'Fotokopi / percetakan / ATK',
   minimarket: 'Minimarket',
   salon: 'Salon / barbershop',
-  pharmacy: 'Pharmacy',
+  pharmacy: 'Apotek',
 };
 
 export const COMPONENT_LABELS: Record<ComponentKey, string> = {
-  demandFit: 'Demand Fit',
-  accessibility: 'Accessibility',
-  competition: 'Competition Opportunity',
-  supportingFacility: 'Supporting Facility Fit',
-  risk: 'Risk and Operability',
+  demandFit: 'Kecocokan Permintaan',
+  accessibility: 'Aksesibilitas',
+  competition: 'Peluang Persaingan',
+  supportingFacility: 'Fasilitas Pendukung',
+  risk: 'Risiko & Operasional',
 };
 
 export const COMPONENT_DESCRIPTIONS: Record<ComponentKey, string> = {
-  demandFit: 'Strength of the customer segments this business needs',
-  accessibility: 'Road, public transport, walkability and parking',
-  competition: 'Competitor saturation relative to demand',
-  supportingFacility: 'Nearby facilities that support transactions',
-  risk: 'Flood and land-use proxies from the map',
+  demandFit: 'Kekuatan kelompok pelanggan yang dibutuhkan usaha ini',
+  accessibility: 'Jalan, transportasi umum, kemudahan jalan kaki, dan parkir',
+  competition: 'Kejenuhan kompetitor dibanding permintaan yang ada',
+  supportingFacility: 'Fasilitas di sekitar yang mendukung transaksi',
+  risk: 'Perkiraan risiko banjir dan tata guna lahan dari peta',
 };
 
 export const SEGMENT_LABELS: Record<Segment, string> = {
-  student: 'Student',
-  office: 'Office worker',
-  resident: 'Resident',
-  commuter: 'Commuter',
-  health: 'Health visitor',
-  general: 'General visitor',
+  student: 'Pelajar & mahasiswa',
+  office: 'Pekerja kantor',
+  resident: 'Penghuni sekitar',
+  commuter: 'Pengguna transportasi',
+  health: 'Pengunjung fasilitas kesehatan',
+  general: 'Pengunjung umum',
 };
 
 export const SEGMENT_ROLE_LABELS: Record<SegmentRole, string> = {
-  primary: 'Primary target',
-  secondary: 'Secondary target',
-  supporting: 'Supporting target',
-  insignificant: 'Not significant',
+  primary: 'Target utama',
+  secondary: 'Target sekunder',
+  supporting: 'Target pendukung',
+  insignificant: 'Tidak signifikan',
 };
 
 export const BAND_LABELS: Record<Band, string> = {
-  highly_suitable: 'Highly suitable',
-  suitable: 'Suitable',
-  moderately_suitable: 'Moderately suitable',
-  risky: 'Risky',
-  not_recommended: 'Not recommended',
+  highly_suitable: 'Sangat cocok',
+  suitable: 'Cocok',
+  moderately_suitable: 'Cukup cocok',
+  risky: 'Berisiko',
+  not_recommended: 'Tidak direkomendasikan',
 };
 
 export const STATUS_LABELS: Record<RecommendationStatus, string> = {
-  primary: 'Primary recommendation',
-  alternative: 'Viable alternative',
-  needs_validation: 'Verify on site first',
-  not_recommended: 'Not recommended',
+  primary: 'Rekomendasi utama',
+  alternative: 'Alternatif layak',
+  needs_validation: 'Perlu dicek langsung',
+  not_recommended: 'Tidak direkomendasikan',
 };
 
 export const CONFIDENCE_LABELS: Record<ConfidenceReading, string> = {
-  high: 'high',
-  good: 'good',
-  moderate: 'moderate',
-  low: 'low',
-  very_low: 'very low',
+  high: 'tinggi',
+  good: 'baik',
+  moderate: 'sedang',
+  low: 'rendah',
+  very_low: 'sangat rendah',
 };
 
 export const DENSITY_LABELS: Record<Density, string> = {
-  low: 'Low',
-  moderate: 'Moderate',
-  high: 'High',
-  very_high: 'Very high',
+  low: 'Rendah',
+  moderate: 'Sedang',
+  high: 'Tinggi',
+  very_high: 'Sangat tinggi',
 };
 
 export const SATURATION_LABELS: Record<SaturationReading, string> = {
-  not_saturated: 'Not yet saturated',
-  healthy: 'Healthy competition',
-  becoming_saturated: 'Becoming saturated',
-  saturated: 'Saturated',
-  heavily_saturated: 'Heavily saturated',
+  not_saturated: 'Belum padat',
+  healthy: 'Persaingan sehat',
+  becoming_saturated: 'Mulai jenuh',
+  saturated: 'Jenuh',
+  heavily_saturated: 'Sangat jenuh',
 };
 
 export const FACILITY_KIND_LABELS: Record<FacilityKind, string> = {
-  campus: 'Campus',
-  school: 'School',
-  office: 'Office',
-  government_office: 'Government office',
-  housing: 'Housing',
-  boarding_house: 'Boarding house',
-  transit: 'Transit stop',
-  hospital: 'Hospital',
-  mall: 'Mall',
-  cafe: 'Café',
-  bubble_tea: 'Bubble tea',
-  restaurant: 'Restaurant',
-  fast_food: 'Fast food',
-  food_court: 'Food court',
+  campus: 'Kampus',
+  school: 'Sekolah',
+  office: 'Kantor',
+  government_office: 'Kantor pemerintahan',
+  housing: 'Permukiman',
+  boarding_house: 'Kos / asrama',
+  transit: 'Halte / stasiun',
+  hospital: 'Rumah sakit',
+  mall: 'Mal',
+  cafe: 'Kafe',
+  bubble_tea: 'Kedai boba',
+  restaurant: 'Restoran',
+  fast_food: 'Makanan cepat saji',
+  food_court: 'Pujasera',
   laundry: 'Laundry',
   dry_cleaning: 'Dry cleaning',
-  copyshop: 'Copy shop',
-  printer: 'Printer',
-  stationery_shop: 'Stationery shop',
-  convenience: 'Convenience store',
+  copyshop: 'Fotokopi',
+  printer: 'Percetakan',
+  stationery_shop: 'Toko ATK',
+  convenience: 'Minimarket',
   supermarket: 'Supermarket',
-  hairdresser: 'Hairdresser',
-  beauty: 'Beauty salon',
-  pharmacy: 'Pharmacy',
-  chemist: 'Chemist',
+  hairdresser: 'Salon / pangkas rambut',
+  beauty: 'Salon kecantikan',
+  pharmacy: 'Apotek',
+  chemist: 'Toko obat',
   atm: 'ATM',
   bank: 'Bank',
-  marketplace: 'Market',
-  place_of_worship: 'Place of worship',
-  clinic: 'Clinic',
-  parking: 'Parking',
-  other: 'Other',
+  marketplace: 'Pasar',
+  place_of_worship: 'Tempat ibadah',
+  clinic: 'Klinik',
+  parking: 'Parkir',
+  other: 'Lainnya',
 };
 
-const GENERIC_ERROR = 'Something went wrong. Please try again.';
+const GENERIC_ERROR = 'Terjadi kesalahan. Silakan coba lagi.';
+
+/** A short headline for the error box, so the reader sees the kind of problem first. */
+export function errorTitle(error: unknown): string {
+  if (!(error instanceof ApiError)) return 'Ada yang tidak beres';
+  switch (error.code) {
+    case 'INSUFFICIENT_DATA':
+      return 'Data peta di sini terlalu sedikit';
+    case 'VALIDATION_FAILED':
+      return 'Lokasi ini di luar cakupan';
+    case 'RATE_LIMITED':
+      return 'Terlalu banyak permintaan';
+    case 'UPSTREAM_TIMEOUT':
+      return 'Data OpenStreetMap sedang tidak tersedia';
+    case 'NETWORK_ERROR':
+      return 'Server tidak bisa dihubungi';
+    default:
+      return 'Ada yang tidak beres';
+  }
+}
 
 export function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return GENERIC_ERROR;
   switch (error.code) {
     case 'INSUFFICIENT_DATA': {
       const confidence = error.details?.confidence;
-      const suffix = typeof confidence === 'number' ? ` (confidence ${confidence}/100)` : '';
-      return `There is too little OpenStreetMap data around this point for a reliable answer${suffix}. GAYATAMA declines to guess rather than give a confident wrong score.`;
+      const suffix = typeof confidence === 'number' ? ` (keyakinan ${confidence}/100)` : '';
+      return `Data peta di sekitar titik ini terlalu sedikit untuk memberi jawaban yang bisa dipercaya${suffix}. LOKABIS memilih tidak menebak daripada memberi skor yang terdengar meyakinkan tapi salah.`;
     }
     case 'VALIDATION_FAILED':
-      return 'This location can’t be analysed. GAYATAMA covers locations in Indonesia.';
+      return 'Titik ini tidak bisa dianalisis. LOKABIS hanya mencakup lokasi di Indonesia.';
     case 'RATE_LIMITED':
-      return 'Too many requests in the last minute. Wait a moment, then try again.';
+      return 'Terlalu banyak permintaan dalam satu menit terakhir. Tunggu sebentar, lalu coba lagi.';
     case 'UPSTREAM_TIMEOUT':
-      return 'OpenStreetMap data is temporarily unavailable for this area. Try again shortly.';
+      return 'Data OpenStreetMap untuk area ini sedang tidak bisa diambil. Coba lagi sebentar lagi.';
     case 'NETWORK_ERROR':
       return import.meta.env.DEV
-        ? `Can’t reach the API at ${API_BASE_URL}. Is it running? Start it with npm run dev:api.`
-        : 'Can’t reach the GAYATAMA server. Check your connection and try again.';
+        ? `Tidak bisa menghubungi API di ${API_BASE_URL}. Apakah servernya jalan? Nyalakan dengan npm run dev:api.`
+        : 'Tidak bisa menghubungi server LOKABIS. Periksa koneksi Anda, lalu coba lagi.';
     default:
       return error.message || GENERIC_ERROR;
   }

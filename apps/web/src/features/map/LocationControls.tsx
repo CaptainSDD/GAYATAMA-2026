@@ -14,7 +14,7 @@ export function LocationControls({ point, businessType, onBusinessTypeChange, on
   return (
     <section className="controls">
       <label className="field">
-        <span className="field-label">Business type</span>
+        <span className="field-label">Jenis usaha</span>
         <select
           value={businessType}
           onChange={(event) => {
@@ -31,11 +31,11 @@ export function LocationControls({ point, businessType, onBusinessTypeChange, on
 
       <div className="location-row">
         <div>
-          <span className="field-label">Location</span>
-          <span className="coordinate">{point === null ? 'None selected' : formatCoordinate(point)}</span>
+          <span className="field-label">Lokasi</span>
+          <span className="coordinate">{point === null ? 'Belum dipilih' : formatCoordinate(point)}</span>
         </div>
         <button type="button" className="button-secondary" onClick={onUseMapCenter}>
-          Use map centre
+          Pakai titik tengah
         </button>
       </div>
     </section>

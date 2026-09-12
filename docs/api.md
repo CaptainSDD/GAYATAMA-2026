@@ -44,19 +44,56 @@ all of them the same way, and never has a score without its interval.
 
 ### Data source object
 
-Every response built on OpenStreetMap data carries its attribution:
+Every scored response carries its sources and their attribution:
 
 ```json
-{ "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "siteConditions": "available" }
+{
+  "provider": "OpenStreetMap",
+  "attribution": "© OpenStreetMap contributors",
+  "licence": "ODbL 1.0",
+  "fetchedAt": "2026-09-09T13:22:41Z",
+  "cacheHit": true,
+  "stale": false,
+  "via": "overpass",
+  "siteConditions": "available",
+  "places": { "provider": "Google Maps", "status": "not_requested", "attribution": null, "fetchedAt": null, "cacheHit": null, "kinds": [] },
+  "overture": null
+}
 ```
+
+The top-level fields describe the OpenStreetMap data; `places` describes Google
+Maps business counts, and `overture` the shops added from Overture Maps.
 
 - `stale` is `true` when Overpass was unavailable and an expired cache entry was
   served instead; `fetchedAt` then shows how old the data is.
+- `via` is `"overpass"` for data from a live Overpass query (possibly cached),
+  or `"snapshot"` for one of the offline OSM snapshots covering the demo areas.
+  For a snapshot, `fetchedAt` is the date of its OpenStreetMap data and
+  `cacheHit` is `false`.
 - `siteConditions` is `"unavailable"` when the query for conditions at the site
   itself — road class, pedestrian features, waterways, industrial land use —
   failed and nothing was cached. Those inputs are then scored as unknown and
   Data Completeness falls, so the result is incomplete and a client must say
   so. Requesting again later can return the full result.
+- `places.status` says whether Google counts were used:
+
+  | `status` | Meaning |
+  |----------|---------|
+  | `used` | The kinds listed in `kinds` were counted by Google and replace OpenStreetMap facilities of those kinds. `attribution` is `"Google Maps"` and must be shown with the result; `fetchedAt` and `cacheHit` describe the counts |
+  | `not_requested` | The request did not set `googleMap`. Every facility comes from OpenStreetMap |
+  | `not_configured` | The request set `googleMap`, but the API has no Google server key. Every facility comes from OpenStreetMap |
+  | `unavailable` | Google failed or its quota ran out. Every facility comes from OpenStreetMap, which misses many small businesses, so a client must say so. Requesting again later can return Google counts |
+
+  See [data-sources.md](data-sources.md#google-maps-business-counts).
+- `overture` is `null` outside the areas prepared with Overture data. Inside
+  them, Overture Maps shops were added to the photocopy, printing and stationery
+  kinds, and `attribution` must be shown with the result:
+
+  ```json
+  { "provider": "Overture Maps Foundation", "attribution": "Overture Maps Foundation", "licence": "CDLA-Permissive-2.0", "release": "2026-08-19.0", "kinds": ["copyshop", "printer", "stationery_shop"] }
+  ```
+
+  See [data-sources.md](data-sources.md#overture-maps-places).
 
 ### Business category identifiers
 
@@ -99,9 +136,16 @@ endpoint.
 {
   "lat": -7.301234,
   "lng": 112.717890,
-  "businessType": "laundry"
+  "businessType": "laundry",
+  "googleMap": false
 }
 ```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `lat`, `lng` | number | Required |
+| `businessType` | string | Required — see [identifiers](#business-category-identifiers) |
+| `googleMap` | boolean | Optional, default `false`. Set it only when the result is shown on a Google map: Google Maps Platform terms forbid using Google data with any other map, so the API uses Google business counts only then |
 
 ### Response `200`
 
@@ -144,7 +188,7 @@ endpoint.
     "reading": "healthy",
     "radiusMeters": 1500,
     "strongest": [
-      { "id": "node/4012345678", "name": "Laundry Kilat", "kind": "laundry", "distanceMeters": 420, "contribution": 0.6 }
+      { "id": "node/4012345678", "name": "Laundry Kilat", "kind": "laundry", "zone": "b", "distanceMeters": 420, "count": 1, "source": "openstreetmap", "contribution": 0.6 }
     ]
   },
 
@@ -168,7 +212,10 @@ endpoint.
     "fetchedAt": "2026-09-09T13:22:41Z",
     "cacheHit": true,
     "stale": false,
-    "siteConditions": "available"
+    "via": "overpass",
+    "siteConditions": "available",
+    "places": { "provider": "Google Maps", "status": "not_requested", "attribution": null, "fetchedAt": null, "cacheHit": null, "kinds": [] },
+    "overture": null
   }
 }
 ```
@@ -176,7 +223,14 @@ endpoint.
 - `score.value` is unrounded; `score.range` is already rounded because it is a
   display artefact.
 - `competition.strongest` lists up to five competitors by contribution to the
-  Competitor Equivalent Count.
+  Competitor Equivalent Count. A listed competitor's `source` is
+  `"openstreetmap"`, or `"overture"` for a shop added from Overture Maps, whose
+  `id` starts with `overture/`. An entry counted by Google stands for `count`
+  competitors in one zone: its `source` is `"google"`, its `id` is
+  `google:<kind>:<zone>` (with `:<scale>` when not medium), and its `name` and
+  `distanceMeters` are `null`, because a count has no single place or position.
+- `evidence.facilityCount` and `evidence.zones` include every facility Google
+  counted.
 - `strengths` are up to three components scoring 60 or more; `risks` are up to
   three scoring below 60.
 - `warnings` entries are `{ code, message }`. Codes: `flood_risk_proxy`,
@@ -194,8 +248,10 @@ I open here?".
 ### Request
 
 ```json
-{ "lat": -7.301234, "lng": 112.717890 }
+{ "lat": -7.301234, "lng": 112.717890, "googleMap": false }
 ```
+
+`googleMap` is optional and means the same as in [`/analysis`](#request).
 
 ### Response `200`
 
@@ -251,7 +307,7 @@ I open here?".
   "warnings": [],
 
   "segments": { "student": 77, "office": 48, "resident": 82, "commuter": 35, "health": 20, "general": 55 },
-  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "siteConditions": "available" }
+  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "via": "overpass", "siteConditions": "available", "places": { "provider": "Google Maps", "status": "not_requested", "attribution": null, "fetchedAt": null, "cacheHit": null, "kinds": [] }, "overture": null }
 }
 ```
 
@@ -320,9 +376,10 @@ never as a recommendation.
 
 ## `GET /api/v1/pois`
 
-Normalised facilities and site conditions around a point. Used by the map layer,
-and by the client-side what-if simulator, which reruns the scoring engine in the
-browser without further requests.
+Normalised facilities, Google business counts when requested, and site
+conditions around a point. Used by the map layer, and by the client-side what-if
+simulator, which reruns the scoring engine in the browser without further
+requests.
 
 ### Query parameters
 
@@ -331,8 +388,11 @@ browser without further requests.
 | `lat` | number | required | |
 | `lng` | number | required | |
 | `radius` | number | `1500` | Metres, max 1500 |
+| `googleMap` | `true` or `false` | `false` | As in [`/analysis`](#request) |
 
 ### Response `200`
+
+For `googleMap=true`:
 
 ```json
 {
@@ -342,27 +402,35 @@ browser without further requests.
   "facilities": [
     {
       "id": "node/1234567890",
-      "kind": "campus",
-      "name": "Universitas Negeri Surabaya",
+      "kind": "boarding_house",
+      "name": "Kos Putri Melati",
       "lat": -7.3021,
       "lng": 112.7165,
-      "scale": "large",
-      "checkDate": "2026-03-14",
       "lastEditDate": "2025-11-02T08:15:00Z",
       "distanceMeters": 181.0,
       "zone": "a",
-      "dataQuality": 1.0,
+      "dataQuality": 0.65,
       "accessFactor": 1.0
     }
   ],
-  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "siteConditions": "available" }
+  "facilityCounts": [
+    { "kind": "campus", "zone": "a", "count": 1, "scale": "large", "source": "google", "dataQuality": 0.65 },
+    { "kind": "cafe", "zone": "b", "count": 7, "scale": "medium", "source": "google", "dataQuality": 0.65 }
+  ],
+  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "via": "overpass", "siteConditions": "available", "places": { "provider": "Google Maps", "status": "used", "attribution": "Google Maps", "fetchedAt": "2026-09-11T02:10:05Z", "cacheHit": false, "kinds": ["campus", "school", "office", "…"] }, "overture": null }
 }
 ```
 
-Facilities are sorted by distance. Each carries the engine's own fields — the
-`Facility` type in `@gayatama/scoring` — plus its distance, zone, Data Quality
-and Access Factor from this location. With `location`, `site` and `asOf`, the
-response is a complete engine input.
+- `facilities` are sorted by distance. Each carries the engine's own fields —
+  the `Facility` type in `@gayatama/scoring` — plus its distance, zone, Data
+  Quality and Access Factor from this location. Shops added from Overture Maps
+  have IDs starting with `overture/`.
+- `facilityCounts` lists the facilities Google counted, one entry per kind, zone
+  and scale, sorted by zone. Each is the engine's `FacilityCount` type plus the
+  Data Quality it scores with. A zone is included only when it lies entirely
+  within `radius`. The list is empty unless `dataSource.places.status` is
+  `used`.
+- With `location`, `site` and `asOf`, the response is a complete engine input.
 
 ---
 

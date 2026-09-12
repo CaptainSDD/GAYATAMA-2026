@@ -7,7 +7,7 @@
 !.env.example
 *serviceAccount*.json
 *service-account*.json
-firebase-adminsdk-*.json
+*firebase-adminsdk*.json
 .firebase/
 .firebaserc.local
 
@@ -47,3 +47,5 @@ Thumbs.db
 # Local cache
 .cache/
 .eslintcache
+
+lokabis-99a3a-firebase-adminsdk-fbsvc-2611e852c0.json

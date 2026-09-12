@@ -1,0 +1,16 @@
+[
+  {
+    "id": "surabaya-unesa-ketintang",
+    "name": "UNESA Ketintang, Surabaya",
+    "lat": -7.3145,
+    "lng": 112.7263,
+    "radiusMeters": 3000
+  },
+  {
+    "id": "semarang-upgris",
+    "name": "Universitas PGRI Semarang",
+    "lat": -6.9882533,
+    "lng": 110.4355751,
+    "radiusMeters": 3000
+  }
+]

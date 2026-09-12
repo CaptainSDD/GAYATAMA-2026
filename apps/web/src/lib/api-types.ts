@@ -4,6 +4,7 @@ import type {
   Density,
   Facility,
   FacilityKind,
+  FacilityScale,
   LatLng,
   RecommendationStatus,
   SaturationReading,
@@ -17,6 +18,31 @@ import type {
 
 // Response shapes from docs/api.md, as produced by apps/api/src/analysis/presenters.ts.
 
+export interface PlacesSource {
+  provider: 'Google Maps';
+  /**
+   * `used`, or why every facility came from OpenStreetMap instead: `not_requested`
+   * without a Google map, `not_configured` without a server key, `unavailable` when Google failed.
+   */
+  status: 'used' | 'not_requested' | 'not_configured' | 'unavailable';
+  /** "Google Maps" when used; it must then be shown with the result. */
+  attribution: string | null;
+  fetchedAt: string | null;
+  cacheHit: boolean | null;
+  /** The facility kinds counted by Google. */
+  kinds: FacilityKind[];
+}
+
+/** Overture Maps shops added to the photocopy, printing and stationery kinds. */
+export interface OvertureSource {
+  provider: 'Overture Maps Foundation';
+  /** Must be shown with the result. */
+  attribution: string;
+  licence: string;
+  release: string;
+  kinds: FacilityKind[];
+}
+
 export interface DataSource {
   provider: string;
   attribution: string;
@@ -25,8 +51,13 @@ export interface DataSource {
   cacheHit: boolean;
   /** Served from an expired cache entry because OpenStreetMap data was unavailable. */
   stale: boolean;
+  /** A live Overpass query (possibly cached), or an offline OpenStreetMap snapshot dated `fetchedAt`. */
+  via: 'overpass' | 'snapshot';
   /** `unavailable` when conditions at the site could not be loaded, so those inputs were scored as unknown. */
   siteConditions: 'available' | 'unavailable';
+  places: PlacesSource;
+  /** `null` outside the areas prepared with Overture data. */
+  overture: OvertureSource | null;
 }
 
 export interface Warning {
@@ -43,7 +74,13 @@ export interface Competitor {
   id: string;
   name: string | null;
   kind: FacilityKind;
-  distanceMeters: number;
+  zone: Zone;
+  /** `null` for a counted group, which has no single position. */
+  distanceMeters: number | null;
+  /** 1 for a mapped competitor; the number of competitors for a counted group. */
+  count: number;
+  /** `openstreetmap` or `overture` for a listed competitor; for a counted group, the source that counted it, such as `google`. */
+  source: string;
   contribution: number;
 }
 
@@ -104,11 +141,22 @@ export interface PoiFacility extends Facility {
   accessFactor: number;
 }
 
+/** Facilities known only as a number per zone. */
+export interface PoiFacilityCount {
+  kind: FacilityKind;
+  zone: Zone;
+  count: number;
+  scale: FacilityScale;
+  source: string;
+  dataQuality: number;
+}
+
 export interface PoisResponse {
   location: LatLng;
   asOf: string;
   site: SiteConditions;
   facilities: PoiFacility[];
+  facilityCounts: PoiFacilityCount[];
   dataSource: DataSource;
 }
 
