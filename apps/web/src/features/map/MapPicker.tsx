@@ -1,20 +1,16 @@
-import { ZONE_LIMITS_METERS, ZONE_WEIGHTS, type FacilityKind, type LatLng } from '@gayatama/scoring';
+import { ZONE_WEIGHTS, type FacilityKind } from '@gayatama/scoring';
 import { divIcon } from 'leaflet';
 import { Circle, CircleMarker, MapContainer, Marker, ScaleControl, TileLayer, Tooltip, useMapEvents } from 'react-leaflet';
 import type { PoiFacility } from '../../lib/api-types';
 import { FACILITY_KIND_LABELS } from '../../lib/copy';
 import { formatDistance } from '../../lib/format';
+import { USE_GOOGLE_MAP } from '../../lib/map-config';
 import { usePois } from '../../lib/queries';
+import { GoogleMapPicker } from './GoogleMapPicker';
+import { PICK_COLOR, ZONE_RINGS, type MapPickerProps } from './zones';
 
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
-/** Distance zones, drawn largest first so the smaller rings sit on top. */
-export const ZONE_RINGS = [
-  { zone: 'C', from: ZONE_LIMITS_METERS.b, to: ZONE_LIMITS_METERS.c, color: '#64748b' },
-  { zone: 'B', from: ZONE_LIMITS_METERS.a, to: ZONE_LIMITS_METERS.b, color: '#0d9488' },
-  { zone: 'A', from: 0, to: ZONE_LIMITS_METERS.a, color: '#0f766e' },
-] as const;
 
 /**
  * Facility groups, coloured so the evidence behind a score is legible at a
@@ -70,76 +66,93 @@ const FACILITY_GROUPS = [
 
 const FALLBACK_COLOR = '#94a3b8';
 
-const PICKED_COLOR = '#b91c1c';
+function facilityColor(kind: FacilityKind): string {
+  return FACILITY_GROUPS.find((group) => group.kinds.has(kind))?.color ?? FALLBACK_COLOR;
+}
 
 /**
  * The point being analysed, drawn as a map pin rather than a dot. The teardrop
- * is a symbol people already read as "this place", so it needs no legend row —
- * and its tip marks the exact coordinate.
+ * is a symbol people already read as this-place, so it needs no legend row —
+ * and its tip marks the exact coordinate. Leaflet only: the Google map path
+ * still draws its own simple marker (see GoogleMapPicker.tsx).
  */
 const PICKED_PIN = divIcon({
   className: 'picked-pin',
   html: `<svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
     <path d="M14 34.5S25.5 20.5 25.5 13a11.5 11.5 0 1 0-23 0C2.5 20.5 14 34.5 14 34.5Z"
-          fill="${PICKED_COLOR}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+          fill="${PICK_COLOR}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
     <circle cx="14" cy="13" r="4.2" fill="#ffffff"/>
   </svg>`,
   iconSize: [28, 36],
   iconAnchor: [14, 36],
 });
 
-function facilityColor(kind: FacilityKind): string {
-  return FACILITY_GROUPS.find((group) => group.kinds.has(kind))?.color ?? FALLBACK_COLOR;
-}
-
-interface MapPickerProps {
-  initialCenter: LatLng;
-  point: LatLng | null;
-  onPick: (point: LatLng) => void;
-  onCenterChange: (center: LatLng) => void;
-}
-
-export function MapPicker({ initialCenter, point, onPick, onCenterChange }: MapPickerProps) {
+/**
+ * A Google map when a Maps JavaScript API key is configured, otherwise an
+ * OpenStreetMap map. Google data may only be shown on a Google map, so the
+ * choice also decides whether the API is asked for Google counts.
+ *
+ * The legend, scale bar and north mark are plain DOM overlays rather than
+ * map-library controls, so they render the same way over either provider.
+ */
+export function MapPicker(props: MapPickerProps) {
   // React Query keys by point, and SegmentsView asks for the same data, so this
   // shares that cache entry rather than making a second request.
-  const pois = usePois(point);
+  const pois = usePois(props.point);
   const facilities = pois.data?.facilities ?? [];
 
   return (
     <>
-      <MapContainer className="map" center={[initialCenter.lat, initialCenter.lng]} zoom={14} scrollWheelZoom>
-        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
-        <MapEvents onPick={onPick} onCenterChange={onCenterChange} />
-        {/* Distance is the whole basis of the zones, so a scale bar earns its
-            place here more than on most maps. Metric only. A wider maxWidth
-            (Leaflet's default is 100px) makes the bar itself longer, so it
-            doesn't read as a stray sliver next to the wider attribution line
-            beneath it. */}
-        <ScaleControl position="bottomright" imperial={false} maxWidth={160} />
-        {point !== null && (
-          <>
-            {ZONE_RINGS.map((ring) => (
-              <Circle
-                key={ring.zone}
-                center={[point.lat, point.lng]}
-                radius={ring.to}
-                pathOptions={{ color: ring.color, weight: 2, fillOpacity: 0.04, interactive: false }}
-              />
-            ))}
-            <FacilityMarkers facilities={facilities} />
-            <Marker position={[point.lat, point.lng]} icon={PICKED_PIN} interactive={false} />
-          </>
-        )}
-      </MapContainer>
+      {USE_GOOGLE_MAP ? (
+        <GoogleMapPicker {...props} />
+      ) : (
+        <OpenStreetMapPicker {...props} facilities={facilities} />
+      )}
       <NorthMark />
       <MapLegend facilityCount={facilities.length} />
     </>
   );
 }
 
+function OpenStreetMapPicker({
+  initialCenter,
+  point,
+  onPick,
+  onCenterChange,
+  facilities,
+}: MapPickerProps & { facilities: readonly PoiFacility[] }) {
+  return (
+    <MapContainer className="map" center={[initialCenter.lat, initialCenter.lng]} zoom={14} scrollWheelZoom>
+      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
+      <MapEvents onPick={onPick} onCenterChange={onCenterChange} />
+      {/* Distance is the whole basis of the zones, so a scale bar earns its
+          place here more than on most maps. Metric only. A wider maxWidth,
+          larger than Leaflet's default of 100px, makes the bar itself longer,
+          so it doesn't read as a stray sliver next to the wider attribution
+          line beneath it. */}
+      <ScaleControl position="bottomright" imperial={false} maxWidth={160} />
+      {point !== null && (
+        <>
+          {ZONE_RINGS.map((ring) => (
+            <Circle
+              key={ring.zone}
+              center={[point.lat, point.lng]}
+              radius={ring.to}
+              pathOptions={{ color: ring.color, weight: 2, fillOpacity: 0.04, interactive: false }}
+            />
+          ))}
+          <FacilityMarkers facilities={facilities} />
+          <Marker position={[point.lat, point.lng]} icon={PICKED_PIN} interactive={false} />
+        </>
+      )}
+    </MapContainer>
+  );
+}
+
 /**
  * The facilities the score was actually built from. Closed records (Data
  * Quality 0) are left out, because the engine gives them no weight either.
+ * Leaflet only — the Google map path has no marker layer of its own yet.
  */
 function FacilityMarkers({ facilities }: { facilities: readonly PoiFacility[] }) {
   return (

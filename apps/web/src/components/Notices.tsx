@@ -13,17 +13,36 @@ interface DataNoticesProps {
  * Interface rule: this is never hidden or collapsed away.
  */
 export function DataNotices({ dataSource, onRefresh, refreshing }: DataNoticesProps) {
+  const retry = (
+    <button type="button" className="button-secondary" onClick={onRefresh} disabled={refreshing}>
+      {refreshing ? 'Memuat…' : 'Coba muat ulang'}
+    </button>
+  );
+
   return (
     <>
+      {dataSource.places.status === 'unavailable' && (
+        <div className="notice" role="status">
+          <p>
+            Jumlah usaha dari Google Maps gagal dimuat, jadi semua fasilitas memakai data OpenStreetMap, yang sering
+            tidak mencatat usaha-usaha kecil. Skor di bawah mungkin belum lengkap.
+          </p>
+          {retry}
+        </div>
+      )}
+      {dataSource.places.status === 'not_configured' && (
+        <p className="notice" role="status">
+          Jumlah usaha dari Google Maps belum disiapkan di server, jadi semua fasilitas memakai data OpenStreetMap,
+          yang sering tidak mencatat usaha-usaha kecil.
+        </p>
+      )}
       {dataSource.siteConditions === 'unavailable' && (
         <div className="notice" role="status">
           <p>
             Data jalan, kemudahan jalan kaki, dan perkiraan banjir untuk titik ini gagal dimuat. Input itu dihitung
             sebagai tidak diketahui, jadi skor di bawah belum lengkap.
           </p>
-          <button type="button" className="button-secondary" onClick={onRefresh} disabled={refreshing}>
-            {refreshing ? 'Memuat…' : 'Coba muat ulang'}
-          </button>
+          {retry}
         </div>
       )}
       {dataSource.stale && <StaleDataNotice fetchedAt={dataSource.fetchedAt} />}
@@ -55,11 +74,20 @@ export function WarningList({ warnings }: { warnings: readonly Warning[] }) {
   );
 }
 
-/** ODbL requires attribution wherever OpenStreetMap data is shown. */
+/**
+ * ODbL requires attribution wherever OpenStreetMap data is shown, Google Maps
+ * Platform policies require "Google Maps" wherever its counts feed a result, and
+ * Overture asks to be credited for its data.
+ */
 export function Attribution({ dataSource, modelVersion }: { dataSource: DataSource; modelVersion?: string }) {
   return (
     <footer className="attribution">
-      Data © OpenStreetMap contributors, {dataSource.licence} · diambil {formatDateTime(dataSource.fetchedAt)}
+      Data © OpenStreetMap contributors, {dataSource.licence} ·{' '}
+      {dataSource.via === 'snapshot'
+        ? `snapshot ${formatDateTime(dataSource.fetchedAt)}`
+        : `diambil ${formatDateTime(dataSource.fetchedAt)}`}
+      {dataSource.places.status === 'used' && ` · Jumlah usaha: ${dataSource.places.attribution ?? 'Google Maps'}`}
+      {dataSource.overture !== null && ` · Fotokopi & ATK: ${dataSource.overture.attribution}`}
       {modelVersion !== undefined && ` · model ${modelVersion}`}
     </footer>
   );

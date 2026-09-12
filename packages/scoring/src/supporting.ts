@@ -12,7 +12,8 @@ export function supportingFacilityFit(evaluated: readonly EvaluatedFacility[], b
   for (const entry of evaluated) {
     const points = SUPPORTING_POINTS[entry.facility.kind]?.[businessType];
     if (points === undefined || points === 0) continue;
-    total += points * entry.distanceWeight * entry.accessFactor * entry.dataQuality * entry.scaleFactor;
+    total +=
+      points * entry.distanceWeight * entry.accessFactor * entry.dataQuality * entry.scaleFactor * entry.count;
   }
   return Math.min(SUPPORTING_CAP, total);
 }

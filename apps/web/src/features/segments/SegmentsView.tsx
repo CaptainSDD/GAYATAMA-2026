@@ -14,7 +14,7 @@ interface SegmentsViewProps {
 
 export function SegmentsView({ analysis, point }: SegmentsViewProps) {
   const pois = usePois(point);
-  const evidence = pois.data === undefined ? null : segmentEvidence(pois.data.facilities);
+  const evidence = pois.data === undefined ? null : segmentEvidence(pois.data.facilities, pois.data.facilityCounts);
   const businessLabel = BUSINESS_TYPE_LABELS[analysis.businessType];
   const weights = SEGMENT_WEIGHTS[analysis.businessType];
   const ordered = [...SEGMENTS].sort((a, b) => analysis.segments[b].score - analysis.segments[a].score);
@@ -23,7 +23,7 @@ export function SegmentsView({ analysis, point }: SegmentsViewProps) {
     <div className="segments">
       {/* Interface rule: these are strength indicators, never population counts. */}
       <p className="lead">
-        Seberapa kuat tiap kelompok pelanggan di sekitar lokasi ini, dinilai dari fasilitas yang terpetakan dalam
+        Seberapa kuat tiap kelompok pelanggan di sekitar lokasi ini, dinilai dari fasilitas yang ditemukan dalam
         radius 1,5 km. Ini indikator kekuatan, <strong>bukan jumlah penduduk</strong>: LOKABIS tidak punya data
         demografi dan tidak memperkirakannya.
       </p>

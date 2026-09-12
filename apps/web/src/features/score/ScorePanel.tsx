@@ -1,7 +1,7 @@
 import { COMPONENT_KEYS } from '@gayatama/scoring';
 import { Card } from '../../components/Card';
 import { Attribution, DataNotices, WarningList } from '../../components/Notices';
-import type { AnalysisResponse, Factor } from '../../lib/api-types';
+import type { AnalysisResponse, DataSource, Factor } from '../../lib/api-types';
 import { scoreTone, toneColor } from '../../lib/band-color';
 import { BUSINESS_TYPE_LABELS, COMPONENT_DESCRIPTIONS, COMPONENT_LABELS } from '../../lib/copy';
 import { formatPercent, formatWhole } from '../../lib/format';
@@ -70,9 +70,10 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
 
       <Card title="Bukti">
         <p>
-          {analysis.evidence.facilityCount} fasilitas terpetakan dalam radius 1,5 km — Zona A{' '}
+          {analysis.evidence.facilityCount} fasilitas ditemukan dalam radius 1,5 km — Zona A{' '}
           {analysis.evidence.zones.a}, Zona B {analysis.evidence.zones.b}, Zona C {analysis.evidence.zones.c}.
         </p>
+        <p className="muted">{sourceSummary(dataSource)}</p>
       </Card>
 
       <p className="disclaimer">
@@ -83,6 +84,16 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
       <Attribution dataSource={dataSource} modelVersion={analysis.modelVersion} />
     </article>
   );
+}
+
+/** Which source each kind of facility came from. */
+function sourceSummary(dataSource: DataSource): string {
+  const shops = dataSource.overture === null ? 'OpenStreetMap' : 'OpenStreetMap dan Overture Maps';
+  if (dataSource.places.status === 'used') {
+    return `Usaha, sekolah, kantor, dan halte transportasi dihitung oleh Google Maps. Perumahan dan parkir dari OpenStreetMap; toko fotokopi, percetakan, dan ATK dari ${shops}.`;
+  }
+  if (dataSource.overture === null) return 'Semua fasilitas berasal dari OpenStreetMap.';
+  return `Fasilitas berasal dari OpenStreetMap; toko fotokopi, percetakan, dan ATK dari ${shops}.`;
 }
 
 function FactorList({ title, factors, tone }: { title: string; factors: Factor[]; tone: 'excellent' | 'poor' }) {
