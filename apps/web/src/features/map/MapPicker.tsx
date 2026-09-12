@@ -1,49 +1,48 @@
-import { ZONE_LIMITS_METERS, type LatLng } from '@gayatama/scoring';
 import { Circle, CircleMarker, MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { USE_GOOGLE_MAP } from '../../lib/map-config';
+import { GoogleMapPicker } from './GoogleMapPicker';
+import { PICK_COLOR, ZONE_RINGS, type MapPickerProps } from './zones';
 
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-/** Distance zones, drawn largest first so the smaller rings sit on top. */
-export const ZONE_RINGS = [
-  { zone: 'C', from: ZONE_LIMITS_METERS.b, to: ZONE_LIMITS_METERS.c, color: '#64748b' },
-  { zone: 'B', from: ZONE_LIMITS_METERS.a, to: ZONE_LIMITS_METERS.b, color: '#0d9488' },
-  { zone: 'A', from: 0, to: ZONE_LIMITS_METERS.a, color: '#0f766e' },
-] as const;
-
-interface MapPickerProps {
-  initialCenter: LatLng;
-  point: LatLng | null;
-  onPick: (point: LatLng) => void;
-  onCenterChange: (center: LatLng) => void;
-}
-
-export function MapPicker({ initialCenter, point, onPick, onCenterChange }: MapPickerProps) {
+/**
+ * A Google map when a Maps JavaScript API key is configured, otherwise an
+ * OpenStreetMap map. Google data may only be shown on a Google map, so the
+ * choice also decides whether the API is asked for Google counts.
+ */
+export function MapPicker(props: MapPickerProps) {
   return (
     <>
-      <MapContainer className="map" center={[initialCenter.lat, initialCenter.lng]} zoom={14} scrollWheelZoom>
-        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
-        <MapEvents onPick={onPick} onCenterChange={onCenterChange} />
-        {point !== null && (
-          <>
-            {ZONE_RINGS.map((ring) => (
-              <Circle
-                key={ring.zone}
-                center={[point.lat, point.lng]}
-                radius={ring.to}
-                pathOptions={{ color: ring.color, weight: 1.5, fillOpacity: 0.05, interactive: false }}
-              />
-            ))}
-            <CircleMarker
-              center={[point.lat, point.lng]}
-              radius={7}
-              pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#b91c1c', fillOpacity: 1, interactive: false }}
-            />
-          </>
-        )}
-      </MapContainer>
+      {USE_GOOGLE_MAP ? <GoogleMapPicker {...props} /> : <OpenStreetMapPicker {...props} />}
       <ZoneLegend />
     </>
+  );
+}
+
+function OpenStreetMapPicker({ initialCenter, point, onPick, onCenterChange }: MapPickerProps) {
+  return (
+    <MapContainer className="map" center={[initialCenter.lat, initialCenter.lng]} zoom={14} scrollWheelZoom>
+      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
+      <MapEvents onPick={onPick} onCenterChange={onCenterChange} />
+      {point !== null && (
+        <>
+          {ZONE_RINGS.map((ring) => (
+            <Circle
+              key={ring.zone}
+              center={[point.lat, point.lng]}
+              radius={ring.to}
+              pathOptions={{ color: ring.color, weight: 1.5, fillOpacity: 0.05, interactive: false }}
+            />
+          ))}
+          <CircleMarker
+            center={[point.lat, point.lng]}
+            radius={7}
+            pathOptions={{ color: '#ffffff', weight: 2, fillColor: PICK_COLOR, fillOpacity: 1, interactive: false }}
+          />
+        </>
+      )}
+    </MapContainer>
   );
 }
 

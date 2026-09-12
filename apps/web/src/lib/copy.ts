@@ -137,7 +137,7 @@ export function errorMessage(error: unknown): string {
     case 'INSUFFICIENT_DATA': {
       const confidence = error.details?.confidence;
       const suffix = typeof confidence === 'number' ? ` (confidence ${confidence}/100)` : '';
-      return `There is too little OpenStreetMap data around this point for a reliable answer${suffix}. GAYATAMA declines to guess rather than give a confident wrong score.`;
+      return `There is too little map data around this point for a reliable answer${suffix}. GAYATAMA declines to guess rather than give a confident wrong score.`;
     }
     case 'VALIDATION_FAILED':
       return 'This location can’t be analysed. GAYATAMA covers locations in Indonesia.';

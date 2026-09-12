@@ -32,6 +32,8 @@ export function similarity(businessType: BusinessType, facility: Facility): numb
 /**
  * K = Σ Distance Weight × Access Factor × Data Quality × Operating-Hours Factor
  *       × Similarity × Competitor Scale
+ *
+ * A counted entry contributes once per competitor it stands for.
  */
 export function competitorContributions(
   evaluated: readonly EvaluatedFacility[],
@@ -49,13 +51,17 @@ export function competitorContributions(
       entry.distanceMeters <= radius
         ? entry.distanceWeight
         : Math.min(entry.distanceWeight, SECONDARY_COMPETITOR_WEIGHT_CAP);
-    contributions.push({
+    const contribution: CompetitorContribution = {
       facility: entry.facility,
       distanceMeters: entry.distanceMeters,
+      zone: entry.zone,
       similarity: level,
       operatingHoursFactor: hours,
-      contribution: weight * entry.accessFactor * entry.dataQuality * hours * level * entry.scaleFactor,
-    });
+      count: entry.count,
+      contribution: weight * entry.accessFactor * entry.dataQuality * hours * level * entry.scaleFactor * entry.count,
+    };
+    if (entry.countedFrom !== undefined) contribution.countedFrom = entry.countedFrom;
+    contributions.push(contribution);
   }
 
   return contributions.sort((a, b) => b.contribution - a.contribution || a.distanceMeters - b.distanceMeters);
@@ -109,10 +115,12 @@ export function analyzeCompetition(
   const radiusMeters = COMPETITOR_RADIUS_METERS[businessType];
   const competitors = competitorContributions(evaluated, businessType, targetHours);
   const equivalentCount = competitors.reduce((sum, c) => sum + c.contribution, 0);
-  const rawCount = evaluated.filter(
-    (entry) =>
-      entry.distanceMeters <= radiusMeters && entry.dataQuality > 0 && similarity(businessType, entry.facility) > 0,
-  ).length;
+  let rawCount = 0;
+  for (const entry of evaluated) {
+    if (entry.distanceMeters <= radiusMeters && entry.dataQuality > 0 && similarity(businessType, entry.facility) > 0) {
+      rawCount += entry.count;
+    }
+  }
   const ratio = saturationRatio(equivalentCount, demandFitValue, businessType);
 
   return {
