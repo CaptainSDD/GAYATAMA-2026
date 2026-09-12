@@ -108,7 +108,7 @@ more balanced and participatory local economic planning.
 | Server state | TanStack Query | Request deduplication and caching for slow geospatial queries |
 | Backend | NestJS 11, TypeScript | Modular architecture with dependency injection; keeps the geospatial, scoring, and caching concerns genuinely separated |
 | Database | Cloud Firestore | POI cache and saved reports; serverless, so there is no instance to keep alive during judging |
-| POI data | OpenStreetMap via Overpass API | Open, global, and attributable — see [Data sources](#data-sources-and-attribution) |
+| POI data | OpenStreetMap via Geoapify Places API, with Overpass for site conditions and as POI fallback | Open, global, and attributable — Geoapify is a hosted OpenStreetMap source, unlike the public Overpass instances it offers an availability guarantee. See [Data sources](#data-sources-and-attribution) |
 | Scoring | `@gayatama/scoring` — a shared, dependency-free TypeScript package | See below |
 | Validation | Zod | One schema definition validating both API boundaries and engine inputs |
 | Testing | Vitest (engine, web), Jest (API) | The scoring engine is pure, so it is exhaustively unit-testable |

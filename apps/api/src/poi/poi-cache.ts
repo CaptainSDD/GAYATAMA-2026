@@ -8,6 +8,8 @@ export interface CachedPois {
   cell: string;
   facilities: Facility[];
   fetchedAt: string;
+  /** POI source the entry came from, for diagnostics: `geoapify` or `overpass`. */
+  source?: string;
 }
 
 export interface PoiCache {
@@ -61,7 +63,7 @@ export class FirestorePoiCache implements PoiCache {
     await this.firestore
       .collection(COLLECTION)
       .doc(entry.cell)
-      .set({ facilities, fetchedAt: entry.fetchedAt, source: 'overpass' });
+      .set({ facilities, fetchedAt: entry.fetchedAt, source: entry.source ?? 'overpass' });
   }
 }
 

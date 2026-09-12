@@ -2,6 +2,8 @@ import type { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { encodeGeohash } from '../src/common/geohash';
 import type { Env } from '../src/config/env';
+import type { GeoapifyClient } from '../src/geoapify/geoapify.client';
+import type { GeoapifyPlace } from '../src/geoapify/geoapify-place';
 import type { OverpassClient } from '../src/overpass/overpass.client';
 import type { OverpassElement } from '../src/overpass/overpass-element';
 import { InMemoryPoiCache, LayeredPoiCache, type CachedPois, type PoiCache } from '../src/poi/poi-cache';
@@ -22,16 +24,30 @@ class FakeOverpass {
   }
 }
 
+class FakeGeoapify {
+  enabled = false;
+  readonly requests: { radiusMeters: number }[] = [];
+  result: GeoapifyPlace[] | Error = [];
+
+  async places(_center: unknown, radiusMeters: number): Promise<GeoapifyPlace[]> {
+    this.requests.push({ radiusMeters });
+    if (this.result instanceof Error) throw this.result;
+    return this.result;
+  }
+}
+
 function setup(ttlSeconds = 3600) {
   const overpass = new FakeOverpass();
+  const geoapify = new FakeGeoapify();
   const cache = new InMemoryPoiCache();
   const config = new ConfigService({ POI_CACHE_TTL_SECONDS: ttlSeconds, OVERPASS_TIMEOUT_MS: 30_000 });
   const service = new PoiService(
     overpass as unknown as OverpassClient,
     cache,
     config as unknown as ConfigService<Env, true>,
+    geoapify as unknown as GeoapifyClient,
   );
-  return { service, overpass, cache };
+  return { service, overpass, geoapify, cache };
 }
 
 const poiQueries = (overpass: FakeOverpass) => overpass.queries.filter((query) => query.includes('out center meta'));

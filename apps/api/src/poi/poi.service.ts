@@ -4,6 +4,8 @@ import { ANALYSIS_RADIUS_METERS, type Facility, type LatLng, type SiteConditions
 import { upstreamUnavailable } from '../common/errors';
 import { encodeGeohash, geohashCenter, geohashHalfDiagonalMeters } from '../common/geohash';
 import type { Env } from '../config/env';
+import { GeoapifyClient } from '../geoapify/geoapify.client';
+import { toPlaceFacilities } from '../geoapify/normalize';
 import { toFacilities } from '../overpass/normalize';
 import { OverpassClient } from '../overpass/overpass.client';
 import { buildPoiQuery, buildSiteQuery } from '../overpass/queries';
@@ -43,6 +45,7 @@ export class PoiService {
     private readonly overpass: OverpassClient,
     @Inject(POI_CACHE) private readonly cache: PoiCache,
     private readonly config: ConfigService<Env, true>,
+    private readonly geoapify: GeoapifyClient,
   ) {}
 
   /**
@@ -76,22 +79,35 @@ export class PoiService {
       return { facilities: cached.facilities, fetchedAt: cached.fetchedAt, cacheHit: true, stale: false };
     }
 
+    const source = this.geoapify.enabled ? 'geoapify' : 'overpass';
+    const label = source === 'geoapify' ? 'Geoapify' : 'Overpass';
     try {
       const radius = ANALYSIS_RADIUS_METERS + geohashHalfDiagonalMeters(cell);
-      const elements = await this.overpass.query(
-        buildPoiQuery(geohashCenter(cell), radius, this.overpass.queryTimeoutSeconds),
-      );
-      const entry = { cell, facilities: toFacilities(elements), fetchedAt: new Date().toISOString() };
+      const facilities = await this.fetchFacilities(cell, radius);
+      const entry = { cell, facilities, fetchedAt: new Date().toISOString(), source };
       await this.cache.set(entry);
       return { facilities: entry.facilities, fetchedAt: entry.fetchedAt, cacheHit: false, stale: false };
     } catch (error) {
       if (cached !== null) {
-        this.logger.warn(`Overpass unavailable, serving stale cache for ${cell}: ${String(error)}`);
+        this.logger.warn(`${label} unavailable, serving stale cache for ${cell}: ${String(error)}`);
         return { facilities: cached.facilities, fetchedAt: cached.fetchedAt, cacheHit: true, stale: true };
       }
-      this.logger.warn(`Overpass unavailable and nothing cached for ${cell}: ${String(error)}`);
+      this.logger.warn(`${label} unavailable and nothing cached for ${cell}: ${String(error)}`);
       throw upstreamUnavailable();
     }
+  }
+
+  /**
+   * Facilities from Geoapify Places when an API key is configured, otherwise
+   * from Overpass. Both sources carry OpenStreetMap tags, so the normalised
+   * facilities — and their `node/123` ids — are interchangeable.
+   */
+  private async fetchFacilities(cell: string, radiusMeters: number): Promise<Facility[]> {
+    const center = geohashCenter(cell);
+    if (this.geoapify.enabled) {
+      return toPlaceFacilities(await this.geoapify.places(center, radiusMeters));
+    }
+    return toFacilities(await this.overpass.query(buildPoiQuery(center, radiusMeters, this.overpass.queryTimeoutSeconds)));
   }
 
   private async loadSite(key: string, point: LatLng): Promise<SiteLookup> {
