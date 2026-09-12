@@ -1,7 +1,9 @@
+import { Card } from '../../components/Card';
 import { Attribution, StaleDataNotice } from '../../components/Notices';
 import type { AnalysisResponse } from '../../lib/api-types';
-import { BUSINESS_TYPE_LABELS, DENSITY_LABELS, FACILITY_KIND_LABELS, SATURATION_LABELS } from '../../lib/copy';
+import { BUSINESS_TYPE_LABELS, DENSITY_LABELS, FACILITY_KIND_LABELS } from '../../lib/copy';
 import { formatDistance } from '../../lib/format';
+import { SaturationMeter } from './SaturationMeter';
 
 export function CompetitionView({ analysis }: { analysis: AnalysisResponse }) {
   const { competition } = analysis;
@@ -11,62 +13,65 @@ export function CompetitionView({ analysis }: { analysis: AnalysisResponse }) {
     <div className="competition">
       {analysis.dataSource.stale && <StaleDataNotice fetchedAt={analysis.dataSource.fetchedAt} />}
 
+      <Card>
+        <SaturationMeter ratio={competition.saturationRatio} reading={competition.reading} />
+      </Card>
+
       <dl className="stats">
         <div>
-          <dt>Competitor equivalents</dt>
+          <dt>Setara kompetitor</dt>
           <dd>{competition.equivalentCount.toFixed(2)}</dd>
         </div>
         <div>
-          <dt>Mapped within {formatDistance(competition.radiusMeters)}</dt>
+          <dt>Terpetakan dalam {formatDistance(competition.radiusMeters)}</dt>
           <dd>{competition.rawCount}</dd>
         </div>
         <div>
-          <dt>Density</dt>
+          <dt>Kepadatan</dt>
           <dd>{DENSITY_LABELS[competition.density]}</dd>
         </div>
         <div>
-          <dt>Saturation ratio</dt>
-          <dd>
-            {competition.saturationRatio.toFixed(2)} · {SATURATION_LABELS[competition.reading]}
-          </dd>
+          <dt>Radius pencarian</dt>
+          <dd>{formatDistance(competition.radiusMeters)}</dd>
         </div>
       </dl>
 
-      <p className="muted">
-        A raw shop count is not the measure. Each business is weighted by distance, data freshness, opening hours, how
-        closely it competes with a {businessLabel.toLowerCase()} and its size. The saturation ratio compares that total
-        with the demand this location has for the business.
+      <p className="lead">
+        Jumlah toko mentah bukan ukurannya. Tiap usaha ditimbang berdasarkan jarak, kebaruan data, jam operasional,
+        seberapa mirip dia dengan {businessLabel.toLowerCase()}, dan skalanya. Rasio kejenuhan membandingkan total itu
+        dengan permintaan yang dimiliki lokasi ini.
       </p>
 
       {competition.equivalentCount === 0 && (
         <p className="notice">
-          No competitors are mapped nearby. GAYATAMA treats this as unproven demand rather than an open market, so the
-          Competition Opportunity score is reduced.
+          Tidak ada kompetitor terpetakan di sekitar sini. LOKABIS menganggap ini sebagai permintaan yang belum
+          terbukti, bukan pasar yang masih kosong — jadi nilai Peluang Persaingan justru dikurangi.
         </p>
       )}
 
       {competition.strongest.length > 0 && (
-        <section className="section">
-          <h3>Strongest competitors</h3>
+        <Card title="Kompetitor terkuat" note={`${competition.strongest.length} teratas`}>
           <ul className="competitor-list">
             {competition.strongest.map((competitor) => (
               <li key={competitor.id}>
                 <div>
                   <span className="competitor-name">{competitor.name ?? FACILITY_KIND_LABELS[competitor.kind]}</span>
-                  <span className="muted">
+                  <span className="competitor-meta">
                     {FACILITY_KIND_LABELS[competitor.kind]} · {formatDistance(competitor.distanceMeters)}
                   </span>
                 </div>
-                <span className="competitor-weight">counts as {competitor.contribution.toFixed(2)}</span>
+                <span className="competitor-weight" title="Kontribusi ke hitungan setara kompetitor">
+                  {competitor.contribution.toFixed(2)}
+                </span>
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
 
       <p className="disclaimer">
-        Businesses that closed without the map being updated still count, and many small businesses are never mapped.
-        Check the competition on site.
+        Usaha yang sudah tutup tapi petanya belum diperbarui tetap ikut terhitung, dan banyak usaha kecil tidak pernah
+        terpetakan sama sekali. Periksa kompetitornya langsung di lokasi.
       </p>
 
       <Attribution dataSource={analysis.dataSource} />
