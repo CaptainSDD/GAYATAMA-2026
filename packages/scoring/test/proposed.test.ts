@@ -76,6 +76,7 @@ describe('Supporting Facility Fit', () => {
 describe('Risk and Operability', () => {
   it('starts at 100 and subtracts proxy penalties', () => {
     expect(riskAndOperability({})).toBe(100);
+    expect(riskAndOperability({}, false)).toBe(50);
     expect(riskAndOperability({ nearestWaterwayMeters: 80 })).toBe(80);
     expect(riskAndOperability({ nearestWaterwayMeters: 250 })).toBe(90);
     expect(riskAndOperability({ nearestWaterwayMeters: 400 })).toBe(100);

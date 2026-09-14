@@ -132,6 +132,10 @@ describe('API (end to end, fake Overpass)', () => {
       Math.min(100, Math.round(body.score.value + body.score.margin)),
     ]);
     expect(Object.keys(body.components)).toEqual(['demandFit', 'accessibility', 'competition', 'supportingFacility', 'risk']);
+    expect(body.components.risk.availability).toBe('available');
+    expect(body.narrative).toMatchObject({ provisional: false });
+    expect(body.narrative.headline).toContain('laundry');
+    expect(body.narrative.nextSteps.length).toBeGreaterThan(0);
     expect(body.competition.radiusMeters).toBe(1500);
     expect(body.competition.strongest[0]).toMatchObject({ kind: 'laundry', zone: 'c', count: 1, source: 'openstreetmap' });
     expect(body.evidence.facilityCount).toBe(15);
@@ -226,6 +230,12 @@ describe('API (end to end, fake Overpass)', () => {
         distanceMeters: null,
         count: 2,
         source: 'google',
+      });
+      expect(body.competition.namedCompetitors[0]).toMatchObject({
+        name: 'Kopi Kampus',
+        kind: 'cafe',
+        zone: 'a',
+        source: 'openstreetmap',
       });
       expect(body.dataSource).toMatchObject({
         attribution: '© OpenStreetMap contributors',

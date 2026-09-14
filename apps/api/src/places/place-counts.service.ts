@@ -1,14 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ZONE_LIMITS_METERS, type FacilityCount, type LatLng, type Zone } from '@gayatama/scoring';
 import { encodeGeohash, geohashCenter } from '../common/geohash';
 import type { Env } from '../config/env';
 import { GOOGLE_PLACES_SOURCE, PLACE_COUNT_QUERIES, type PlaceCountQuery } from './place-types';
+import { PLACE_COUNTS_CACHE, type CachedPlaceCounts, type PlaceCountsCache } from './place-counts-cache';
 import { PlacesAggregateClient } from './places-aggregate.client';
 
 /** Geohash-8 cells are roughly 38 × 19 m, so the circles sit within about 22 m of the chosen point. */
 export const PLACE_CELL_PRECISION = 8;
-const MAX_CACHE_ENTRIES = 2000;
 
 /** Circles counted per kind, largest first. */
 const CIRCLES: readonly Zone[] = ['c', 'b', 'a'];
@@ -17,11 +17,6 @@ export type PlaceCountsLookup =
   | { status: 'used'; counts: FacilityCount[]; fetchedAt: string; cacheHit: boolean }
   /** No API key is configured, or Google failed: every facility comes from OpenStreetMap. */
   | { status: 'not_configured' | 'unavailable' };
-
-interface CachedCounts {
-  counts: FacilityCount[];
-  fetchedAt: string;
-}
 
 /**
  * Facility counts per zone from the Google Places Aggregate API. Each kind is
@@ -32,13 +27,12 @@ interface CachedCounts {
 @Injectable()
 export class PlaceCountsService {
   private readonly logger = new Logger(PlaceCountsService.name);
-  // Insertion order doubles as age order, so the first key is the oldest entry.
-  private readonly cache = new Map<string, CachedCounts>();
   private readonly pending = new Map<string, Promise<PlaceCountsLookup>>();
 
   constructor(
     private readonly client: PlacesAggregateClient,
     private readonly config: ConfigService<Env, true>,
+    @Inject(PLACE_COUNTS_CACHE) private readonly cache: PlaceCountsCache,
   ) {}
 
   /** Never rejects: a failure is reported as `unavailable`. */
@@ -46,16 +40,19 @@ export class PlaceCountsService {
     if (!this.client.configured) return Promise.resolve({ status: 'not_configured' });
 
     const cell = encodeGeohash(point, PLACE_CELL_PRECISION);
-    const cached = this.cache.get(cell);
-    if (cached !== undefined && this.isFresh(cached)) {
-      return Promise.resolve({ status: 'used', ...cached, cacheHit: true });
-    }
-
     const existing = this.pending.get(cell);
     if (existing !== undefined) return existing;
-    const task = this.load(cell).finally(() => this.pending.delete(cell));
+    const task = this.loadCachedOrFresh(cell).finally(() => this.pending.delete(cell));
     this.pending.set(cell, task);
     return task;
+  }
+
+  private async loadCachedOrFresh(cell: string): Promise<PlaceCountsLookup> {
+    const cached = await this.cache.get(cell);
+    if (cached !== null && this.isFresh(cached)) {
+      return { status: 'used', counts: cached.counts, fetchedAt: cached.fetchedAt, cacheHit: true };
+    }
+    return this.load(cell);
   }
 
   private async load(cell: string): Promise<PlaceCountsLookup> {
@@ -71,9 +68,9 @@ export class PlaceCountsService {
           }),
         ),
       );
-      const entry: CachedCounts = { counts: groups.flat(), fetchedAt: new Date().toISOString() };
-      this.remember(cell, entry);
-      return { status: 'used', ...entry, cacheHit: false };
+      const entry: CachedPlaceCounts = { cell, counts: groups.flat(), fetchedAt: new Date().toISOString() };
+      await this.cache.set(entry);
+      return { status: 'used', counts: entry.counts, fetchedAt: entry.fetchedAt, cacheHit: false };
     } catch (error) {
       this.logger.warn(
         `Google place counts unavailable for ${cell}, using OpenStreetMap: ${error instanceof Error ? error.message : String(error)}`,
@@ -111,16 +108,7 @@ export class PlaceCountsService {
     return counts;
   }
 
-  private remember(cell: string, entry: CachedCounts): void {
-    this.cache.delete(cell);
-    this.cache.set(cell, entry);
-    if (this.cache.size > MAX_CACHE_ENTRIES) {
-      const oldest = this.cache.keys().next().value;
-      if (oldest !== undefined) this.cache.delete(oldest);
-    }
-  }
-
-  private isFresh(entry: CachedCounts): boolean {
+  private isFresh(entry: CachedPlaceCounts): boolean {
     const ttlMs = this.config.get('PLACE_COUNT_CACHE_TTL_SECONDS', { infer: true }) * 1000;
     return Date.now() - Date.parse(entry.fetchedAt) < ttlMs;
   }

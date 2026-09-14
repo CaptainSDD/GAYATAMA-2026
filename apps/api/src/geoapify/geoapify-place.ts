@@ -20,3 +20,27 @@ export interface GeoapifyPlace {
 export interface GeoapifyPlacesResponse {
   features?: GeoapifyPlace[];
 }
+
+/** A normalized address returned by Geoapify's Reverse Geocoding API. */
+export interface GeoapifyReverseResult {
+  name?: string;
+  street?: string;
+  suburb?: string;
+  district?: string;
+  county?: string;
+  city?: string;
+  postcode?: string;
+  state?: string;
+  formatted?: string;
+  address_line1?: string;
+  address_line2?: string;
+  datasource?: {
+    sourcename?: string;
+    attribution?: string;
+    license?: string;
+  };
+}
+
+export interface GeoapifyReverseResponse {
+  results?: GeoapifyReverseResult[];
+}

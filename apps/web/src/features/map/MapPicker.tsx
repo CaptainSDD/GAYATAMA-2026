@@ -1,13 +1,26 @@
 import { ZONE_WEIGHTS, type FacilityKind } from '@gayatama/scoring';
 import { divIcon } from 'leaflet';
-import { Circle, CircleMarker, MapContainer, Marker, ScaleControl, TileLayer, Tooltip, useMapEvents } from 'react-leaflet';
+import {
+  Circle,
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Polygon,
+  Polyline,
+  ScaleControl,
+  TileLayer,
+  Tooltip,
+  useMapEvents,
+} from 'react-leaflet';
 import type { PoiFacility } from '../../lib/api-types';
 import { FACILITY_KIND_LABELS } from '../../lib/copy';
 import { formatDistance } from '../../lib/format';
+import { SEMARANG_MAP_LIMITS } from '../../lib/location';
 import { USE_GOOGLE_MAP } from '../../lib/map-config';
 import { usePois } from '../../lib/queries';
+import { SEMARANG_BOUNDARY } from '../../lib/semarang-boundary';
 import { GoogleMapPicker } from './GoogleMapPicker';
-import { PICK_COLOR, ZONE_RINGS, type MapPickerProps } from './zones';
+import { DEFAULT_MAP_ZOOM, PICK_COLOR, ZONE_RINGS, type MapPickerProps } from './zones';
 
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -98,7 +111,7 @@ const PICKED_PIN = divIcon({
 export function MapPicker(props: MapPickerProps) {
   // React Query keys by point, and SegmentsView asks for the same data, so this
   // shares that cache entry rather than making a second request.
-  const pois = usePois(props.point);
+  const pois = usePois(props.analysisPoint);
   const facilities = pois.data?.facilities ?? [];
 
   return (
@@ -109,6 +122,9 @@ export function MapPicker(props: MapPickerProps) {
         <OpenStreetMapPicker {...props} facilities={facilities} />
       )}
       <NorthMark />
+      <div className="coverage-label" aria-hidden="true">
+        <span /> Area cakupan Semarang
+      </div>
       <MapLegend facilityCount={facilities.length} />
     </>
   );
@@ -117,13 +133,26 @@ export function MapPicker(props: MapPickerProps) {
 function OpenStreetMapPicker({
   initialCenter,
   point,
+  analysisPoint,
   onPick,
   onCenterChange,
   facilities,
 }: MapPickerProps & { facilities: readonly PoiFacility[] }) {
   return (
-    <MapContainer className="map" center={[initialCenter.lat, initialCenter.lng]} zoom={14} scrollWheelZoom>
+    <MapContainer
+      className="map"
+      center={[initialCenter.lat, initialCenter.lng]}
+      zoom={DEFAULT_MAP_ZOOM}
+      minZoom={10}
+      maxBounds={[
+        [SEMARANG_MAP_LIMITS.south, SEMARANG_MAP_LIMITS.west],
+        [SEMARANG_MAP_LIMITS.north, SEMARANG_MAP_LIMITS.east],
+      ]}
+      maxBoundsViscosity={1}
+      scrollWheelZoom
+    >
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
+      <CoverageOverlay />
       <MapEvents onPick={onPick} onCenterChange={onCenterChange} />
       {/* Distance is the whole basis of the zones, so a scale bar earns its
           place here more than on most maps. Metric only. A wider maxWidth,
@@ -133,19 +162,55 @@ function OpenStreetMapPicker({
       <ScaleControl position="bottomright" imperial={false} maxWidth={160} />
       {point !== null && (
         <>
-          {ZONE_RINGS.map((ring) => (
-            <Circle
-              key={ring.zone}
-              center={[point.lat, point.lng]}
-              radius={ring.to}
-              pathOptions={{ color: ring.color, weight: 2, fillOpacity: 0.04, interactive: false }}
-            />
-          ))}
-          <FacilityMarkers facilities={facilities} />
+          {analysisPoint !== null && (
+            <>
+              {ZONE_RINGS.map((ring) => (
+                <Circle
+                  key={ring.zone}
+                  center={[analysisPoint.lat, analysisPoint.lng]}
+                  radius={ring.to}
+                  pathOptions={{ color: ring.color, weight: 2, fillOpacity: 0.04, interactive: false }}
+                />
+              ))}
+              <FacilityMarkers facilities={facilities} />
+            </>
+          )}
           <Marker position={[point.lat, point.lng]} icon={PICKED_PIN} interactive={false} />
         </>
       )}
     </MapContainer>
+  );
+}
+
+const LEAFLET_BOUNDARY = SEMARANG_BOUNDARY.map(({ lat, lng }) => [lat, lng] as [number, number]);
+const LEAFLET_MASK_RINGS: [number, number][][] = [
+  [
+    [SEMARANG_MAP_LIMITS.south, SEMARANG_MAP_LIMITS.west],
+    [SEMARANG_MAP_LIMITS.south, SEMARANG_MAP_LIMITS.east],
+    [SEMARANG_MAP_LIMITS.north, SEMARANG_MAP_LIMITS.east],
+    [SEMARANG_MAP_LIMITS.north, SEMARANG_MAP_LIMITS.west],
+  ],
+  LEAFLET_BOUNDARY,
+];
+
+function CoverageOverlay() {
+  return (
+    <>
+      <Polygon
+        positions={LEAFLET_MASK_RINGS}
+        pathOptions={{
+          stroke: false,
+          fillColor: '#475569',
+          fillOpacity: 0.38,
+          fillRule: 'evenodd',
+          interactive: false,
+        }}
+      />
+      <Polyline
+        positions={LEAFLET_BOUNDARY}
+        pathOptions={{ color: '#dc2626', opacity: 0.95, weight: 3, dashArray: '5 7', interactive: false }}
+      />
+    </>
   );
 }
 

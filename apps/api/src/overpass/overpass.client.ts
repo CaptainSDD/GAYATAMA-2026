@@ -69,7 +69,10 @@ export class OverpassClient {
     return [primary, ...distinct];
   }
 
-  async query(query: string): Promise<OverpassElement[]> {
+  async query(
+    query: string,
+    timeoutMs = this.config.get('OVERPASS_TIMEOUT_MS', { infer: true }),
+  ): Promise<OverpassElement[]> {
     const endpoints = this.endpoints;
     const attempts = endpoints.length > 1 ? endpoints : [...endpoints, ...endpoints];
     let lastError: OverpassRequestError | undefined;
@@ -81,7 +84,7 @@ export class OverpassClient {
         if (sameInstance) await pause(RETRY_DELAY_MS);
       }
       try {
-        return await this.limiter.run(() => this.send(url, query));
+        return await this.limiter.run(() => this.send(url, query, timeoutMs));
       } catch (error) {
         if (!(error instanceof OverpassRequestError) || !error.retryable) throw error;
         lastError = error;
@@ -90,7 +93,7 @@ export class OverpassClient {
     throw lastError ?? new OverpassRequestError('No Overpass instance is configured', false);
   }
 
-  private async send(url: string, query: string): Promise<OverpassElement[]> {
+  private async send(url: string, query: string, timeoutMs: number): Promise<OverpassElement[]> {
     const host = hostOf(url);
     let response: Response;
     try {
@@ -98,7 +101,7 @@ export class OverpassClient {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
         body: new URLSearchParams({ data: query }),
-        signal: AbortSignal.timeout(this.config.get('OVERPASS_TIMEOUT_MS', { infer: true })),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
       const timedOut = error instanceof Error && error.name === 'TimeoutError';

@@ -144,6 +144,25 @@ describe('PoiService.siteConditions', () => {
     expect(overpass.queries).toHaveLength(1);
   });
 
+  it('reuses one site-data query after a small move across a geohash-8 boundary', async () => {
+    const { service, overpass } = setup();
+    const offsets = Array.from({ length: 201 }, (_, index) => index - 100);
+    const nearby = offsets
+      .flatMap((north) => offsets.map((east) => offset(ORIGIN, north, east)))
+      .map(({ lat, lon }) => ({ lat, lng: lon }))
+      .find(
+        (point) =>
+          encodeGeohash(point, 7) === encodeGeohash(ORIGIN, 7) &&
+          encodeGeohash(point, 8) !== encodeGeohash(ORIGIN, 8),
+      );
+    expect(nearby).toBeDefined();
+
+    await service.siteConditions(ORIGIN);
+    await service.siteConditions(nearby as LatLng);
+
+    expect(overpass.queries).toHaveLength(1);
+  });
+
   it('shares one query between concurrent requests for the same site', async () => {
     const { service, overpass } = setup();
     await Promise.all([service.siteConditions(ORIGIN), service.siteConditions(ORIGIN)]);
@@ -154,6 +173,8 @@ describe('PoiService.siteConditions', () => {
     const { service, overpass } = setup();
     overpass.site = new Error('Overpass down');
     expect(await service.siteConditions(ORIGIN)).toEqual({ site: {}, available: false });
+    expect(await service.siteConditions(ORIGIN)).toEqual({ site: {}, available: false });
+    expect(overpass.queries).toHaveLength(1);
   });
 });
 

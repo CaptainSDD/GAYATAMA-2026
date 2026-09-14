@@ -8,9 +8,16 @@ interface LocationControlsProps {
   businessType: BusinessType;
   onBusinessTypeChange: (businessType: BusinessType) => void;
   onUseMapCenter: () => void;
+  onClearPoint: () => void;
 }
 
-export function LocationControls({ point, businessType, onBusinessTypeChange, onUseMapCenter }: LocationControlsProps) {
+export function LocationControls({
+  point,
+  businessType,
+  onBusinessTypeChange,
+  onUseMapCenter,
+  onClearPoint,
+}: LocationControlsProps) {
   return (
     <section className="controls">
       <label className="field">
@@ -34,9 +41,21 @@ export function LocationControls({ point, businessType, onBusinessTypeChange, on
           <span className="field-label">Lokasi</span>
           <span className="coordinate">{point === null ? 'Belum dipilih' : formatCoordinate(point)}</span>
         </div>
-        <button type="button" className="button-secondary" onClick={onUseMapCenter}>
-          Pakai titik tengah
-        </button>
+        <div className="location-actions">
+          {point !== null && (
+            <button
+              type="button"
+              className="button-secondary button-clear-point"
+              onClick={onClearPoint}
+              aria-label="Hapus titik lokasi yang dipilih"
+            >
+              Hapus titik
+            </button>
+          )}
+          <button type="button" className="button-secondary" onClick={onUseMapCenter}>
+            Pakai titik tengah
+          </button>
+        </div>
       </div>
     </section>
   );

@@ -1,14 +1,12 @@
 import { BUSINESS_TYPES, type BusinessType } from '@gayatama/scoring';
 import type { UseQueryResult } from '@tanstack/react-query';
-import { Card } from '../../components/Card';
 import { CompassIcon } from '../../components/Icons';
 import { Attribution, DataNotices, WarningList } from '../../components/Notices';
 import { QueryError } from '../../components/QueryState';
 import { ScoreInline } from '../../components/ScoreInline';
 import { ScoreSkeleton } from '../../components/Skeleton';
 import type { RecommendResponse } from '../../lib/api-types';
-import { bandTone, toneChip, toneColor } from '../../lib/band-color';
-import { BUSINESS_TYPE_LABELS, SEGMENT_LABELS, STATUS_LABELS } from '../../lib/copy';
+import { BUSINESS_TYPE_LABELS, SEGMENT_LABELS } from '../../lib/copy';
 
 interface RecommendViewProps {
   query: UseQueryResult<RecommendResponse>;
@@ -27,62 +25,57 @@ export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
 
   return (
     <div className="recommend">
-      <p className="lead">
-        Ketujuh jenis usaha, dinilai untuk lokasi ini. Maksimal tiga yang bernilai 60 ke atas ditampilkan sebagai
-        rekomendasi. Jenis usaha yang selisihnya 3 poin atau kurang dianggap sama-sama cocok, bukan diurutkan.
-      </p>
+      <p className="lead">Pilihan usaha diurutkan berdasarkan kecocokannya dengan lokasi ini.</p>
 
       <DataNotices dataSource={dataSource} onRefresh={() => void query.refetch()} refreshing={query.isFetching} />
       <WarningList warnings={warnings} />
 
       {needsValidation && (
         <p className="notice">
-          Data di sekitar lokasi ini belum lengkap, jadi belum ada yang bisa direkomendasikan dengan yakin. Anggap
-          daftar ini sebagai petunjuk awal yang masih perlu dicek langsung di lapangan.
+          Data sekitar belum lengkap. Gunakan urutan ini sebagai petunjuk awal dan cek kondisi lapangan.
         </p>
       )}
 
       {recommendations.length === 0 ? (
-        <p className="notice">Tidak ada jenis usaha yang mencapai nilai 60 di lokasi ini.</p>
+        <p className="notice">Belum ada pilihan usaha dengan skor yang cukup kuat di lokasi ini.</p>
       ) : (
         <ol className="recommendation-list">
           {recommendations.map((entry, index) => {
             const peers = peersOf(entry.businessType);
-            const tone = bandTone(entry.score.band);
             return (
-              <li
-                key={entry.businessType}
-                className="recommendation"
-                style={{ ['--accent' as string]: toneColor(tone) }}
-              >
+              <li key={entry.businessType} className="recommendation">
                 <div className="recommendation-head">
                   <h3>
-                    <span className="recommendation-rank" aria-hidden="true">
-                      {index + 1}
-                    </span>
+                    <span className="recommendation-rank" aria-hidden="true">{index + 1}</span>
                     {BUSINESS_TYPE_LABELS[entry.businessType]}
                   </h3>
                   <ScoreInline score={entry.score} />
                 </div>
-                <p>
-                  <span className={toneChip(tone)}>{STATUS_LABELS[entry.status]}</span>
+                <p className="recommendation-status">
+                  {recommendationLabel(entry.status, index, peers.length > 0)}
                 </p>
-                <p>{entry.rationale}.</p>
-                <p className="muted">
-                  Pelanggan utama: {SEGMENT_LABELS[entry.dominantSegment]}. {entry.differentiator}.
-                </p>
-                {peers.length > 0 && (
-                  <p className="equivalence">
-                    <CompassIcon size={16} />
-                    <span>
-                      Selisihnya 3 poin atau kurang dengan{' '}
-                      {peers.map((peer) => BUSINESS_TYPE_LABELS[peer]).join(' dan ')} — perlakukan sebagai sama-sama
-                      cocok, bukan lebih unggul.
-                    </span>
-                  </p>
-                )}
+                <p className="recommendation-rationale">{entry.rationale}</p>
+
+                <details className="panel-disclosure recommendation-details">
+                  <summary>Mengapa cocok?</summary>
+                  <div className="disclosure-content">
+                    <p>
+                      Pelanggan utama: <strong>{SEGMENT_LABELS[entry.dominantSegment]}</strong>. {entry.differentiator}
+                    </p>
+                    {peers.length > 0 && (
+                      <p className="equivalence">
+                        <CompassIcon size={16} />
+                        <span>
+                          Skornya berdekatan dengan {peers.map((peer) => BUSINESS_TYPE_LABELS[peer]).join(' dan ')}.
+                          Perlakukan pilihan ini sebagai sama-sama cocok.
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </details>
+
                 <button type="button" className="button-link" onClick={() => onAnalyse(entry.businessType)}>
-                  Lihat analisis lengkapnya
+                  Lihat skor lengkap
                 </button>
               </li>
             );
@@ -90,17 +83,12 @@ export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
         </ol>
       )}
 
-      {unlisted > 0 && (
-        <p className="muted">
-          {unlisted === 1
-            ? '1 jenis usaha lain juga bernilai 60 ke atas, tapi berada di bawah tiga besar.'
-            : `${unlisted} jenis usaha lain juga bernilai 60 ke atas, tapi berada di bawah tiga besar.`}
-        </p>
-      )}
+      {unlisted > 0 && <p className="muted">{unlisted} pilihan lain tersedia dalam laporan lengkap.</p>}
 
       {notRecommended.length > 0 && (
-        <Card title="Tidak direkomendasikan di sini">
-          <ul className="not-recommended">
+        <details className="card panel-disclosure not-recommended-disclosure">
+          <summary>Tidak direkomendasikan ({notRecommended.length})</summary>
+          <ul className="not-recommended disclosure-content">
             {notRecommended.map((entry) => (
               <li key={entry.businessType}>
                 <div className="recommendation-head">
@@ -111,10 +99,17 @@ export function RecommendView({ query, onAnalyse }: RecommendViewProps) {
               </li>
             ))}
           </ul>
-        </Card>
+        </details>
       )}
 
       <Attribution dataSource={dataSource} modelVersion={modelVersion} />
     </div>
   );
+}
+
+function recommendationLabel(status: string, index: number, hasEquivalent: boolean): string {
+  if (status === 'needs_validation') return 'Perlu dicek';
+  if (hasEquivalent) return 'Setara';
+  if (index === 0) return 'Pilihan utama';
+  return 'Alternatif kuat';
 }

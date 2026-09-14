@@ -19,7 +19,7 @@ export function createFirestore(config: ConfigService<Env, true>): Firestore | n
   const serviceAccountJson = config.get('FIREBASE_SERVICE_ACCOUNT_JSON', { infer: true });
 
   if (projectId === undefined && serviceAccountJson === undefined) {
-    logger.warn('Firebase is not configured: POI cache is in-memory only.');
+    logger.warn('Firebase is not configured: POI and Google place-count caches are in-memory only.');
     return null;
   }
 

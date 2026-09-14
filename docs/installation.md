@@ -115,6 +115,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /placeCountCache/{cell} {
+      allow read, write: if false;
+    }
+
     // Saved reports: readable by anyone holding the ID, but not listable —
     // `read` would also let anyone download every report. Writes go via the API.
     match /reports/{reportId} {

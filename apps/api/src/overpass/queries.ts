@@ -41,16 +41,17 @@ export function buildPoiQuery(center: LatLng, radiusMeters: number, timeoutSecon
 }
 
 /** Road, waterway, land use and pedestrian features at the candidate site. */
-export function buildSiteQuery(point: LatLng, timeoutSeconds: number): string {
+export function buildSiteQuery(point: LatLng, timeoutSeconds: number, paddingMeters = 0): string {
+  const radius = (meters: number) => meters + paddingMeters;
   return [
     `[out:json][timeout:${timeoutSeconds}];`,
     '(',
-    `  way${around(point, SITE_RADII_METERS.road)}[highway~${exact(ROAD_CLASSES.keys())}];`,
-    `  way${around(point, SITE_RADII_METERS.waterway)}[waterway~${exact(WATERWAYS)}];`,
-    `  way${around(point, SITE_RADII_METERS.industrial)}[landuse=industrial];`,
-    `  way${around(point, SITE_RADII_METERS.pedestrian)}[highway~${exact(PEDESTRIAN_WAYS)}];`,
-    `  way${around(point, SITE_RADII_METERS.pedestrian)}[sidewalk~${exact(SIDEWALK_VALUES)}];`,
-    `  node${around(point, SITE_RADII_METERS.pedestrian)}[highway=crossing];`,
+    `  way${around(point, radius(SITE_RADII_METERS.road))}[highway~${exact(ROAD_CLASSES.keys())}];`,
+    `  way${around(point, radius(SITE_RADII_METERS.waterway))}[waterway~${exact(WATERWAYS)}];`,
+    `  way${around(point, radius(SITE_RADII_METERS.industrial))}[landuse=industrial];`,
+    `  way${around(point, radius(SITE_RADII_METERS.pedestrian))}[highway~${exact(PEDESTRIAN_WAYS)}];`,
+    `  way${around(point, radius(SITE_RADII_METERS.pedestrian))}[sidewalk~${exact(SIDEWALK_VALUES)}];`,
+    `  node${around(point, radius(SITE_RADII_METERS.pedestrian))}[highway=crossing];`,
     ');',
     'out geom;',
   ].join('\n');
