@@ -1,43 +1,50 @@
 import { BUSINESS_TYPES, type BusinessType, type LatLng } from '@gayatama/scoring';
 import { BUSINESS_TYPE_LABELS } from '../../lib/copy';
 import { formatCoordinate } from '../../lib/format';
-import { isBusinessType } from '../../lib/location';
 
-interface LocationControlsProps {
-  point: LatLng | null;
+interface BusinessTypePickerProps {
   businessType: BusinessType;
   onBusinessTypeChange: (businessType: BusinessType) => void;
+}
+
+/**
+ * All seven categories laid out at once rather than folded into a <select>:
+ * choosing one is the main thing this screen asks of a visitor, and the score
+ * changes with it, so the options are worth the space.
+ */
+export function BusinessTypePicker({ businessType, onBusinessTypeChange }: BusinessTypePickerProps) {
+  return (
+    <div className="type-grid" data-tour="business-type">
+      {BUSINESS_TYPES.map((type) => (
+        <button
+          key={type}
+          type="button"
+          className="type-option"
+          aria-pressed={type === businessType}
+          onClick={() => onBusinessTypeChange(type)}
+        >
+          {BUSINESS_TYPE_LABELS[type]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface LocationSummaryProps {
+  point: LatLng | null;
   onUseMapCenter: () => void;
 }
 
-export function LocationControls({ point, businessType, onBusinessTypeChange, onUseMapCenter }: LocationControlsProps) {
+export function LocationSummary({ point, onUseMapCenter }: LocationSummaryProps) {
   return (
-    <section className="controls">
-      <label className="field">
-        <span className="field-label">Jenis usaha</span>
-        <select
-          value={businessType}
-          onChange={(event) => {
-            if (isBusinessType(event.target.value)) onBusinessTypeChange(event.target.value);
-          }}
-        >
-          {BUSINESS_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {BUSINESS_TYPE_LABELS[type]}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="location-row">
-        <div>
-          <span className="field-label">Lokasi</span>
-          <span className="coordinate">{point === null ? 'Belum dipilih' : formatCoordinate(point)}</span>
-        </div>
-        <button type="button" className="button-secondary" onClick={onUseMapCenter}>
-          Pakai titik tengah
-        </button>
+    <div className="location-row" data-tour="location">
+      <div>
+        <span className="field-label">Lokasi</span>
+        <span className="coordinate">{point === null ? 'Belum dipilih' : formatCoordinate(point)}</span>
       </div>
-    </section>
+      <button type="button" className="button-secondary" onClick={onUseMapCenter}>
+        Pakai titik tengah
+      </button>
+    </div>
   );
 }

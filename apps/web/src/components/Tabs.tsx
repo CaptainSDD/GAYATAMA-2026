@@ -47,7 +47,7 @@ export function Tabs<K extends string>({ label, tabs, active, onChange, children
 
   return (
     <div className="tabs">
-      <div role="tablist" aria-label={label} className="tab-list">
+      <div role="tablist" aria-label={label} className="tab-list" data-tour="tabs">
         {tabs.map((tab, index) => (
           <button
             key={tab.key}
