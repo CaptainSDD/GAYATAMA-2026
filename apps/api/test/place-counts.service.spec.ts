@@ -55,7 +55,7 @@ describe('PlaceCountsService', () => {
 
   it('splits circle counts into zones, counting a smaller circle only when the larger one is not empty', async () => {
     const { service, client } = setup();
-    client.circles.set('university', [0, 0, 1]);
+    client.circles.set('supermarket', [0, 0, 1]);
     client.circles.set('cafe', [2, 5, 9]);
     client.circles.set('laundry', [0, 1, 4]);
 
@@ -63,14 +63,14 @@ describe('PlaceCountsService', () => {
 
     expect(result).toMatchObject({ status: 'used', cacheHit: false });
     expect(result.status === 'used' && result.counts).toEqual([
-      { kind: 'campus', zone: 'c', count: 1, scale: 'large', source: 'google' },
       { kind: 'cafe', zone: 'a', count: 2, source: 'google' },
       { kind: 'cafe', zone: 'b', count: 3, source: 'google' },
       { kind: 'cafe', zone: 'c', count: 4, source: 'google' },
       { kind: 'laundry', zone: 'b', count: 1, source: 'google' },
       { kind: 'laundry', zone: 'c', count: 3, source: 'google' },
+      { kind: 'supermarket', zone: 'c', count: 1, source: 'google' },
     ]);
-    // One 1,500 m request per query, plus 800 m for university, and 800 m and 300 m for cafe and laundry.
+    // One 1,500 m request per query, plus 800 m for supermarket, and 800 m and 300 m for cafe and laundry.
     expect(client.requests).toHaveLength(QUERIES + 5);
     expect(client.requests.find((request) => request.includedTypes[0] === 'restaurant')?.excludedTypes).toContain('cafe');
   });

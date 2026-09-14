@@ -16,7 +16,7 @@ export function segmentScores(evaluated: readonly EvaluatedFacility[], zoneCWeig
     const points = SEGMENT_POINTS[entry.facility.kind];
     if (points === undefined) continue;
     const factor =
-      zoneWeight(entry.zone, zoneCWeight) * entry.accessFactor * entry.dataQuality * entry.scaleFactor * entry.count;
+      zoneWeight(entry.zone, zoneCWeight) * entry.accessFactor * entry.dataQuality * entry.scaleFactor * entry.weight;
     for (const segment of SEGMENTS) {
       const awarded = points[segment];
       if (awarded !== undefined) totals[segment] += awarded * factor;

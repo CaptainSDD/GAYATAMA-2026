@@ -116,6 +116,12 @@ export interface FacilityCount {
   source: string;
 }
 
+/**
+ * Neighbours that keep customers away, mapped close to the candidate site.
+ * PROPOSED in model 0.1.0.
+ */
+export type DiscouragingSurrounding = 'cemetery' | 'waste' | 'quarry' | 'military' | 'prison';
+
 /** Conditions at the candidate site itself, derived by the API. */
 export interface SiteConditions {
   /** Class of the nearest road; `undefined` when unknown. */
@@ -126,6 +132,8 @@ export interface SiteConditions {
   nearestWaterwayMeters?: number;
   /** Industrial land use mapped within 100 m. */
   industrialLanduseNearby?: boolean;
+  /** Cemeteries, waste sites and the like mapped close by; empty or absent when there are none. */
+  discouragingSurroundings?: readonly DiscouragingSurrounding[];
 }
 
 export interface LocationInput {
@@ -156,6 +164,11 @@ export interface EvaluatedFacility {
   scaleFactor: number;
   /** How many facilities the entry stands for: 1 for a mapped facility, the count for a counted one. */
   count: number;
+  /**
+   * What the entry counts for in the formulas: `count`, reduced where many
+   * facilities of its kind share its zone. Reporting uses `count`, scoring uses this.
+   */
+  weight: number;
   /** The source of a counted entry; `undefined` for a mapped facility. */
   countedFrom?: string;
 }
@@ -183,7 +196,7 @@ export type ConfidenceReading = 'high' | 'good' | 'moderate' | 'low' | 'very_low
 
 export type RecommendationStatus = 'primary' | 'alternative' | 'needs_validation' | 'not_recommended';
 
-export type WarningCode = 'flood_risk_proxy' | 'stale_data';
+export type WarningCode = 'flood_risk_proxy' | 'unsuitable_surroundings' | 'stale_data';
 
 export interface ScoreSummary {
   value: number;
@@ -243,6 +256,8 @@ export interface ComponentFactor {
 
 export interface HardWarning {
   code: WarningCode;
+  /** What was found, for `unsuitable_surroundings`. */
+  surroundings?: readonly DiscouragingSurrounding[];
 }
 
 export interface DeliveryEffect {

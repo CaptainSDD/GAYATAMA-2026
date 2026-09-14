@@ -58,7 +58,7 @@ export function competitorContributions(
       similarity: level,
       operatingHoursFactor: hours,
       count: entry.count,
-      contribution: weight * entry.accessFactor * entry.dataQuality * hours * level * entry.scaleFactor * entry.count,
+      contribution: weight * entry.accessFactor * entry.dataQuality * hours * level * entry.scaleFactor * entry.weight,
     };
     if (entry.countedFrom !== undefined) contribution.countedFrom = entry.countedFrom;
     contributions.push(contribution);
@@ -97,13 +97,17 @@ export function validationBonus(equivalentCount: number): number {
   return VALIDATION_BONUS.moreThanFive;
 }
 
-/** Competition Score = clamp(95 − 35 × Saturation Ratio + Validation Bonus, 0, 100) */
+/**
+ * Competition Score = clamp((95 + Validation Bonus) × exp(−(35/95) × Saturation Ratio), 0, 100)
+ *
+ * A straight line reached 0 at a saturation ratio of 2.7, which made every
+ * point in a busy city centre score the same nothing. The decay keeps the
+ * opening slope of that line, so an uncontested or lightly contested place is
+ * scored as before, but it separates a crowded market from a hopeless one.
+ */
 export function competitionScore(equivalentCount: number, ratio: number): number {
-  return clamp(
-    COMPETITION_SCORE.base - COMPETITION_SCORE.perSaturation * ratio + validationBonus(equivalentCount),
-    0,
-    100,
-  );
+  const opportunity = COMPETITION_SCORE.base + validationBonus(equivalentCount);
+  return clamp(opportunity * Math.exp(-COMPETITION_SCORE.decayPerSaturation * Math.max(0, ratio)), 0, 100);
 }
 
 export function analyzeCompetition(
