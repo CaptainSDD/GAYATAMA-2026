@@ -84,12 +84,22 @@ export interface Competitor {
   contribution: number;
 }
 
+/** A named mapped place shown as an example; Google aggregate counts remain the source used for scoring. */
+export interface NamedCompetitor {
+  id: string;
+  name: string;
+  kind: FacilityKind;
+  zone: Zone;
+  distanceMeters: number;
+  source: string;
+}
+
 export interface AnalysisResponse {
   modelVersion: string;
   location: LatLng;
   businessType: BusinessType;
   score: ScoreSummary;
-  components: Record<ComponentKey, { value: number; weight: number }>;
+  components: Record<ComponentKey, { value: number; weight: number; availability: 'available' | 'partial' | 'unavailable' }>;
   segments: Record<Segment, { score: number; role: SegmentRole }>;
   competition: {
     rawCount: number;
@@ -99,12 +109,23 @@ export interface AnalysisResponse {
     reading: SaturationReading;
     radiusMeters: number;
     strongest: Competitor[];
+    namedCompetitors: NamedCompetitor[];
   };
   strengths: Factor[];
   risks: Factor[];
   warnings: Warning[];
   evidence: { facilityCount: number; zones: Record<Zone, number> };
   dataSource: DataSource;
+  /** Plain-language explanation generated separately from deterministic scoring. */
+  narrative: {
+    headline: string;
+    summary: string;
+    positives: string[];
+    cautions: string[];
+    nextSteps: string[];
+    provisional: boolean;
+    generatedBy: 'ai' | 'template';
+  };
 }
 
 export interface Recommendation {
@@ -158,6 +179,27 @@ export interface PoisResponse {
   facilities: PoiFacility[];
   facilityCounts: PoiFacilityCount[];
   dataSource: DataSource;
+}
+
+export interface LocationDetailsResponse {
+  location: LatLng;
+  address: {
+    name: string | null;
+    street: string | null;
+    /** Kelurahan or the closest neighbourhood-level name available. */
+    village: string | null;
+    /** Kecamatan or the closest district-level name available. */
+    district: string | null;
+    city: string | null;
+    postcode: string | null;
+    state: string | null;
+    formatted: string | null;
+  } | null;
+  source: {
+    provider: string;
+    attribution: string;
+    licence: string;
+  } | null;
 }
 
 export interface ApiErrorBody {

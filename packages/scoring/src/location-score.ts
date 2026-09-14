@@ -81,7 +81,7 @@ function computeComponents(
     accessibility: access.value,
     competition: competition.score,
     supportingFacility: supportingFacilityFit(evaluated, businessType),
-    risk: riskAndOperability(input.site),
+    risk: riskAndOperability(input.site, input.siteAvailable !== false),
   };
   return { segments, competition, access, components };
 }

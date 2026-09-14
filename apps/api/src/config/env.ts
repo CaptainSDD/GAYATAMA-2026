@@ -57,9 +57,14 @@ export const envSchema = z.object({
   /** POI source. With a key set, Geoapify replaces Overpass for facility lookups. */
   GEOAPIFY_API_KEY: optionalString,
   GEOAPIFY_BASE_URL: z.string().url().default('https://api.geoapify.com/v2'),
+  GEOAPIFY_GEOCODING_BASE_URL: z.string().url().default('https://api.geoapify.com/v1'),
   GEOAPIFY_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
   /** Cap on places fetched per cell. Geoapify bills 1 credit per 20 results. */
   GEOAPIFY_MAX_PLACES: z.coerce.number().int().positive().default(1000),
+  /** Optional LLM provider for turning deterministic scores into plain-language explanations. */
+  GROQ_API_KEY: optionalString,
+  GROQ_MODEL: z.string().default('llama-3.1-8b-instant'),
+  GROQ_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

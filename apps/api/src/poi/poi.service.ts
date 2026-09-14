@@ -11,15 +11,26 @@ import { withoutOpenStreetMapDuplicates } from '../overture/overture-place';
 import { OVERTURE_PLACES, type OverturePlaces } from '../overture/overture-places';
 import { toFacilities } from '../overpass/normalize';
 import { OverpassClient } from '../overpass/overpass.client';
-import { buildPoiQuery, buildSiteQuery } from '../overpass/queries';
+import type { OverpassElement } from '../overpass/overpass-element';
+import { buildPoiQuery, buildSiteQuery, matchesSiteQuery } from '../overpass/queries';
 import { siteConditions } from '../overpass/site';
 import { POI_CACHE, type PoiCache } from './poi-cache';
 
 /** Geohash-7 cells are roughly 150 × 150 m. */
 export const POI_CELL_PRECISION = 7;
-/** Geohash-8 cells are roughly 38 × 19 m — fine enough for road and waterway distances. */
-export const SITE_CELL_PRECISION = 8;
+/** Site source data is shared per geohash-7 cell, then measured again from the exact selected point. */
+export const SITE_CELL_PRECISION = 7;
 const MAX_SITE_ENTRIES = 2000;
+/** Site conditions are supplementary, so they must not hold an analysis open for the full POI timeout. */
+const SITE_QUERY_TIMEOUT_MS = 8_000;
+/** Remember a failed lookup briefly so tabs and nearby clicks do not repeat the same timeout. */
+const SITE_FAILURE_CACHE_MS = 2 * 60_000;
+
+interface SiteCacheEntry {
+  elements: OverpassElement[];
+  fetchedAt: number;
+  available: boolean;
+}
 
 export interface PoiSnapshot {
   facilities: Facility[];
@@ -45,11 +56,11 @@ export interface SiteLookup {
 @Injectable()
 export class PoiService {
   private readonly logger = new Logger(PoiService.name);
-  private readonly siteCache = new Map<string, { site: SiteConditions; fetchedAt: number }>();
+  private readonly siteCache = new Map<string, SiteCacheEntry>();
   // Requests that arrive while the same cell is loading share its Overpass
   // query instead of each sending their own.
   private readonly pendingFacilities = new Map<string, Promise<PoiSnapshot>>();
-  private readonly pendingSites = new Map<string, Promise<SiteLookup>>();
+  private readonly pendingSites = new Map<string, Promise<{ elements: OverpassElement[]; available: boolean }>>();
 
   constructor(
     private readonly overpass: OverpassClient,
@@ -74,9 +85,15 @@ export class PoiService {
   }
 
   /** Conditions at the site itself. A failure here is not fatal: unknown inputs are scored as unknown. */
-  siteConditions(point: LatLng): Promise<SiteLookup> {
+  async siteConditions(point: LatLng): Promise<SiteLookup> {
+    const snapshot = this.snapshots.site(point);
+    if (snapshot !== null) return { site: siteConditions(snapshot.elements, point), available: true };
+
     const key = encodeGeohash(point, SITE_CELL_PRECISION);
-    return this.shared(this.pendingSites, key, () => this.loadSite(key, point));
+    const lookup = await this.shared(this.pendingSites, key, () => this.loadSiteElements(key));
+    if (!lookup.available) return { site: {}, available: false };
+    const exact = lookup.elements.filter((element) => matchesSiteQuery(element, point));
+    return { site: siteConditions(exact, point), available: true };
   }
 
   private shared<T>(pending: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
@@ -153,26 +170,43 @@ export class PoiService {
     return toFacilities(await this.overpass.query(buildPoiQuery(center, radiusMeters, this.overpass.queryTimeoutSeconds)));
   }
 
-  private async loadSite(key: string, point: LatLng): Promise<SiteLookup> {
-    const snapshot = this.snapshots.site(point);
-    if (snapshot !== null) return { site: siteConditions(snapshot.elements, point), available: true };
-
+  private async loadSiteElements(key: string): Promise<{ elements: OverpassElement[]; available: boolean }> {
     const cached = this.siteCache.get(key);
-    if (cached !== undefined && this.isFresh(cached.fetchedAt)) return { site: cached.site, available: true };
+    if (
+      cached !== undefined &&
+      (cached.available ? this.isFresh(cached.fetchedAt) : Date.now() - cached.fetchedAt < SITE_FAILURE_CACHE_MS)
+    ) {
+      return { elements: cached.elements, available: cached.available };
+    }
 
     try {
-      const elements = await this.overpass.query(buildSiteQuery(point, this.overpass.queryTimeoutSeconds));
-      const site = siteConditions(elements, point);
-      this.siteCache.delete(key);
-      this.siteCache.set(key, { site, fetchedAt: Date.now() });
-      if (this.siteCache.size > MAX_SITE_ENTRIES) {
-        const oldest = this.siteCache.keys().next().value;
-        if (oldest !== undefined) this.siteCache.delete(oldest);
-      }
-      return { site, available: true };
+      const center = geohashCenter(key);
+      const padding = geohashHalfDiagonalMeters(key);
+      const timeoutMs = Math.min(
+        SITE_QUERY_TIMEOUT_MS,
+        this.config.get('OVERPASS_TIMEOUT_MS', { infer: true }),
+      );
+      const elements = await this.overpass.query(
+        buildSiteQuery(center, Math.max(1, Math.floor(timeoutMs / 1000) - 1), padding),
+        timeoutMs,
+      );
+      this.rememberSite(key, { elements, fetchedAt: Date.now(), available: true });
+      return { elements, available: true };
     } catch (error) {
       this.logger.warn(`Site query failed for ${key}, scoring site inputs as unknown: ${String(error)}`);
-      return cached !== undefined ? { site: cached.site, available: true } : { site: {}, available: false };
+      if (cached?.available === true) return { elements: cached.elements, available: true };
+      const unavailable = { elements: [], fetchedAt: Date.now(), available: false };
+      this.rememberSite(key, unavailable);
+      return unavailable;
+    }
+  }
+
+  private rememberSite(key: string, entry: SiteCacheEntry): void {
+    this.siteCache.delete(key);
+    this.siteCache.set(key, entry);
+    if (this.siteCache.size > MAX_SITE_ENTRIES) {
+      const oldest = this.siteCache.keys().next().value;
+      if (oldest !== undefined) this.siteCache.delete(oldest);
     }
   }
 

@@ -125,6 +125,43 @@ confidence of 40 the system refuses to answer rather than guessing. See
 
 ---
 
+## `GET /api/v1/location`
+
+Performs a lightweight reverse-geocoding lookup for a point selected on the
+map. It does **not** load nearby POIs, request Google place counts, or run the
+scoring engine. The web client uses this response to let the user verify the
+location before explicitly starting an analysis.
+
+```http
+GET /api/v1/location?lat=-7.005&lng=110.435
+```
+
+```json
+{
+  "location": { "lat": -7.005, "lng": 110.435 },
+  "address": {
+    "name": "Masjid Al-Mukhlisin",
+    "street": "Jalan Belimbing I",
+    "village": "Peterongan",
+    "district": "Semarang Selatan",
+    "city": "Kota Semarang",
+    "postcode": "50242",
+    "state": "Jawa Tengah",
+    "formatted": "Jalan Belimbing I, Peterongan, Kota Semarang 50242"
+  },
+  "source": {
+    "provider": "Geoapify",
+    "attribution": "© OpenStreetMap contributors",
+    "licence": "Open Database License"
+  }
+}
+```
+
+`address` and `source` are `null` when reverse geocoding is unavailable. The
+point can still be confirmed and analysed from its coordinates.
+
+---
+
 ## `POST /api/v1/analysis`
 
 Full analysis of one location for one business category. This is the primary
@@ -164,11 +201,11 @@ endpoint.
   },
 
   "components": {
-    "demandFit":         { "value": 74.75, "weight": 0.35 },
-    "accessibility":     { "value": 67.0,  "weight": 0.20 },
-    "competition":       { "value": 75.71, "weight": 0.20 },
-    "supportingFacility":{ "value": 73.0,  "weight": 0.15 },
-    "risk":              { "value": 95.0,  "weight": 0.10 }
+    "demandFit":         { "value": 74.75, "weight": 0.35, "availability": "available" },
+    "accessibility":     { "value": 67.0,  "weight": 0.20, "availability": "available" },
+    "competition":       { "value": 75.71, "weight": 0.20, "availability": "available" },
+    "supportingFacility":{ "value": 73.0,  "weight": 0.15, "availability": "available" },
+    "risk":              { "value": 95.0,  "weight": 0.10, "availability": "available" }
   },
 
   "segments": {
@@ -189,16 +226,28 @@ endpoint.
     "radiusMeters": 1500,
     "strongest": [
       { "id": "node/4012345678", "name": "Laundry Kilat", "kind": "laundry", "zone": "b", "distanceMeters": 420, "count": 1, "source": "openstreetmap", "contribution": 0.6 }
+    ],
+    "namedCompetitors": [
+      { "id": "node/4012345678", "name": "Laundry Kilat", "kind": "laundry", "zone": "b", "distanceMeters": 420, "source": "openstreetmap" }
     ]
   },
 
   "strengths": [
-    { "factor": "risk", "detail": "Risk and Operability scores 95/100" },
-    { "factor": "competition", "detail": "Competition Opportunity scores 76/100" },
-    { "factor": "demandFit", "detail": "Demand Fit scores 75/100" }
+    { "factor": "risk", "detail": "Keamanan Operasional bernilai 95/100" },
+    { "factor": "competition", "detail": "Kondisi Persaingan bernilai 76/100" },
+    { "factor": "demandFit", "detail": "Potensi Pelanggan bernilai 75/100" }
   ],
   "risks": [],
   "warnings": [],
+
+  "narrative": {
+    "headline": "Lokasi ini cocok untuk usaha laundry",
+    "summary": "Kelompok pelanggan yang relevan untuk laundry terlihat kuat di sekitar lokasi.",
+    "positives": ["Kelompok pelanggan yang relevan untuk laundry terlihat kuat di sekitar lokasi."],
+    "cautions": [],
+    "nextSteps": ["Lakukan survei lokasi pada hari kerja dan akhir pekan sebelum menyewa tempat."],
+    "provisional": false
+  },
 
   "evidence": {
     "facilityCount": 47,
@@ -222,6 +271,11 @@ endpoint.
 
 - `score.value` is unrounded; `score.range` is already rounded because it is a
   display artefact.
+- `components.*.availability` is `available`, `partial`, or `unavailable`.
+  When site conditions fail, risk uses a neutral value of 50 and is marked
+  `unavailable`; accessibility is marked `partial` because its mapped-facility
+  inputs remain usable. The interface must not present an unavailable component
+  as a measured result.
 - `competition.strongest` lists up to five competitors by contribution to the
   Competitor Equivalent Count. A listed competitor's `source` is
   `"openstreetmap"`, or `"overture"` for a shop added from Overture Maps, whose
@@ -229,10 +283,18 @@ endpoint.
   competitors in one zone: its `source` is `"google"`, its `id` is
   `google:<kind>:<zone>` (with `:<scale>` when not medium), and its `name` and
   `distanceMeters` are `null`, because a count has no single place or position.
+- `competition.namedCompetitors` lists up to five named mapped competitors,
+  nearest first. When Google counts are active, this list answers who is nearby
+  without adding those mapped records to the score a second time.
 - `evidence.facilityCount` and `evidence.zones` include every facility Google
   counted.
 - `strengths` are up to three components scoring 60 or more; `risks` are up to
   three scoring below 60.
+- `narrative` is the plain-language explanation layer. When `GROQ_API_KEY` is
+  configured, the API asks Groq to produce this object from the already computed
+  facts. Without a key, or when Groq fails, deterministic Indonesian templates
+  are used instead. In either case, this object must not change scores, bands,
+  component values, evidence, source status, or warnings.
 - `warnings` entries are `{ code, message }`. Codes: `flood_risk_proxy`,
   `stale_data` — see [hard warnings](methodology.md#hard-warnings-the-engine-raises).
 - `dataSource.fetchedAt` is required for ODbL-compliant attribution in exported

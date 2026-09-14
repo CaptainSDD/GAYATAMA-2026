@@ -542,14 +542,165 @@ select:hover {
 
 .location-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
+.location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.button-secondary.button-clear-point {
+  color: var(--error-text);
+  border-color: var(--error-border);
+}
+
+.button-secondary.button-clear-point:hover {
+  background: var(--error-bg);
+}
+
 .coordinate {
   font-variant-numeric: tabular-nums;
   color: var(--text-soft);
+}
+
+/* Selected location ------------------------------------------------------- */
+
+.location-preview {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.location-preview-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.location-preview-heading h2 {
+  margin: 0.1rem 0 0;
+  font-size: var(--text-lg);
+  line-height: 1.2;
+}
+
+.location-preview-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--sekunder-strong);
+  background: var(--sekunder-soft);
+  border-radius: var(--radius-pill);
+}
+
+.location-address,
+.location-coordinate,
+.location-source,
+.analysis-confirmation p,
+.location-lookup-status {
+  margin: 0;
+}
+
+.location-address {
+  color: var(--text-soft);
+}
+
+.location-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.location-facts > div {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.location-facts dt {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.location-facts dd {
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.location-coordinate,
+.location-source {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.location-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.location-lookup-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-soft);
+}
+
+.analysis-confirmation {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--tersier-soft) 58%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--tersier) 35%, var(--border));
+  border-radius: var(--radius);
+}
+
+.analysis-confirmation p {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-soft);
+}
+
+.button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  color: var(--tersier-contrast);
+  background: var(--tersier);
+  border: 1px solid var(--tersier);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.button-primary:hover {
+  filter: brightness(1.08);
+}
+
+.button-primary:active {
+  transform: translateY(1px);
+}
+
+.button-primary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--tersier) 35%, transparent);
+  outline-offset: 2px;
 }
 
 /* Tersier (10%): the primary action in the panel. */
@@ -658,6 +809,51 @@ select:hover {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   pointer-events: none;
+}
+
+.coverage-label {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.45rem 0.75rem;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.coverage-label span {
+  width: 0.8rem;
+  height: 0.35rem;
+  border-top: 3px solid #dc2626;
+}
+
+.coverage-warning {
+  position: absolute;
+  top: calc(var(--space-3) + 2.75rem);
+  left: 50%;
+  z-index: 1001;
+  width: min(28rem, calc(100% - 2 * var(--space-4)));
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  text-align: center;
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
 }
 
 .legend-footnote {
@@ -1035,6 +1231,135 @@ select:hover {
   gap: var(--space-4);
 }
 
+.decision-summary {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--sekunder) 8%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--sekunder) 35%, var(--border));
+  border-left: 4px solid var(--sekunder);
+  border-radius: var(--radius-lg);
+}
+
+.decision-summary-provisional {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+}
+
+.decision-summary h2 {
+  font-size: var(--text-lg);
+  line-height: 1.25;
+}
+
+.decision-summary-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.narrative-source {
+  padding: 0.25rem 0.55rem;
+  color: var(--text-soft);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.narrative-source-ai {
+  color: var(--sekunder);
+  background: color-mix(in srgb, var(--sekunder) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--sekunder) 35%, var(--border));
+}
+
+.ai-explanation-note {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--sekunder) 55%, var(--border));
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.decision-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.decision-columns > div,
+.next-steps {
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.decision-columns h3,
+.next-steps h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.decision-columns ul,
+.next-steps ol {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: var(--text-sm);
+}
+
+.calculation-details {
+  padding: var(--space-3);
+  color: var(--muted);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.calculation-details summary {
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.calculation-details[open] summary {
+  margin-bottom: var(--space-2);
+}
+
+.calculation-details p,
+.calculation-details li {
+  font-size: var(--text-sm);
+}
+
+.calculation-details ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calculation-details li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.score-meaning {
+  max-width: 28rem;
+  font-size: var(--text-sm);
+  color: var(--text-soft);
+}
+
 .section {
   display: grid;
   gap: var(--space-3);
@@ -1339,6 +1664,17 @@ select:hover {
 
 /* Competition ------------------------------------------------------------- */
 
+.competition-verdict {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
+  border-left: 4px solid var(--verdict-color, var(--sekunder));
+}
+
+.competition-verdict > p:last-child {
+  color: var(--text-soft);
+}
+
 .meter {
   display: grid;
   gap: var(--space-2);
@@ -1461,8 +1797,25 @@ select:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.competition-stats small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
 .competitor-list {
   gap: var(--space-2);
+}
+
+.competitor-explanation {
+  margin-bottom: var(--space-3);
+}
+
+.competitor-source-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
 }
 
 .competitor-list li {
@@ -1511,6 +1864,10 @@ select:hover {
 @media (max-width: 820px) {
   .app {
     height: 100dvh;
+  }
+
+  .decision-columns {
+    grid-template-columns: 1fr;
   }
 
   .layout {
@@ -1605,4 +1962,594 @@ select:hover {
   .sheet-handle {
     display: none;
   }
+}
+
+/* Panel information redesign ----------------------------------------------
+   Keep the map, page wash, and header untouched. The side panel follows a
+   quiet, content-first hierarchy: one primary action, neutral surfaces, and
+   details disclosed only when requested. */
+
+.panel .controls {
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.panel .field-label,
+.panel .eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.panel select {
+  min-height: 2.75rem;
+  padding: 0.6rem 0.75rem;
+  font-weight: 600;
+  background: var(--surface-sunken);
+  border-color: transparent;
+  border-radius: var(--radius);
+}
+
+.panel select:hover,
+.panel select:focus-visible {
+  border-color: var(--border-strong);
+}
+
+.panel .location-row {
+  align-items: center;
+}
+
+.panel .coordinate {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: var(--text-sm);
+}
+
+.panel .location-actions {
+  gap: var(--space-1);
+}
+
+.panel .button-secondary {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem;
+  color: var(--text-soft);
+  background: transparent;
+  border-color: var(--border);
+  border-radius: var(--radius);
+}
+
+.panel .button-secondary:hover {
+  color: var(--text);
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+}
+
+.panel .button-secondary.button-clear-point,
+.panel .button-secondary.button-clear-point:hover {
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.panel .button-primary {
+  min-height: 3rem;
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+.panel .button-link {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.8rem;
+  color: var(--tersier-strong);
+  text-decoration: none;
+  background: var(--tersier-soft);
+  border-radius: var(--radius);
+}
+
+.panel .button-link:hover {
+  filter: brightness(0.97);
+}
+
+.panel .card {
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  border-color: var(--border);
+  border-radius: 0.875rem;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: none;
+}
+
+.panel .card:hover,
+.panel .recommendation:hover {
+  border-color: var(--border);
+  box-shadow: none;
+  transform: none;
+}
+
+.panel .card-title {
+  font-size: var(--text-base);
+  letter-spacing: -0.01em;
+}
+
+.panel .intro {
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.panel .intro h2,
+.panel .location-preview-heading h2,
+.panel .decision-summary h2 {
+  letter-spacing: -0.025em;
+}
+
+.panel .intro h2 {
+  max-width: 20rem;
+  font-size: clamp(1.75rem, 4vw, 2.15rem);
+  line-height: 1.08;
+}
+
+.panel .intro-copy {
+  max-width: 30rem;
+  color: var(--text-soft);
+}
+
+.panel .panel-disclosure,
+.panel .calculation-details {
+  overflow: hidden;
+  padding: 0;
+  color: var(--text-soft);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.panel .panel-disclosure > summary,
+.panel .calculation-details > summary {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.8rem;
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.panel .panel-disclosure[open] > summary,
+.panel .calculation-details[open] > summary {
+  margin: 0;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.panel .disclosure-content {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.panel .intro-disclosure {
+  margin-top: var(--space-2);
+  background: transparent;
+}
+
+.panel .location-preview {
+  gap: var(--space-4);
+}
+
+.panel .location-preview-heading {
+  align-items: center;
+}
+
+.panel .location-preview-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  color: var(--tersier-strong);
+  background: var(--tersier-soft);
+}
+
+.panel .location-preview-heading h2 {
+  margin-top: 0.2rem;
+}
+
+.panel .location-address {
+  margin-top: calc(-1 * var(--space-2));
+  font-size: var(--text-sm);
+}
+
+.panel .location-facts {
+  gap: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.panel .location-facts > div {
+  padding: var(--space-3);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.panel .location-facts > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.panel .analysis-confirmation {
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border-color: var(--border);
+  border-radius: 0.875rem;
+}
+
+.panel .analysis-target {
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+}
+
+.panel .notice-neutral {
+  color: var(--text-soft);
+  background: var(--surface-sunken);
+  border-left-color: var(--border-strong);
+}
+
+.panel .tabs {
+  min-width: 0;
+}
+
+.panel .tab-list {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  gap: 0.2rem;
+  margin: 0 0 var(--space-5);
+  padding: 0.2rem;
+  background: color-mix(in srgb, var(--surface-sunken) 94%, transparent);
+  border-color: transparent;
+  border-radius: 0.75rem;
+}
+
+.panel .tab {
+  display: grid;
+  place-items: center;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.35rem;
+  color: var(--muted);
+  border: 0;
+  border-radius: 0.6rem;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.panel .tab[aria-selected='true'] {
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel .score-card,
+.panel .recommend,
+.panel .segments,
+.panel .competition {
+  gap: var(--space-4);
+}
+
+.panel .gauge-card {
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--surface-raised) 78%, transparent);
+  border-color: transparent;
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.panel .gauge-business {
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.panel .gauge {
+  width: min(12.5rem, 70%);
+}
+
+.panel .gauge-value {
+  font-size: 2.85rem;
+  letter-spacing: -0.05em;
+}
+
+.panel .gauge-meta {
+  gap: var(--space-1);
+}
+
+.panel .gauge-range,
+.panel .gauge-confidence {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.panel .chip,
+.panel .chip-lg {
+  padding: 0.18rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.panel .decision-summary {
+  gap: var(--space-3);
+  padding: 0 var(--space-1) var(--space-1);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.panel .decision-summary-provisional {
+  padding: var(--space-4);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius);
+}
+
+.panel .decision-summary h2 {
+  font-size: var(--text-md);
+}
+
+.panel .narrative-source {
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  font-weight: 600;
+}
+
+.panel .decision-details {
+  margin-top: var(--space-1);
+}
+
+.panel .ai-explanation-note,
+.panel .decision-columns > div,
+.panel .next-steps {
+  background: var(--surface-raised);
+  border-color: var(--border);
+}
+
+.panel .components {
+  gap: var(--space-3);
+}
+
+.panel .component {
+  gap: var(--space-2);
+}
+
+.panel .component-head {
+  align-items: center;
+}
+
+.panel .bar {
+  height: 0.4rem;
+  border: 0;
+}
+
+.panel .data-disclosure {
+  background: transparent;
+}
+
+.panel .data-disclosure .disclaimer {
+  padding: var(--space-3) 0 0;
+  background: transparent;
+  border-top: 1px solid var(--border);
+}
+
+.panel .lead {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.panel .recommendation-list {
+  gap: var(--space-3);
+}
+
+.panel .recommendation {
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: none;
+}
+
+.panel .recommendation-head h3 {
+  font-size: var(--text-base);
+  letter-spacing: -0.01em;
+}
+
+.panel .recommendation-status {
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.panel .recommendation-rationale {
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+}
+
+.panel .recommendation-details {
+  background: transparent;
+}
+
+.panel .equivalence {
+  background: var(--surface-sunken);
+  border: 0;
+}
+
+.panel .not-recommended-disclosure > summary,
+.panel .competitor-disclosure > summary {
+  color: var(--text);
+  font-size: var(--text-base);
+}
+
+.panel .segment-list {
+  gap: var(--space-3);
+}
+
+.panel .segment {
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+}
+
+.panel .segment-position {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.panel .segment-head h3 {
+  font-size: var(--text-base);
+}
+
+.panel .segment-details {
+  background: transparent;
+}
+
+.panel .evidence-chip {
+  background: var(--surface-raised);
+}
+
+.panel .competition > .card:first-of-type {
+  background: transparent;
+  border: 0;
+  padding: var(--space-2) 0;
+}
+
+.panel .competition-verdict {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.panel .stats > div {
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  border: 0;
+  border-radius: 0.875rem;
+}
+
+.panel .competitor-list li {
+  background: var(--surface-raised);
+}
+
+.panel .disclaimer {
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.panel .attribution {
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 820px) {
+  .panel .tab-list {
+    top: 2.75rem;
+  }
+
+  .panel .location-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .panel .location-actions .button-secondary {
+    flex: 1 1 auto;
+  }
+
+  .panel .decision-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .panel .location-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .panel .location-facts > div:nth-last-child(-n + 2) {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel .location-facts > div:last-child {
+    border-bottom: 0;
+  }
+
+  .panel .tab {
+    font-size: 0.72rem;
+  }
+
+  .panel .stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.panel .score-inline {
+  display: grid;
+  justify-items: end;
+  line-height: 1.15;
+}
+
+.panel .score-inline small {
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.panel .location-details + .location-source {
+  display: block;
+  margin-top: calc(-1 * var(--space-2));
+}
+
+/* Quieter status language: the chart carries data colour; supporting labels
+   stay typographic and neutral instead of repeating it as pills. */
+.panel .factor-reading,
+.panel .recommendation-status,
+.panel .segment-signal {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.panel .recommendation-rank {
+  display: inline;
+  width: auto;
+  height: auto;
+  margin-right: var(--space-2);
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel .competition-state {
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }

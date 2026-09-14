@@ -72,7 +72,7 @@ narrow and honest:
 - Query Overpass (slow, rate-limited, and something we would rather not expose
   a user's browser to directly)
 - Ask Google for business counts when the client draws a Google map
-- Cache results in Firestore, and Google counts in memory
+- Cache POIs and Google counts in memory and Firestore
 - Hold the Firebase service account credential and the Google Places server key,
   which cannot live in a browser
 - Rate-limit and validate
@@ -128,22 +128,34 @@ A location analysis, end to end:
               └─ write to memory and Firestore ──────┤
                                                      ▼
 6. api, alongside step 5 when googleMap is true: Google counts for the
-   geohash-8 cell — from memory if fresh, otherwise 25–75 Places Aggregate
-   requests. Counts replace OpenStreetMap facilities of the kinds Google
+   geohash-8 cell — from memory or Firestore if fresh, otherwise 25–75 Places
+   Aggregate requests. Counts replace OpenStreetMap facilities of the kinds Google
    covers; if any request fails, none is used
        │
 7. api: @gayatama/scoring — compute against the EXACT user coordinate
        │
-8. api → web: scores, component breakdown, facility evidence, confidence
+8. api: build a plain-language narrative from the fixed scoring result
        │
-9. web: render breakdown; retain the facility set in memory
+9. api → web: scores, narrative, component breakdown, evidence, confidence
        │
-10. User moves a what-if slider
+10. web: render the narrative first; retain the facility set in memory
        │
-11. web: @gayatama/scoring recomputes locally — no network call
+11. User moves a what-if slider
+       │
+12. web: @gayatama/scoring recomputes locally — no network call
 ```
 
-Step 11 is the payoff from decision 1.
+Step 12 is the payoff from decision 1.
+
+The explanation and the calculation deliberately stay separate.
+`apps/api/src/analysis/narrative.service.ts` first builds the response from the
+fixed scoring result, then optionally asks Groq for a clearer Indonesian
+narrative when `GROQ_API_KEY` is configured. If Groq is unavailable, too slow,
+or returns invalid JSON, the API falls back to the deterministic templates in
+`apps/api/src/analysis/narratives.ts`. The LLM may explain and prioritise the
+supplied facts, but the scoring package remains the source of truth and the LLM
+must never invent or alter numeric results, evidence, warnings, or source
+availability.
 
 Within the areas prepared with Overture data, step 5 also adds the photocopy,
 printing and stationery shops OpenStreetMap lacks. They are added after the
@@ -198,7 +210,7 @@ src/
 ├── overpass/             Query builder, HTTP client with fallback instances, tag normaliser
 ├── places/               Google Places Aggregate client, type mapping, zone counts and their cache
 ├── poi/                  Snapshot, cache and Overpass lookup; geohash key derivation
-├── analysis/             Orchestration — calls the engine, assembles responses
+├── analysis/             Orchestration, response assembly, plain-language narratives
 └── common/               Filters, interceptors, Zod validation pipe
 data/osm-snapshots/       Snapshot files, published under ODbL 1.0
 data/overture-places/     Overture shop files, published under CDLA Permissive 2.0
@@ -228,8 +240,9 @@ src/
 
 ## Data model (Firestore)
 
-Firestore holds two collections. There are no user accounts, so no document
-refers to a user — see [roadmap](roadmap.md#user-accounts-saved-projects-team-sharing).
+Firestore holds two cache collections, plus the planned reports collection.
+There are no user accounts, so no document refers to a user — see
+[roadmap](roadmap.md#user-accounts-saved-projects-team-sharing).
 
 ### `poiCache/{cell}`
 
@@ -240,7 +253,7 @@ fetched for.
 |-------|------|----------|
 | `facilities` | string | JSON array of normalised facilities — the engine's `Facility` type. Stored as one string so Firestore does not index every nested field |
 | `fetchedAt` | string | ISO 8601 time of the Overpass query |
-| `source` | string | Always `"overpass"` |
+| `source` | string | `"geoapify"` or `"overpass"` |
 
 - An entry is fresh for `POI_CACHE_TTL_SECONDS` (default 7 days). After that it
   is refetched, and served stale only if Overpass is unavailable — see
@@ -249,14 +262,25 @@ fetched for.
   clicks handled by the same API instance never reach the database.
 - A cell whose facilities exceed 900 KB is not written, keeping each document
   under Firestore's 1 MiB limit; it stays in the memory cache only.
-- Site conditions (road class, pedestrian features, waterway, industrial land
-  use) are not stored in Firestore. They are cached in memory per geohash-8
-  cell for the same period.
+- Site source elements (roads, pedestrian features, waterways and industrial
+  land use) are not stored in Firestore. They are cached in memory per
+  geohash-7 cell, then filtered and measured again from the exact selected
+  point.
 - Overture shops are never stored in the POI cache; they are added to each
   answer from the files in `data/overture-places`.
-- Google business counts are never stored in Firestore. They are cached in
-  memory per geohash-8 cell for `PLACE_COUNT_CACHE_TTL_SECONDS`, which Google's
-  terms limit to 30 days.
+- Google business counts are cached in memory and in
+  `placeCountCache/{geohash-8 cell}` for `PLACE_COUNT_CACHE_TTL_SECONDS`, which
+  Google's terms limit to 30 days.
+
+### `placeCountCache/{cell}`
+
+Google Places Aggregate counts for one geohash-8 cell. The API is the only
+reader and writer; entries expire according to `PLACE_COUNT_CACHE_TTL_SECONDS`.
+
+| Field | Type | Contents |
+|-------|------|----------|
+| `counts` | array | Normalised facility counts split into zones A, B and C |
+| `fetchedAt` | string | ISO 8601 time of the Google Places Aggregate lookup |
 
 ### `reports/{reportId}` _(planned)_
 
@@ -315,7 +339,7 @@ worse than one that fails clearly.
 | An Overpass instance is unreachable, rate-limits (429) or is overloaded (5xx) | Try the next instance in `OVERPASS_FALLBACK_URLS`; with no fallbacks configured, retry once after 1.5 seconds. Logs name the instance and the low-level cause, such as `UND_ERR_CONNECT_TIMEOUT`. To avoid causing 429s, the API runs at most two Overpass queries at a time — the number of slots Overpass gives one IP address — and requests for a cell that is already loading share its query |
 | Overpass times out, or every instance fails | Serve the expired cache entry if one exists, flagged `stale: true` with its original `fetchedAt`; otherwise return `504 UPSTREAM_TIMEOUT`, which the UI explains. A timeout is not retried elsewhere: the request has already waited `OVERPASS_TIMEOUT_MS` |
 | Every public Overpass instance is down | Demo areas keep working: they are answered from OSM snapshots, which need no network |
-| Site-conditions query fails | Score road, walkability and risk inputs as unknown rather than failing the request, and flag `siteConditions: "unavailable"` so the interface can say the result is incomplete |
+| Site-conditions query fails | Stop waiting after 8 seconds, keep mapped accessibility evidence, use a neutral 50 for risk rather than rewarding missing data, and flag `siteConditions: "unavailable"` so the interface labels the result provisional and the component "not assessed". The unavailable result is cached for 2 minutes so another tab or nearby click does not repeat the timeout |
 | The client draws a Google map, but the API has no Google server key | Use OpenStreetMap for every kind and flag `places.status: "not_configured"` |
 | A Google count request fails, times out or hits the quota | A rate limit, server error or network failure is retried once. If it still fails, cancel the location's remaining count requests, use OpenStreetMap for every kind, and flag `places.status: "unavailable"` so the interface says so. Failures are not cached, so the next request tries Google again |
 | Firestore unavailable | Degrade to the in-memory cache — slower after a restart, still correct. Caching is an optimisation, not a dependency |

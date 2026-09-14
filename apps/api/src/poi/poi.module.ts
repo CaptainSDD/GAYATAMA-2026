@@ -44,6 +44,6 @@ import { PoiService } from './poi.service';
         ),
     },
   ],
-  exports: [PoiService],
+  exports: [PoiService, GeoapifyClient],
 })
 export class PoiModule {}

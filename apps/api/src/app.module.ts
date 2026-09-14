@@ -7,6 +7,7 @@ import { ApiExceptionFilter } from './common/api-exception.filter';
 import { validateEnv } from './config/env';
 import { FirebaseModule } from './firebase/firebase.module';
 import { HealthController } from './health.controller';
+import { LocationModule } from './location/location.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthController } from './health.controller';
     }),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
     FirebaseModule,
+    LocationModule,
     AnalysisModule,
   ],
   controllers: [HealthController],

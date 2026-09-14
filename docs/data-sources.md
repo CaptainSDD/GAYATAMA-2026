@@ -150,10 +150,10 @@ Some kinds always come from OpenStreetMap:
 
 A new location takes 25 to 75 requests. Google's free usage covers 5,000
 requests a month — at least 66 new locations — and each further 1,000 costs
-USD 10 (pricing checked in September 2026). Counts are cached in memory per
-geohash-8 cell for `PLACE_COUNT_CACHE_TTL_SECONDS` (7 days by default, 30 at
-most), so repeated clicks cost nothing. They are never written to Firestore. To
-cap spending, set a daily quota — see
+USD 10 (pricing checked in September 2026). Counts are cached in memory and
+Firestore per geohash-8 cell for `PLACE_COUNT_CACHE_TTL_SECONDS` (7 days by
+default, 30 at most), so repeated clicks and API restarts can reuse them. To cap
+spending, set a daily quota — see
 [installation.md](installation.md#google-maps-platform-optional).
 
 ### Terms that shape the design
@@ -162,12 +162,12 @@ cap spending, set a daily quota — see
 |------|--------|--------------------|
 | Google Maps Core Services may not be used with or near a non-Google map | [Google Maps Platform Terms of Service](https://cloud.google.com/maps-platform/terms), 3.2.3(e) | The API uses Google counts only for requests with `googleMap: true`. The web app sets it only when it draws a Google map; without a browser key it draws an OpenStreetMap map and never asks for them |
 | Place counts may be used to create derived metrics that cannot substitute for the counts or be reverse-engineered into them | [Service Specific Terms](https://cloud.google.com/maps-platform/terms/maps-service-terms), 13.1 | Counts feed the segment, competition, supporting-facility and confidence scores |
-| Place counts may be cached for at most 30 days, solely to calculate those metrics | Service Specific Terms, 13.2 | The cache lifetime cannot be set above 30 days, and counts are kept in memory only |
+| Place counts may be cached for at most 30 days, solely to calculate those metrics | Service Specific Terms, 13.2 | The cache lifetime cannot be set above 30 days; memory and Firestore entries use that same lifetime |
 | Counts may not be used to make decisions about individuals' housing, employment, credit or insurance | Service Specific Terms, 13.3 | GAYATAMA scores locations for businesses, not people |
 | "Google Maps" attribution wherever counts are shown or feed a result | [Places Aggregate API policies](https://developers.google.com/maps/documentation/places-aggregate/policies) | Every result that uses counts says "Business counts: Google Maps"; the map shows Google's own logo |
 
 > **To confirm before production.** The interface also shows some counts
-> directly — "3 × Café" among the strongest competitors, and per-kind evidence
+> directly in its Google Maps count summary, and per-kind evidence
 > for each customer group. The attribution policy anticipates counts shown as a
 > standalone metric, but whether showing a count *from the cache* fits 13.2's
 > "solely to calculate" is our reading, not settled. Check it with Google before

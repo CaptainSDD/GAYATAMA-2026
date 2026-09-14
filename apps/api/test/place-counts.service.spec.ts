@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../src/config/env';
+import { InMemoryPlaceCountsCache } from '../src/places/place-counts-cache';
 import { PlaceCountsService } from '../src/places/place-counts.service';
 import { PLACE_COUNT_QUERIES } from '../src/places/place-types';
 import type { PlaceCountRequest, PlacesAggregateClient } from '../src/places/places-aggregate.client';
@@ -36,6 +37,7 @@ function setup(ttlSeconds = 3600) {
   const service = new PlaceCountsService(
     client as unknown as PlacesAggregateClient,
     config as unknown as ConfigService<Env, true>,
+    new InMemoryPlaceCountsCache(),
   );
   return { service, client };
 }

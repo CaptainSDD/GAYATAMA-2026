@@ -3,7 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import type { LatLng } from '@gayatama/scoring';
 import type { Env } from '../config/env';
 import { PLACE_CATEGORIES } from './categories';
-import type { GeoapifyPlace, GeoapifyPlacesResponse } from './geoapify-place';
+import type {
+  GeoapifyPlace,
+  GeoapifyPlacesResponse,
+  GeoapifyReverseResponse,
+  GeoapifyReverseResult,
+} from './geoapify-place';
 
 const USER_AGENT = 'GAYATAMA/0.1 (+https://github.com/CaptainSDD/GAYATAMA-2026)';
 const RETRY_DELAY_MS = 1500;
@@ -53,6 +58,39 @@ export class GeoapifyClient {
       if (page.length < limit) break;
     }
     return places;
+  }
+
+  /** Human-readable address for a selected point. This never loads POIs or runs scoring. */
+  async reverseGeocode(point: LatLng): Promise<GeoapifyReverseResult | null> {
+    const apiKey = this.apiKey;
+    if (apiKey === undefined) return null;
+
+    const base = this.config.get('GEOAPIFY_GEOCODING_BASE_URL', { infer: true }).replace(/\/+$/, '');
+    const url = new URL(`${base}/geocode/reverse`);
+    url.searchParams.set('lat', point.lat.toFixed(7));
+    url.searchParams.set('lon', point.lng.toFixed(7));
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('lang', 'id');
+    url.searchParams.set('limit', '1');
+    url.searchParams.set('apiKey', apiKey);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(this.config.get('GEOAPIFY_TIMEOUT_MS', { infer: true })),
+      });
+    } catch (error) {
+      const timedOut = error instanceof Error && error.name === 'TimeoutError';
+      throw new GeoapifyRequestError(timedOut ? 'Geoapify reverse geocoding timed out' : 'Geoapify reverse geocoding failed', false);
+    }
+
+    if (!response.ok) {
+      throw new GeoapifyRequestError(`Geoapify reverse geocoding responded ${response.status}`, false);
+    }
+
+    const body = (await response.json()) as GeoapifyReverseResponse;
+    return body.results?.[0] ?? null;
   }
 
   /** One page, retried once after a pause when the failure looks transient. */

@@ -27,19 +27,19 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
 };
 
 export const COMPONENT_LABELS: Record<ComponentKey, string> = {
-  demandFit: 'Kecocokan Permintaan',
-  accessibility: 'Aksesibilitas',
-  competition: 'Peluang Persaingan',
+  demandFit: 'Potensi Pelanggan',
+  accessibility: 'Kemudahan Akses',
+  competition: 'Kondisi Persaingan',
   supportingFacility: 'Fasilitas Pendukung',
-  risk: 'Risiko & Operasional',
+  risk: 'Keamanan Operasional',
 };
 
 export const COMPONENT_DESCRIPTIONS: Record<ComponentKey, string> = {
-  demandFit: 'Kekuatan kelompok pelanggan yang dibutuhkan usaha ini',
-  accessibility: 'Jalan, transportasi umum, kemudahan jalan kaki, dan parkir',
-  competition: 'Kejenuhan kompetitor dibanding permintaan yang ada',
-  supportingFacility: 'Fasilitas di sekitar yang mendukung transaksi',
-  risk: 'Perkiraan risiko banjir dan tata guna lahan dari peta',
+  demandFit: 'Kekuatan kelompok calon pelanggan yang relevan untuk usaha ini.',
+  accessibility: 'Kemudahan mencapai lokasi melalui jalan, transportasi umum, berjalan kaki, dan parkir.',
+  competition: 'Seberapa sehat ruang untuk usaha baru setelah jumlah pesaing dibandingkan dengan permintaan.',
+  supportingFacility: 'Keberadaan fasilitas yang dapat membantu aktivitas dan transaksi usaha.',
+  risk: 'Kondisi lingkungan yang mendukung operasional; nilai tinggi berarti hambatannya lebih sedikit.',
 };
 
 export const SEGMENT_LABELS: Record<Segment, string> = {
