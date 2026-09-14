@@ -147,12 +147,12 @@
   :root:not([data-theme='light']) {
     /* 60% primer */
     --primer: #0b1120;
-    /* Dark mode keeps flat opaque surfaces — the glass treatment is light-only. */
-    --sheet-surface: #111a2e;
-    --sheet-surface: #111a2e;
-  --page-wash: none;
-    --glass-blur: none;
-    --glass-sheen: none;
+    /* The cards float over map imagery, so the glass stays on in the dark too —
+       only the tint flips. The wash below is hidden by the map either way. */
+    --sheet-surface: rgb(17 26 46 / 0.94);
+    --page-wash: none;
+    --glass-blur: blur(18px) saturate(1.4);
+    --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.08);
     --primer-raised: #16213a;
     --primer-sunken: #0e1626;
     --primer-ink: #e8eefb;
@@ -173,7 +173,8 @@
     --tersier-soft: #312e81;
     --tersier-contrast: #0b1120;
 
-    --surface: #111a2e;
+    /* Translucent so the blur has something to reveal — the map behind it. */
+    --surface: rgb(17 26 46 / 0.74);
 
     /* Lightened so they keep contrast against a dark surface. */
     --tone-excellent: #34d399;
@@ -219,10 +220,11 @@
 :root[data-theme='dark'] {
   /* 60% primer */
   --primer: #0b1120;
-  /* Dark mode keeps flat opaque surfaces — the glass treatment is light-only. */
+  /* Mirrors the media-query block above: glass stays on, tint flips. */
+  --sheet-surface: rgb(17 26 46 / 0.94);
   --page-wash: none;
-  --glass-blur: none;
-  --glass-sheen: none;
+  --glass-blur: blur(18px) saturate(1.4);
+  --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.08);
   --primer-raised: #16213a;
   --primer-sunken: #0e1626;
   --primer-ink: #e8eefb;
@@ -243,7 +245,8 @@
   --tersier-soft: #312e81;
   --tersier-contrast: #0b1120;
 
-  --surface: #111a2e;
+  /* Translucent so the blur has something to reveal — the map behind it. */
+  --surface: rgb(17 26 46 / 0.74);
 
   --tone-excellent: #34d399;
   --tone-good: #2dd4bf;
@@ -385,19 +388,17 @@ input {
   gap: var(--space-2);
 }
 
+/* The map fills everything below the header; the cards float on top of it, so
+   their blur has real imagery to work on rather than the page wash. */
 .layout {
+  position: relative;
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 32rem;
-  gap: var(--space-4);
-  padding: var(--space-4);
   min-height: 0;
 }
 
 .map-pane {
-  position: relative;
-  min-height: 0;
-  /* The gutter now comes from .layout, so both panes float on the wash. */
+  position: absolute;
+  inset: 0;
 }
 
 .map {
@@ -405,28 +406,137 @@ input {
   height: 100%;
   overflow: hidden;
   background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
 }
 
-/* Only the tiles are filtered; vector overlays keep their true colours. */
-.map .leaflet-tile-pane {
-  filter: var(--map-filter);
-}
+/* Overlay columns ---------------------------------------------------------
+   Transparent to the pointer, so the gaps between cards still pan the map;
+   each card switches interaction back on for itself. */
 
-.panel {
+.overlay {
+  position: absolute;
+  top: var(--space-4);
+  /* Stops short of the foot of the map so the scale bar and the OpenStreetMap
+     attribution stay readable underneath. ODbL requires that credit to be
+     visible, so the cards give way to it rather than the other way round. */
+  bottom: 2rem;
+  /* Above Leaflet's own controls, which sit at 1000 and would otherwise punch
+     through the cards. */
+  z-index: 1100;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  padding: var(--space-4) var(--space-5) var(--space-6);
+  gap: var(--space-3);
+  pointer-events: none;
+}
+
+.overlay > * {
+  pointer-events: auto;
+}
+
+.overlay-left {
+  left: var(--space-4);
+  width: min(22rem, calc(100vw - 2 * var(--space-4)));
+  justify-content: flex-start;
+}
+
+.overlay-right {
+  right: var(--space-4);
+  width: min(32rem, calc(100vw - 2 * var(--space-4)));
+  align-items: stretch;
+}
+
+.floating-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow), var(--glass-sheen);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.floating-panel-bar {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.floating-panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--sekunder-strong);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.floating-panel-toggle svg {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.floating-panel-toggle[aria-expanded='false'] svg {
+  transform: rotate(-90deg);
+}
+
+.floating-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+/* Only the results column stretches; the controls stay as tall as they need. */
+.results-panel {
+  flex: 1;
+}
+
+/* Business type picker ---------------------------------------------------- */
+
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.type-option {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-align: left;
+  color: var(--text-soft);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.type-option:hover {
+  border-color: var(--border-strong);
+}
+
+.type-option[aria-pressed='true'] {
+  color: var(--sekunder-contrast);
+  background: var(--sekunder);
+  border-color: var(--sekunder);
+}
+
+/* Only the tiles are filtered; vector overlays keep their true colours. */
+.map .leaflet-tile-pane {
+  filter: var(--map-filter);
 }
 
 /* Icon buttons ------------------------------------------------------------ */
@@ -450,10 +560,62 @@ input {
   border-color: var(--border-strong);
 }
 
+/* The label spells out what the icon means, so a header button is not a guess
+   — it disappears on a phone, where the accessible name carries it instead. */
+.button-text {
+  padding-right: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+@media (max-width: 820px) {
+  .button-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .icon-button[data-copied='true'] {
   color: var(--tone-excellent-fg);
   background: var(--tone-excellent-bg);
   border-color: transparent;
+}
+
+/* Signing out is the one header action that throws work away, so it is the one
+   that reads as a warning rather than as another neutral control. */
+.icon-button-danger {
+  color: var(--error-text);
+  background: var(--error-bg);
+  border-color: var(--error-border);
+}
+
+.icon-button-danger:hover {
+  color: var(--error-text);
+  background: var(--error-bg);
+  border-color: var(--tone-bad);
+  filter: brightness(0.96);
+}
+
+.button-danger {
+  flex-shrink: 0;
+  padding: 0.45rem 0.95rem;
+  font: inherit;
+  font-weight: 650;
+  color: #ffffff;
+  background: var(--tone-bad);
+  border: 1px solid var(--tone-bad);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.button-danger:hover {
+  filter: brightness(0.92);
 }
 
 /* Cards ------------------------------------------------------------------- */
@@ -504,14 +666,6 @@ input {
 
 /* Controls ---------------------------------------------------------------- */
 
-.controls {
-  display: grid;
-  gap: var(--space-3);
-  padding-bottom: var(--space-4);
-  margin-bottom: var(--space-4);
-  border-bottom: 1px solid var(--border);
-}
-
 .field {
   display: grid;
   gap: var(--space-1);
@@ -526,18 +680,32 @@ input {
   color: var(--muted);
 }
 
-select {
+select,
+.text-input {
   width: 100%;
   padding: 0.55rem 0.65rem;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
+}
+
+select {
   cursor: pointer;
 }
 
-select:hover {
+select:hover,
+.text-input:hover {
   border-color: var(--sekunder);
+}
+
+.text-input[aria-invalid='true'] {
+  border-color: var(--tone-bad, #dc2626);
+}
+
+.field-error {
+  font-size: var(--text-xs);
+  color: var(--tone-bad, #dc2626);
 }
 
 .location-row {
@@ -587,12 +755,34 @@ select:hover {
   cursor: pointer;
 }
 
-/* Map overlays ------------------------------------------------------------ */
+/* Map overlays ------------------------------------------------------------
+   The floating cards claim the top-left and the right edge, so everything the
+   map draws for itself lives along the bottom-left instead. */
 
-.zone-legend {
+/* Leaflet puts the zoom buttons top-left by default, exactly where the controls
+   card now sits — moved to the foot of the same edge, under the rail. */
+.map .leaflet-top.leaflet-left {
+  top: auto;
+  bottom: 0;
+}
+
+/* The north mark and the legend share one anchored column, so the legend can
+   grow with the facilities found without pushing anything out of place. The
+   only measured value is the height of the zoom buttons it clears. */
+.map-rail {
   position: absolute;
   left: var(--space-3);
-  bottom: var(--space-5);
+  /* Clears the scale bar and the zoom buttons stacked below it. */
+  bottom: 7rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.zone-legend {
   z-index: 1000;
   display: grid;
   gap: var(--space-1);
@@ -637,29 +827,6 @@ select:hover {
   border-radius: 50%;
 }
 
-/* Top-right: the zoom buttons own the top-left corner. */
-.north-mark {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  z-index: 1000;
-  display: grid;
-  justify-items: center;
-  gap: 0.1rem;
-  padding: var(--space-2);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  line-height: 1;
-  color: var(--text-soft);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  pointer-events: none;
-}
-
 .legend-footnote {
   margin-top: var(--space-1);
   font-size: 0.8em;
@@ -670,9 +837,15 @@ select:hover {
 /* Leaflet's own scale bar, enlarged and restyled to match the legend. Leaflet
    sizes the bar itself (data-driven, via maxWidth on ScaleControl); this only
    controls how prominent that bar reads. */
+/* Stacked up the left edge, reading downwards: legend, scale, zoom buttons.
+   The two offsets are the heights of what sits below each one. */
+.map .leaflet-bottom.leaflet-left {
+  bottom: 4.5rem;
+}
+
 .map .leaflet-control-scale {
   margin-bottom: var(--space-2) !important;
-  margin-right: var(--space-2) !important;
+  margin-left: var(--space-2) !important;
 }
 
 .map .leaflet-control-scale-line {
@@ -690,7 +863,55 @@ select:hover {
 }
 
 .picked-pin {
-  filter: drop-shadow(0 2px 3px rgb(15 23 42 / 0.35));
+  filter: drop-shadow(0 3px 5px rgb(15 23 42 / 0.45));
+}
+
+/* A ring at the pin's tip, so the exact coordinate stays findable even on busy
+   satellite imagery or a dense street grid. */
+.picked-pin-pulse,
+.picked-dot .picked-pin-pulse {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  background: color-mix(in srgb, #b91c1c 55%, transparent);
+  border-radius: 50%;
+  animation: pin-pulse 2s ease-out infinite;
+}
+
+.picked-dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.picked-dot .picked-pin-pulse {
+  inset: 50% auto auto 50%;
+  margin: -9px 0 0 -9px;
+}
+
+@keyframes pin-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picked-pin-pulse {
+    animation: none;
+    opacity: 0.35;
+  }
 }
 
 .facility-dot {
@@ -868,13 +1089,16 @@ select:hover {
 /* States ------------------------------------------------------------------ */
 
 .intro {
+  /* Floats over the map like the panels do, but only as tall as its text. */
+  align-self: start;
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding: var(--space-5) var(--space-4);
-  background: var(--surface-raised);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
 }
 
@@ -882,35 +1106,6 @@ select:hover {
   font-size: var(--text-md);
 }
 
-.intro-steps {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
-
-.intro-steps li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-3);
-  align-items: start;
-  counter-increment: step;
-}
-
-.intro-steps li::before {
-  content: counter(step);
-  display: grid;
-  place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--sekunder-contrast);
-  background: var(--sekunder);
-  border-radius: 50%;
-}
 
 .loading {
   display: grid;
@@ -1506,80 +1701,72 @@ select:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* Mobile: the panel becomes a sheet the map sits behind ------------------- */
+/* Mobile: the two columns stack into sheets the map sits behind ----------- */
 
 @media (max-width: 820px) {
   .app {
     height: 100dvh;
   }
 
-  .layout {
-    position: relative;
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr);
-    gap: 0;
-    padding: 0;
+  /* The results sheet takes the foot of the screen, so the map keeps the top —
+     it is how a location gets picked. It stops just short of the very bottom to
+     leave the OpenStreetMap credit visible, which ODbL requires on the map
+     itself and not only under a result. */
+  .overlay {
+    top: auto;
+    bottom: 1.25rem;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-height: 46dvh;
   }
 
-  /* Full-bleed behind the sheet on a phone: the card gutter would only waste
-     the little map area left. */
-  .map-pane {
-    grid-area: 1 / 1;
-    padding: 0;
-  }
-
-  .map {
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .panel {
-    grid-area: 1 / 1;
-    align-self: end;
-    z-index: 1000;
-    /* The map is how a location gets picked, so the sheet must not swallow it.
-       Tapping the handle collapses the sheet to reveal the map in full. */
-    max-height: 62dvh;
-    background: var(--sheet-surface);
-    padding: var(--space-2) var(--space-4) var(--space-5);
-    border: 0;
-    border-top: 1px solid var(--border);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    box-shadow: var(--shadow-lg);
-  }
-
-  .sheet-handle {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: grid;
-    justify-items: center;
-    padding: var(--space-2) 0;
-    margin: 0 calc(-1 * var(--space-4));
-    background: var(--surface);
-    cursor: pointer;
-  }
-
-  .sheet-handle::before {
-    content: '';
-    width: 2.5rem;
-    height: 0.25rem;
-    background: var(--border-strong);
-    border-radius: var(--radius-pill);
-  }
-
-  .panel[data-collapsed='true'] {
-    max-height: 3.25rem;
-    overflow: hidden;
-  }
-
-  /* The sheet leaves little map, so the legend shrinks to the zone rows only.
-     It also has to clear Leaflet's zoom buttons, which share this corner. */
-  .zone-legend {
+  .overlay-left {
     bottom: auto;
-    top: 4.75rem;
+    top: var(--space-2);
     left: var(--space-2);
+    right: var(--space-2);
+    width: auto;
+    max-height: none;
+  }
+
+  .overlay-right {
+    padding: 0;
+  }
+
+  .floating-panel {
+    background: var(--sheet-surface);
+    box-shadow: var(--shadow-lg), var(--glass-sheen);
+  }
+
+  .overlay-right .floating-panel {
+    border-bottom: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The foot of the screen belongs to the results sheet, so the map's own
+     controls move up under the collapsed controls card: zoom on the left, the
+     rail on the right. Expanding that card covers them, which is the usual
+     bargain with a sheet — and it folds away again. */
+  .map .leaflet-top.leaflet-left {
+    top: 4.25rem;
+    bottom: auto;
+  }
+
+  .map-rail {
+    top: 4.25rem;
+    right: var(--space-2);
+    bottom: auto;
+    left: auto;
+    align-items: flex-end;
+  }
+
+  /* The sheet leaves little map, so the legend shrinks to the zone rows only. */
+  .zone-legend {
     gap: 0.1rem;
     font-size: 0.6875rem;
     padding: var(--space-2);
@@ -1601,8 +1788,254 @@ select:hover {
   }
 }
 
-@media (min-width: 821px) {
-  .sheet-handle {
-    display: none;
+/* Onboarding tour ---------------------------------------------------------- */
+
+/* Captures every click, so nothing behind it can be reached until the tour is
+   finished or skipped. The step that needs a result picks the map centre itself
+   rather than asking the visitor to click through this. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+/* Dims the page on the welcome step, which has no spotlight to do it. */
+.tour:has(> .tour-tooltip-centred) {
+  background: rgb(2 6 23 / 0.62);
+}
+
+.tour-tooltip-centred {
+  top: 50%;
+  left: 50%;
+  width: min(26rem, calc(100vw - 2 * var(--space-4)));
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.tour-tooltip-centred .tour-actions {
+  justify-content: center;
+}
+
+/* One box-shadow both dims the page and leaves the target lit — no mask, and
+   the hole always lines up with the element because it is the element's rect. */
+.tour-spotlight {
+  position: fixed;
+  border-radius: var(--radius);
+  /* The ring is listed before the dimmer so it paints on top of it. Keeping both
+     in one property is what lets the blink pulse the ring and lift the dim at
+     the same time. */
+  box-shadow:
+    0 0 0 3px var(--sekunder),
+    0 0 0 9999px rgb(2 6 23 / 0.62);
+  pointer-events: none;
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+  /* Blinks three times on arrival and then holds. The element is remounted on
+     every step (keyed by step id in Tour.tsx), which is what restarts it.
+     Only the outline pulses — the box-shadow is doing the dimming. */
+  animation: tour-blink 0.5s ease-in-out 4;
+}
+
+@keyframes tour-blink {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px var(--sekunder),
+      0 0 0 9999px rgb(2 6 23 / 0.62);
   }
+  50% {
+    box-shadow:
+      0 0 0 12px color-mix(in srgb, var(--sekunder) 50%, transparent),
+      0 0 0 9999px rgb(2 6 23 / 0.38);
+  }
+}
+
+.tour-tooltip {
+  position: fixed;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.tour-close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: 0.25rem;
+}
+
+.tour-progress {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.tour-title {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--sekunder-strong);
+}
+
+.tour-body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-soft);
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/* Pushes Kembali and Lanjut to the right, away from the destructive-ish Lewati. */
+.tour-skip {
+  margin-right: auto;
+  padding: 0.45rem 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.tour-skip:hover {
+  color: var(--text-soft);
+}
+
+.button-primary {
+  flex-shrink: 0;
+  padding: 0.45rem 0.95rem;
+  font: inherit;
+  font-weight: 650;
+  color: var(--sekunder-contrast);
+  background: var(--sekunder);
+  border: 1px solid var(--sekunder);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.button-primary:hover {
+  background: var(--sekunder-strong);
+  border-color: var(--sekunder-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Confirm dialog ----------------------------------------------------------- */
+
+.confirm-dialog {
+  max-width: min(26rem, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-5);
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-dialog::backdrop {
+  background: rgb(2 6 23 / 0.55);
+}
+
+.confirm-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+  color: var(--sekunder-strong);
+}
+
+.confirm-body {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-soft);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Auth pages --------------------------------------------------------------- */
+
+.auth-page {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--space-5) var(--space-4);
+}
+
+.auth-card {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 26rem;
+  padding: var(--space-5);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--sekunder-strong);
+}
+
+.auth-title {
+  font-size: var(--text-md);
+  text-align: center;
+}
+
+.auth-subtitle {
+  color: var(--muted);
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.auth-submit {
+  margin-top: var(--space-1);
+}
+
+.auth-submit-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.auth-switch {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.auth-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
 }

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AnalysisModule } from './analysis/analysis.module';
+import { AuthModule } from './auth/auth.module';
 import { ApiExceptionFilter } from './common/api-exception.filter';
 import { validateEnv } from './config/env';
 import { FirebaseModule } from './firebase/firebase.module';
@@ -21,6 +22,7 @@ import { HealthController } from './health.controller';
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
     FirebaseModule,
     AnalysisModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [
