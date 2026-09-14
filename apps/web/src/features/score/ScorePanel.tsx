@@ -90,7 +90,7 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
 function sourceSummary(dataSource: DataSource): string {
   const shops = dataSource.overture === null ? 'OpenStreetMap' : 'OpenStreetMap dan Overture Maps';
   if (dataSource.places.status === 'used') {
-    return `Usaha, sekolah, kantor, dan halte transportasi dihitung oleh Google Maps. Perumahan dan parkir dari OpenStreetMap; toko fotokopi, percetakan, dan ATK dari ${shops}.`;
+    return `Kafe, rumah makan, laundry, minimarket, salon, dan apotek dihitung oleh Google Maps. Kampus, sekolah, kantor, perumahan, dan transportasi dari OpenStreetMap; toko fotokopi, percetakan, dan ATK dari ${shops}.`;
   }
   if (dataSource.overture === null) return 'Semua fasilitas berasal dari OpenStreetMap.';
   return `Fasilitas berasal dari OpenStreetMap; toko fotokopi, percetakan, dan ATK dari ${shops}.`;

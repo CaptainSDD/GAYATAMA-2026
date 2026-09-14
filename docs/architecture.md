@@ -128,7 +128,7 @@ A location analysis, end to end:
               └─ write to memory and Firestore ──────┤
                                                      ▼
 6. api, alongside step 5 when googleMap is true: Google counts for the
-   geohash-8 cell — from memory if fresh, otherwise 25–75 Places Aggregate
+   geohash-8 cell — from memory if fresh, otherwise 12–36 Places Aggregate
    requests. Counts replace OpenStreetMap facilities of the kinds Google
    covers; if any request fails, none is used
        │

@@ -60,6 +60,7 @@ export class PlaceCountsService {
 
   private async load(cell: string): Promise<PlaceCountsLookup> {
     const center = geohashCenter(cell);
+    const started = Date.now();
     // The first failure cancels the remaining requests: a partial result is never used.
     const cancel = new AbortController();
     try {
@@ -72,6 +73,7 @@ export class PlaceCountsService {
         ),
       );
       const entry: CachedCounts = { counts: groups.flat(), fetchedAt: new Date().toISOString() };
+      this.logger.log(`Google place counts for ${cell}: ${entry.counts.length} zone counts in ${Date.now() - started} ms`);
       this.remember(cell, entry);
       return { status: 'used', ...entry, cacheHit: false };
     } catch (error) {

@@ -1,4 +1,4 @@
-import type { LatLng, RoadClass, SiteConditions } from '@gayatama/scoring';
+import type { DiscouragingSurrounding, LatLng, RoadClass, SiteConditions } from '@gayatama/scoring';
 import type { OverpassElement } from './overpass-element';
 
 export const ROAD_CLASSES = new Map<string, RoadClass>([
@@ -22,7 +22,37 @@ export const WATERWAYS = ['river', 'canal', 'stream'];
 export const PEDESTRIAN_WAYS = ['footway', 'pedestrian', 'path'];
 export const SIDEWALK_VALUES = ['both', 'left', 'right', 'yes', 'separate'];
 
-export const SITE_RADII_METERS = { road: 50, waterway: 300, industrial: 100, pedestrian: 300 } as const;
+export const SITE_RADII_METERS = {
+  road: 50,
+  waterway: 300,
+  industrial: 100,
+  pedestrian: 300,
+  /** A cemetery is judged closer than the rest: across the street matters, two blocks away does not. */
+  cemetery: 150,
+  nuisance: 300,
+} as const;
+
+/** Neighbours that keep customers away — see docs/methodology.md#unsuitable-surroundings. */
+export const DISCOURAGING_LANDUSE = new Map<string, DiscouragingSurrounding>([
+  ['cemetery', 'cemetery'],
+  ['landfill', 'waste'],
+  ['quarry', 'quarry'],
+  ['military', 'military'],
+]);
+
+export const DISCOURAGING_AMENITY = new Map<string, DiscouragingSurrounding>([
+  ['grave_yard', 'cemetery'],
+  ['waste_transfer_station', 'waste'],
+  ['prison', 'prison'],
+]);
+
+export function discouragingKind(tags: Record<string, string>): DiscouragingSurrounding | undefined {
+  return DISCOURAGING_LANDUSE.get(tags.landuse ?? '') ?? DISCOURAGING_AMENITY.get(tags.amenity ?? '');
+}
+
+export function discouragingRadiusMeters(kind: DiscouragingSurrounding): number {
+  return kind === 'cemetery' ? SITE_RADII_METERS.cemetery : SITE_RADII_METERS.nuisance;
+}
 
 const METERS_PER_DEGREE = (6_371_008.8 * Math.PI) / 180;
 
@@ -66,9 +96,15 @@ export function siteConditions(elements: readonly OverpassElement[], point: LatL
   let nearestRoad = Number.POSITIVE_INFINITY;
   let nearestWaterway = Number.POSITIVE_INFINITY;
   let pedestrianFeatureCount = 0;
+  const discouraging = new Set<DiscouragingSurrounding>();
 
   for (const element of elements) {
     const tags = element.tags ?? {};
+
+    const neighbour = discouragingKind(tags);
+    if (neighbour !== undefined && distanceToGeometryMeters(point, geometryOf(element)) <= discouragingRadiusMeters(neighbour)) {
+      discouraging.add(neighbour);
+    }
 
     if (element.type === 'way') {
       const roadClass = tags.highway === undefined ? undefined : ROAD_CLASSES.get(tags.highway);
@@ -95,6 +131,7 @@ export function siteConditions(elements: readonly OverpassElement[], point: LatL
   }
 
   if (nearestWaterway <= SITE_RADII_METERS.waterway) site.nearestWaterwayMeters = nearestWaterway;
+  if (discouraging.size > 0) site.discouragingSurroundings = [...discouraging].sort();
   site.pedestrianFeatureCount = pedestrianFeatureCount;
   return site;
 }

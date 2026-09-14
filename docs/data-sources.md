@@ -93,7 +93,10 @@ opening hours or ratings. The code is in `apps/api/src/places/`.
    one is empty, so a new location takes 25 to 75 requests.
 3. A zone's count enters the engine as that many facilities at the zone's outer
    edge, undated (Data Quality 0.65) and with unknown opening hours — see
-   [methodology.md](methodology.md#counted-facilities).
+   [methodology.md](methodology.md#counted-facilities). Facilities of one kind
+   sharing a zone then count with
+   [diminishing returns](methodology.md#crowding-repeated-facilities-count-for-less),
+   as mapped ones do.
 4. Google counts replace OpenStreetMap facilities of the same kinds; every other
    kind still comes from OpenStreetMap. If any count request fails, no count is
    used: every kind comes from OpenStreetMap, and `dataSource.places.status` is
@@ -106,50 +109,41 @@ Filters accept only the types in Table A of Google's
 A type excluded from one kind is counted by another, so a place carrying both is
 counted once.
 
-| Kind | Google types | Excluded types | Scale |
-|------|--------------|----------------|-------|
-| University campus | `university` | | Large |
-| School | `school`, `primary_school`, `secondary_school` | `university` | |
-| Office | `corporate_office`, `business_center`, `coworking_space` | | |
-| Government office | `city_hall`, `local_government_office`, `government_office` | | |
-| Transit stop: rail | `train_station`, `light_rail_station`, `subway_station` | | Large |
-| Transit stop: other | `bus_station`, `bus_stop`, `transit_station`, `transit_stop` | The rail types | |
-| Hospital | `hospital` | | Large |
-| Shopping mall | `shopping_mall`, `department_store` | | Large |
-| Café or coffee shop | `cafe`, `coffee_shop`, `coffee_stand` | | |
-| Bubble tea or tea outlet | `tea_house`, `juice_shop` | `cafe`, `coffee_shop`, `coffee_stand` | |
-| Restaurant | `restaurant` | `cafe`, `coffee_shop`, `fast_food_restaurant`, `food_court` | |
-| Fast food | `fast_food_restaurant` | `food_court` | |
-| Food court | `food_court` | | |
-| Laundry | `laundry` | | |
-| Convenience store | `convenience_store`, `grocery_store` | `supermarket` | |
-| Supermarket | `supermarket` | | |
-| Hairdresser | `hair_salon`, `barber_shop` | | |
-| Beauty salon | `beauty_salon`, `nail_salon` | `hair_salon`, `barber_shop` | |
-| Pharmacy | `pharmacy` | | |
-| Chemist or drugstore | `drugstore` | `pharmacy` | |
-| ATM | `atm` | `bank` | |
-| Bank | `bank` | | |
-| Traditional market (*pasar*) | `market` | | |
-| Place of worship | `mosque`, `church`, `hindu_temple`, `buddhist_temple`, `synagogue`, `shinto_shrine` | | |
-| Clinic or doctor | `doctor`, `medical_clinic` | `hospital` | |
+| Kind | Google types | Excluded types |
+|------|--------------|----------------|
+| Café or coffee shop | `cafe`, `coffee_shop`, `coffee_stand` | |
+| Bubble tea or tea outlet | `tea_house`, `juice_shop` | `cafe`, `coffee_shop`, `coffee_stand` |
+| Restaurant | `restaurant` | `cafe`, `coffee_shop`, `fast_food_restaurant`, `food_court` |
+| Fast food | `fast_food_restaurant` | `food_court` |
+| Food court | `food_court` | |
+| Laundry | `laundry` | |
+| Convenience store | `convenience_store`, `grocery_store` | `supermarket` |
+| Supermarket | `supermarket` | |
+| Hairdresser | `hair_salon`, `barber_shop` | |
+| Beauty salon | `beauty_salon`, `nail_salon` | `hair_salon`, `barber_shop` |
+| Pharmacy | `pharmacy` | |
+| Chemist or drugstore | `drugstore` | `pharmacy` |
 
-Scale is medium unless stated, matching the OpenStreetMap tags that mark a
-facility large. Google has no bubble tea type; tea houses and juice shops stand
-in for it.
+Google has no bubble tea type; tea houses and juice shops stand in for it.
 
-Some kinds always come from OpenStreetMap:
+Everything else comes from OpenStreetMap:
 
-- **Copy shops, printers, stationery shops and dry cleaners** have no Table A
-  type.
-- **Housing, boarding houses and parking** describe land use and capacity rather
-  than businesses. OpenStreetMap maps them as areas with tags such as
-  `capacity`, which a count cannot carry.
+- **What drives demand** — campuses, schools, offices, government offices,
+  housing, boarding houses, transit stops, hospitals and malls. OpenStreetMap
+  maps these large features well, and the segment points were calibrated against
+  that data. Counting them from Google as well pinned all six segments to 100
+  everywhere in an Indonesian city, so two locations 3 km apart scored the same:
+  see [methodology.md](methodology.md#crowding-repeated-facilities-count-for-less).
+- **Supporting facilities** — ATMs, banks, markets, places of worship and
+  clinics, which OpenStreetMap records well enough for the purpose.
+- **Copy shops, printers, stationery shops and dry cleaners**, which have no
+  Table A type at all.
+- **Parking**, whose `capacity` tag a count cannot carry.
 
 ### Cost and caching
 
-A new location takes 25 to 75 requests. Google's free usage covers 5,000
-requests a month — at least 66 new locations — and each further 1,000 costs
+A new location takes 12 to 36 requests. Google's free usage covers 5,000
+requests a month — at least 138 new locations — and each further 1,000 costs
 USD 10 (pricing checked in September 2026). Counts are cached in memory per
 geohash-8 cell for `PLACE_COUNT_CACHE_TTL_SECONDS` (7 days by default, 30 at
 most), so repeated clicks cost nothing. They are never written to Firestore. To
@@ -310,6 +304,7 @@ Supporting facilities feed Supporting Facility Fit — see
 | Walkability | `sidewalk=*`, `highway=footway`, `highway=crossing` |
 | Parking | `amenity=parking` with `capacity` |
 | Severance | `highway=motorway`/`trunk`, `railway=rail`, `waterway=river` — feeds the Access Factor |
+| Discouraging neighbours | `landuse=cemetery`/`landfill`/`quarry`/`military`, `amenity=grave_yard`/`waste_transfer_station`/`prison` — feeds Risk and Operability |
 
 ---
 

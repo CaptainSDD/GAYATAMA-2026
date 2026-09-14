@@ -156,17 +156,17 @@ endpoint.
   "businessType": "laundry",
 
   "score": {
-    "value": 75.15,
+    "value": 75.52,
     "band": "suitable",
     "confidence": 81,
     "margin": 8,
-    "range": [67, 83]
+    "range": [68, 84]
   },
 
   "components": {
     "demandFit":         { "value": 74.75, "weight": 0.35 },
     "accessibility":     { "value": 67.0,  "weight": 0.20 },
-    "competition":       { "value": 75.71, "weight": 0.20 },
+    "competition":       { "value": 77.54, "weight": 0.20 },
     "supportingFacility":{ "value": 73.0,  "weight": 0.15 },
     "risk":              { "value": 95.0,  "weight": 0.10 }
   },
@@ -234,7 +234,9 @@ endpoint.
 - `strengths` are up to three components scoring 60 or more; `risks` are up to
   three scoring below 60.
 - `warnings` entries are `{ code, message }`. Codes: `flood_risk_proxy`,
-  `stale_data` — see [hard warnings](methodology.md#hard-warnings-the-engine-raises).
+  `unsuitable_surroundings`, `stale_data` — see
+  [hard warnings](methodology.md#hard-warnings-the-engine-raises). The message
+  for `unsuitable_surroundings` names what was found nearby.
 - `dataSource.fetchedAt` is required for ODbL-compliant attribution in exported
   reports — see [data-sources.md](data-sources.md).
 
@@ -421,6 +423,9 @@ For `googleMap=true`:
 }
 ```
 
+- `site.discouragingSurroundings` lists any of `cemetery`, `waste`, `quarry`,
+  `military` and `prison` mapped close to the point; the field is absent when
+  there are none.
 - `facilities` are sorted by distance. Each carries the engine's own fields —
   the `Facility` type in `@gayatama/scoring` — plus its distance, zone, Data
   Quality and Access Factor from this location. Shops added from Overture Maps

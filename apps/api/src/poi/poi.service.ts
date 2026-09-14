@@ -120,8 +120,10 @@ export class PoiService {
       return { facilities: cached.facilities, fetchedAt: cached.fetchedAt, cacheHit: true, stale: false, via: 'overpass' };
     }
 
+    const started = Date.now();
     try {
       const elements = await this.overpass.query(buildPoiQuery(center, radius, this.overpass.queryTimeoutSeconds));
+      this.logger.log(`Overpass POI query for ${cell}: ${elements.length} elements in ${Date.now() - started} ms`);
       const entry = { cell, facilities: toFacilities(elements), fetchedAt: new Date().toISOString() };
       await this.cache.set(entry);
       return { facilities: entry.facilities, fetchedAt: entry.fetchedAt, cacheHit: false, stale: false, via: 'overpass' };
@@ -142,8 +144,10 @@ export class PoiService {
     const cached = this.siteCache.get(key);
     if (cached !== undefined && this.isFresh(cached.fetchedAt)) return { site: cached.site, available: true };
 
+    const started = Date.now();
     try {
       const elements = await this.overpass.query(buildSiteQuery(point, this.overpass.queryTimeoutSeconds));
+      this.logger.log(`Overpass site query for ${key}: ${elements.length} elements in ${Date.now() - started} ms`);
       const site = siteConditions(elements, point);
       this.siteCache.delete(key);
       this.siteCache.set(key, { site, fetchedAt: Date.now() });

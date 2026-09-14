@@ -35,7 +35,7 @@ export interface RawArea {
 }
 
 /** The only tags the site conditions read; everything else is dropped from site elements. */
-const SITE_TAG_KEYS = new Set(['highway', 'waterway', 'landuse', 'sidewalk']);
+const SITE_TAG_KEYS = new Set(['highway', 'waterway', 'landuse', 'sidewalk', 'amenity']);
 
 const round7 = (value: number): number => Math.round(value * 1e7) / 1e7;
 

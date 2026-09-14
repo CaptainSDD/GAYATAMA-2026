@@ -30,10 +30,15 @@ describe('PLACE_COUNT_QUERIES', () => {
     }
   });
 
-  it('leaves kinds without a suitable Google type to OpenStreetMap', () => {
+  it('counts businesses only, leaving what drives demand to OpenStreetMap', () => {
     const openStreetMapOnly: FacilityKind[] = [
-      'housing', 'boarding_house', 'parking', 'copyshop', 'printer', 'stationery_shop', 'dry_cleaning',
+      // Large features OpenStreetMap maps well, and the segment points were calibrated against.
+      'campus', 'school', 'office', 'government_office', 'housing', 'boarding_house', 'transit', 'hospital', 'mall',
+      'atm', 'bank', 'marketplace', 'place_of_worship', 'clinic', 'parking',
+      // No Table A type exists for these.
+      'copyshop', 'printer', 'stationery_shop', 'dry_cleaning',
     ];
     expect(openStreetMapOnly.filter((kind) => GOOGLE_COUNTED_KINDS.has(kind))).toEqual([]);
+    expect([...GOOGLE_COUNTED_KINDS]).toContain('cafe');
   });
 });

@@ -206,7 +206,7 @@ Vite reads `VITE_` variables when it starts or builds.
 
 ### 4. Cap the cost
 
-A new location takes 25 to 75 Places Aggregate requests, and 5,000 a month are
+A new location takes 12 to 36 Places Aggregate requests, and 5,000 a month are
 free. On the Places Aggregate API's **Quotas & System Limits** page, lower the
 requests-per-day limit, and add a budget alert under **Billing → Budgets &
 alerts**. When the quota runs out, the API falls back to OpenStreetMap and the
