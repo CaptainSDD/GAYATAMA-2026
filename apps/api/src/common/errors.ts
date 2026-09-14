@@ -7,7 +7,9 @@ export type ErrorCode =
   | 'RATE_LIMITED'
   | 'NOT_FOUND'
   | 'REQUEST_FAILED'
-  | 'INTERNAL_ERROR';
+  | 'INTERNAL_ERROR'
+  | 'UNAUTHORIZED'
+  | 'USERNAME_TAKEN';
 
 export interface ErrorBody {
   statusCode: number;
@@ -43,4 +45,12 @@ export function upstreamUnavailable(): ApiError {
     'UPSTREAM_TIMEOUT',
     'OpenStreetMap data is temporarily unavailable and nothing is cached for this area. Please try again shortly.',
   );
+}
+
+export function unauthorized(message = 'Missing or invalid ID token.'): ApiError {
+  return new ApiError(HttpStatus.UNAUTHORIZED, 'UNAUTHORIZED', message);
+}
+
+export function usernameTaken(username: string): ApiError {
+  return new ApiError(HttpStatus.CONFLICT, 'USERNAME_TAKEN', 'This username is already taken.', { username });
 }
