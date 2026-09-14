@@ -15,6 +15,17 @@ service cloud.firestore {
       allow list, write: if false;
     }
 
+    // User profiles and the username-uniqueness reservation: server-side
+    // only. The API verifies the caller's Firebase ID token before writing
+    // either, which these rules cannot express (they only see Firestore's
+    // own auth context, not a Firebase Auth ID token passed in a header).
+    match /users/{uid} {
+      allow read, write: if false;
+    }
+    match /usernames/{username} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

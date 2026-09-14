@@ -147,6 +147,10 @@ export function errorTitle(error: unknown): string {
       return 'Data OpenStreetMap sedang tidak tersedia';
     case 'NETWORK_ERROR':
       return 'Server tidak bisa dihubungi';
+    case 'USERNAME_TAKEN':
+      return 'Username sudah dipakai';
+    case 'UNAUTHORIZED':
+      return 'Sesi tidak valid';
     default:
       return 'Ada yang tidak beres';
   }
@@ -170,6 +174,10 @@ export function errorMessage(error: unknown): string {
       return import.meta.env.DEV
         ? `Tidak bisa menghubungi API di ${API_BASE_URL}. Apakah servernya jalan? Nyalakan dengan npm run dev:api.`
         : 'Tidak bisa menghubungi server LOKABIS. Periksa koneksi Anda, lalu coba lagi.';
+    case 'USERNAME_TAKEN':
+      return 'Username ini sudah dipakai orang lain. Coba username yang lain.';
+    case 'UNAUTHORIZED':
+      return 'Sesi login sudah tidak valid. Silakan login ulang.';
     default:
       return error.message || GENERIC_ERROR;
   }
@@ -178,4 +186,35 @@ export function errorMessage(error: unknown): string {
 /** Errors a retry cannot fix: the request itself is invalid, or the area lacks data. */
 export function isRetryable(error: unknown): boolean {
   return !(error instanceof ApiError && (error.code === 'VALIDATION_FAILED' || error.code === 'INSUFFICIENT_DATA'));
+}
+
+/**
+ * Firebase Auth throws a `FirebaseError` with a stable `code` like
+ * `auth/email-already-in-use`. Translated here rather than shown raw, same
+ * principle as `errorMessage` above for the API's own error codes.
+ */
+export function firebaseAuthErrorMessage(error: unknown): string {
+  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'Email ini sudah terdaftar. Coba login, atau pakai email lain.';
+    case 'auth/invalid-email':
+      return 'Format email tidak valid.';
+    case 'auth/weak-password':
+      return 'Kata sandi terlalu lemah. Gunakan minimal 8 karakter, campur huruf dan angka.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'Email atau kata sandi salah.';
+    case 'auth/user-disabled':
+      return 'Akun ini telah dinonaktifkan.';
+    case 'auth/too-many-requests':
+      return 'Terlalu banyak percobaan gagal. Tunggu sebentar, lalu coba lagi.';
+    case 'auth/network-request-failed':
+      return 'Tidak bisa menghubungi server. Periksa koneksi Anda.';
+    case 'auth/not-configured':
+      return 'Login belum bisa dipakai — konfigurasi Firebase belum lengkap di server ini.';
+    default:
+      return GENERIC_ERROR;
+  }
 }
