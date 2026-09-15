@@ -41,9 +41,6 @@ export const envSchema = z.object({
   OSM_SNAPSHOT_DIR: optionalString,
   /** Directory of Overture place files. Defaults to apps/api/data/overture-places. */
   OVERTURE_PLACES_DIR: optionalString,
-  /** Managed open-data POI provider. When set, runtime requests do not wait for public Overpass. */
-  GEOAPIFY_API_KEY: optionalString,
-  GEOAPIFY_TIMEOUT_MS: z.coerce.number().int().positive().default(6_000),
   /** Server key for the Google Places Aggregate API. Without it, every facility comes from OpenStreetMap. */
   GOOGLE_PLACES_API_KEY: optionalString,
   GOOGLE_PLACES_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
@@ -53,6 +50,23 @@ export const envSchema = z.object({
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   FIREBASE_PROJECT_ID: optionalString,
   FIREBASE_SERVICE_ACCOUNT_JSON: optionalString,
+  /**
+   * Read by Firebase Admin's `applicationDefault()`, not by this codebase.
+   * It still belongs in the schema: validation strips unknown keys, so a value
+   * set only in `.env` would never reach `process.env` for the SDK to find.
+   */
+  GOOGLE_APPLICATION_CREDENTIALS: optionalString,
+  /** POI source. With a key set, Geoapify replaces Overpass for facility lookups. */
+  GEOAPIFY_API_KEY: optionalString,
+  GEOAPIFY_BASE_URL: z.string().url().default('https://api.geoapify.com/v2'),
+  GEOAPIFY_GEOCODING_BASE_URL: z.string().url().default('https://api.geoapify.com/v1'),
+  GEOAPIFY_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  /** Cap on places fetched per cell. Geoapify bills 1 credit per 20 results. */
+  GEOAPIFY_MAX_PLACES: z.coerce.number().int().positive().default(1000),
+  /** Optional LLM provider for turning deterministic scores into plain-language explanations. */
+  GROQ_API_KEY: optionalString,
+  GROQ_MODEL: z.string().default('llama-3.1-8b-instant'),
+  GROQ_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

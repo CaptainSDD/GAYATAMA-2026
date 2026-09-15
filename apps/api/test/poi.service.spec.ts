@@ -1,9 +1,10 @@
 import type { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Facility, LatLng } from '@gayatama/scoring';
+import type { LatLng } from '@gayatama/scoring';
 import { encodeGeohash } from '../src/common/geohash';
 import type { Env } from '../src/config/env';
-import type { GeoapifyPlacesClient } from '../src/geoapify/geoapify-places.client';
+import type { GeoapifyClient } from '../src/geoapify/geoapify.client';
+import type { GeoapifyPlace } from '../src/geoapify/geoapify-place';
 import { OsmSnapshots, type OsmSnapshot } from '../src/osm-snapshots/osm-snapshots';
 import type { OverturePlace } from '../src/overture/overture-place';
 import { OverturePlaces, type OvertureArea } from '../src/overture/overture-places';
@@ -28,13 +29,14 @@ class FakeOverpass {
 }
 
 class FakeGeoapify {
-  configured = false;
-  facilities: Facility[] = [];
-  readonly requests: { center: LatLng; radiusMeters: number }[] = [];
+  enabled = false;
+  readonly requests: { radiusMeters: number }[] = [];
+  result: GeoapifyPlace[] | Error = [];
 
-  async placesAround(center: LatLng, radiusMeters: number): Promise<Facility[]> {
-    this.requests.push({ center, radiusMeters });
-    return this.facilities;
+  async places(_center: unknown, radiusMeters: number): Promise<GeoapifyPlace[]> {
+    this.requests.push({ radiusMeters });
+    if (this.result instanceof Error) throw this.result;
+    return this.result;
   }
 }
 
@@ -45,9 +47,9 @@ function setup(ttlSeconds = 3600, snapshots = new OsmSnapshots([]), overture = n
   const config = new ConfigService({ POI_CACHE_TTL_SECONDS: ttlSeconds, OVERPASS_TIMEOUT_MS: 30_000 });
   const service = new PoiService(
     overpass as unknown as OverpassClient,
-    geoapify as unknown as GeoapifyPlacesClient,
     cache,
     config as unknown as ConfigService<Env, true>,
+    geoapify as unknown as GeoapifyClient,
     snapshots,
     overture,
   );
@@ -132,15 +134,22 @@ describe('PoiService.facilitiesAround', () => {
 
   it('uses Geoapify without waiting for Overpass when it is configured', async () => {
     const { service, overpass, geoapify } = setup();
-    geoapify.configured = true;
-    geoapify.facilities = [
-      { id: 'geoapify/cafe-1', kind: 'cafe', name: 'Kopi Cepat', location: ORIGIN },
+    geoapify.enabled = true;
+    geoapify.result = [
+      {
+        properties: {
+          name: 'Kopi Cepat',
+          lat: ORIGIN.lat,
+          lon: ORIGIN.lng,
+          datasource: { raw: { osm_type: 'n', osm_id: 123, amenity: 'cafe' } },
+        },
+      },
     ];
 
     await expect(service.facilitiesAround(ORIGIN)).resolves.toMatchObject({
       via: 'geoapify',
       cacheHit: false,
-      facilities: geoapify.facilities,
+      facilities: [{ id: 'node/123', kind: 'cafe', name: 'Kopi Cepat' }],
     });
     expect(geoapify.requests).toHaveLength(1);
     expect(overpass.queries).toHaveLength(0);
@@ -159,6 +168,25 @@ describe('PoiService.siteConditions', () => {
     expect(overpass.queries).toHaveLength(1);
   });
 
+  it('reuses one site-data query after a small move across a geohash-8 boundary', async () => {
+    const { service, overpass } = setup();
+    const offsets = Array.from({ length: 201 }, (_, index) => index - 100);
+    const nearby = offsets
+      .flatMap((north) => offsets.map((east) => offset(ORIGIN, north, east)))
+      .map(({ lat, lon }) => ({ lat, lng: lon }))
+      .find(
+        (point) =>
+          encodeGeohash(point, 7) === encodeGeohash(ORIGIN, 7) &&
+          encodeGeohash(point, 8) !== encodeGeohash(ORIGIN, 8),
+      );
+    expect(nearby).toBeDefined();
+
+    await service.siteConditions(ORIGIN);
+    await service.siteConditions(nearby as LatLng);
+
+    expect(overpass.queries).toHaveLength(1);
+  });
+
   it('shares one query between concurrent requests for the same site', async () => {
     const { service, overpass } = setup();
     await Promise.all([service.siteConditions(ORIGIN), service.siteConditions(ORIGIN)]);
@@ -173,18 +201,12 @@ describe('PoiService.siteConditions', () => {
       access: { barriers: [], passages: [] },
       available: false,
     });
-  });
-
-  it('does not wait for an Overpass site query when Geoapify is configured', async () => {
-    const { service, overpass, geoapify } = setup();
-    geoapify.configured = true;
-
     expect(await service.siteConditions(ORIGIN)).toEqual({
       site: {},
       access: { barriers: [], passages: [] },
       available: false,
     });
-    expect(overpass.queries).toHaveLength(0);
+    expect(overpass.queries).toHaveLength(1);
   });
 });
 

@@ -39,8 +39,7 @@ export function ShareButton({ disabled }: { disabled: boolean }) {
       aria-label={label}
       title={disabled ? 'Pilih lokasi dulu untuk membagikan hasil' : label}
     >
-      {copied ? <CheckIcon size={20} /> : <LinkIcon size={20} />}
-      <span className="button-text">{copied ? 'Tersalin' : 'Bagikan'}</span>
+      {copied ? <CheckIcon /> : <LinkIcon />}
     </button>
   );
 }

@@ -1,22 +1,27 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import { useEffect, useState } from 'react';
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { FloatingPanel } from './components/FloatingPanel';
-import { HelpIcon, LogOutIcon, MapPinIcon } from './components/Icons';
+import { LogOutIcon, MapPinIcon } from './components/Icons';
 import { ShareButton } from './components/ShareButton';
 import { ThemeToggle } from './components/ThemeToggle';
 import { LocationView } from './features/location/LocationView';
-import { BusinessTypePicker, LocationSummary } from './features/map/LocationControls';
+import { LocationPreview } from './features/location/LocationPreview';
+import { LocationControls } from './features/map/LocationControls';
 import { MapPicker } from './features/map/MapPicker';
-import { Tour } from './features/tour/Tour';
-import { DEFAULT_CENTER, parseSelection, roundPoint, serializeSelection, type Selection } from './lib/location';
+import {
+  DEFAULT_CENTER,
+  isInSemarangCoverage,
+  parseSelection,
+  roundPoint,
+  serializeSelection,
+  type Selection,
+} from './lib/location';
 import { USE_GOOGLE_MAP } from './lib/map-config';
-import { resetProgress } from './lib/tour';
 
 interface AppProps {
   /** Present only when AuthGate renders this — absent in tests that mount App on its own. */
   userEmail?: string | null;
-  /** Scopes the onboarding tour to the signed-in account. */
+  /** Accepted from AuthGate even though the stage-2 UI has no per-user tour state. */
   userId?: string;
   emailVerified?: boolean;
   verificationResent?: boolean;
@@ -26,20 +31,18 @@ interface AppProps {
 
 export function App({
   userEmail,
-  userId = 'anon',
   emailVerified = true,
   verificationResent = false,
   onSignOut,
   onResendVerification,
 }: AppProps) {
   const [selection, setSelection] = useState<Selection>(() => parseSelection(window.location.search));
+  const [analysisSelection, setAnalysisSelection] = useState<Selection | null>(null);
   const [initialCenter] = useState<LatLng>(() => selection.point ?? DEFAULT_CENTER);
   const [mapCenter, setMapCenter] = useState<LatLng>(initialCenter);
-  const [controlsCollapsed, setControlsCollapsed] = useState(false);
-  const [resultsCollapsed, setResultsCollapsed] = useState(false);
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+  const [outsideCoverage, setOutsideCoverage] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
-  // Bumping this remounts the tour, which is how "replay" starts it over.
-  const [tourRun, setTourRun] = useState(0);
 
   // Keep the URL in step with the selection, so any result can be shared as a link.
   useEffect(() => {
@@ -50,10 +53,37 @@ export function App({
   }, [selection]);
 
   const pick = (point: LatLng) => {
+    if (!isInSemarangCoverage(point)) {
+      setOutsideCoverage(true);
+      return;
+    }
+    setOutsideCoverage(false);
     setSelection((current) => ({ ...current, point: roundPoint(point) }));
-    setResultsCollapsed(false);
+    setAnalysisSelection(null);
+    setSheetCollapsed(false);
   };
-  const chooseBusinessType = (businessType: BusinessType) => setSelection((current) => ({ ...current, businessType }));
+  const clearPoint = () => {
+    setSelection((current) => ({ ...current, point: null }));
+    setAnalysisSelection(null);
+    setOutsideCoverage(false);
+    setSheetCollapsed(false);
+  };
+
+  const chooseBusinessType = (businessType: BusinessType) => {
+    setSelection((current) => ({ ...current, businessType }));
+    setAnalysisSelection(null);
+  };
+
+  const analyseLocation = () => {
+    if (selection.point !== null) setAnalysisSelection(selection);
+  };
+
+  const analyseBusinessType = (businessType: BusinessType) => {
+    if (selection.point === null) return;
+    const nextSelection = { point: selection.point, businessType };
+    setSelection(nextSelection);
+    setAnalysisSelection(nextSelection);
+  };
 
   return (
     <div className="app">
@@ -65,20 +95,7 @@ export function App({
           </h1>
         </div>
         <div className="header-actions">
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => {
-              resetProgress(userId);
-              setTourRun((run) => run + 1);
-            }}
-            aria-label="Lihat panduan lagi"
-            title="Lihat panduan lagi"
-          >
-            <HelpIcon size={20} />
-            <span className="button-text">Panduan</span>
-          </button>
-          <ShareButton disabled={selection.point === null} />
+          <ShareButton disabled={analysisSelection === null} />
           <ThemeToggle />
           {onSignOut !== undefined && (
             <button
@@ -88,8 +105,7 @@ export function App({
               aria-label="Keluar"
               title={userEmail ?? 'Keluar'}
             >
-              <LogOutIcon size={20} />
-              <span className="button-text">Keluar</span>
+              <LogOutIcon />
             </button>
           )}
         </div>
@@ -106,39 +122,47 @@ export function App({
 
       <main className="layout">
         <section className="map-pane" aria-label="Peta. Klik untuk memilih lokasi.">
-          <MapPicker initialCenter={initialCenter} point={selection.point} onPick={pick} onCenterChange={setMapCenter} />
+          <MapPicker
+            initialCenter={initialCenter}
+            point={selection.point}
+            analysisPoint={analysisSelection?.point ?? null}
+            onPick={pick}
+            onCenterChange={setMapCenter}
+          />
+          {outsideCoverage && (
+            <p className="coverage-warning" role="status">
+              Lokasi itu berada di luar area cakupan Semarang. Pilih titik di dalam garis merah.
+            </p>
+          )}
         </section>
 
-        <div className="overlay overlay-left">
-          <FloatingPanel
-            title="Jenis usaha"
-            collapsed={controlsCollapsed}
-            onToggle={() => setControlsCollapsed((collapsed) => !collapsed)}
-          >
-            <BusinessTypePicker businessType={selection.businessType} onBusinessTypeChange={chooseBusinessType} />
-            <LocationSummary point={selection.point} onUseMapCenter={() => pick(mapCenter)} />
-          </FloatingPanel>
-        </div>
-
-        <div className="overlay overlay-right">
+        <aside className="panel" aria-label="Analisis" data-collapsed={sheetCollapsed}>
+          <button
+            type="button"
+            className="sheet-handle"
+            onClick={() => setSheetCollapsed((collapsed) => !collapsed)}
+            aria-expanded={!sheetCollapsed}
+            aria-label={sheetCollapsed ? 'Buka panel analisis' : 'Tutup panel analisis'}
+          />
+          <LocationControls
+            point={selection.point}
+            businessType={selection.businessType}
+            onBusinessTypeChange={chooseBusinessType}
+            onUseMapCenter={() => pick(mapCenter)}
+            onClearPoint={clearPoint}
+          />
           {selection.point === null ? (
             <Intro />
+          ) : analysisSelection === null ? (
+            <LocationPreview point={selection.point} businessType={selection.businessType} onAnalyse={analyseLocation} />
           ) : (
-            <FloatingPanel
-              title="Analisis lokasi"
-              tourId="score"
-              className="results-panel"
-              collapsed={resultsCollapsed}
-              onToggle={() => setResultsCollapsed((collapsed) => !collapsed)}
-            >
-              <LocationView
-                point={selection.point}
-                businessType={selection.businessType}
-                onBusinessTypeChange={chooseBusinessType}
-              />
-            </FloatingPanel>
+            <LocationView
+              point={analysisSelection.point!}
+              businessType={analysisSelection.businessType}
+              onBusinessTypeChange={analyseBusinessType}
+            />
           )}
-        </div>
+        </aside>
       </main>
 
       <ConfirmDialog
@@ -152,24 +176,27 @@ export function App({
           onSignOut?.();
         }}
       />
-
-      <Tour key={tourRun} scope={userId} onNeedLocation={() => pick(mapCenter)} />
     </div>
   );
 }
 
-// Leads with the action and what it returns. The old version opened with a
-// question and then talked about data sources, which told a first-time visitor
-// neither what to do nor what they would get.
 function Intro() {
   return (
     <section className="intro">
-      <h2>Klik satu titik di peta</h2>
-      <p>Anda akan melihat skor 0–100 seberapa cocok lokasi itu untuk jenis usaha yang dipilih.</p>
-      <p className="muted">
-        Dinilai dari {USE_GOOGLE_MAP ? 'jumlah usaha Google Maps dan data OpenStreetMap' : 'data OpenStreetMap'} dalam
-        radius 1,5 km. Kalau datanya tipis, LOKABIS mengatakannya terus terang, bukan menebak.
+      <span className="eyebrow">Analisis lokasi</span>
+      <h2>Temukan tempat yang tepat.</h2>
+      <p className="intro-copy">
+        Pilih satu titik di dalam garis merah. LOKABIS akan merangkum potensi pelanggan, persaingan, dan kecocokan
+        usaha di sekitarnya.
       </p>
+      <details className="panel-disclosure intro-disclosure">
+        <summary>Cara kerja penilaian</summary>
+        <p>
+          Penilaian memakai{' '}
+          {USE_GOOGLE_MAP ? 'data Google Maps dan OpenStreetMap' : 'data OpenStreetMap'} dalam radius 1,5 km. Jika
+          datanya terbatas, hasil akan ditandai agar Anda tahu bagian yang perlu dicek langsung.
+        </p>
+      </details>
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { DATA_AGE_MONTHS, FLOOD_WARNING_METERS, RISK, STALE_DATA_SHARE } from './constants.js';
+import { DATA_AGE_MONTHS, FLOOD_WARNING_METERS, NEUTRAL_SCORE, RISK, STALE_DATA_SHARE } from './constants.js';
 import { clamp } from './math.js';
 import { ageInMonths } from './quality.js';
 import type { EvaluatedFacility, HardWarning, SiteConditions } from './types.js';
@@ -6,7 +6,10 @@ import type { EvaluatedFacility, HardWarning, SiteConditions } from './types.js'
 // PROPOSED in model 0.1.0 — see "Proposed in model 0.1.0" in docs/methodology.md.
 // Every signal here is a proxy from OpenStreetMap, not authoritative risk data.
 
-export function riskAndOperability(site: SiteConditions = {}): number {
+export function riskAndOperability(site: SiteConditions = {}, available = true): number {
+  // No warning signal found is not the same as failing to load the signals.
+  // A failed lookup is neutral so missing data can neither reward nor punish a location.
+  if (!available) return NEUTRAL_SCORE;
   let score: number = RISK.base;
   const waterway = site.nearestWaterwayMeters;
   if (waterway !== undefined) {

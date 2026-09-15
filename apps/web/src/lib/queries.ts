@@ -1,6 +1,6 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAnalysis, fetchPois, fetchRecommendation, shouldRetry } from './api';
+import { fetchAnalysis, fetchLocationDetails, fetchPois, fetchRecommendation, shouldRetry } from './api';
 import { USE_GOOGLE_MAP } from './map-config';
 
 /** Results for a location change only when its map data does, so they stay fresh for a while. */
@@ -37,6 +37,16 @@ export function usePois(point: LatLng | null) {
     queryFn: ({ signal }) => fetchPois(requirePoint(point), USE_GOOGLE_MAP, signal),
     enabled: point !== null,
     staleTime: STALE_TIME_MS,
+    retry: shouldRetry,
+  });
+}
+
+export function useLocationDetails(point: LatLng | null) {
+  return useQuery({
+    queryKey: ['location-details', point],
+    queryFn: ({ signal }) => fetchLocationDetails(requirePoint(point), signal),
+    enabled: point !== null,
+    staleTime: 24 * 60 * 60_000,
     retry: shouldRetry,
   });
 }

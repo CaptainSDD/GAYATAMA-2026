@@ -130,6 +130,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /placeCountCache/{cell} {
+      allow read, write: if false;
+    }
+
     // Saved reports: readable by anyone holding the ID, but not listable —
     // `read` would also let anyone download every report. Writes go via the API.
     match /reports/{reportId} {
@@ -161,6 +165,32 @@ npm install -g firebase-tools
 firebase login
 firebase deploy --only firestore:rules --project your-project-id
 ```
+
+---
+
+## Geoapify Places API
+
+The primary POI source. Geoapify serves OpenStreetMap data over a hosted API
+with an availability guarantee the public Overpass instances do not offer.
+
+1. Register at [Geoapify MyProjects](https://myprojects.geoapify.com/) and
+   create a project.
+2. Copy the API key from the **API Keys** section.
+3. Put it in `.env` — server-side only, never with a `VITE_` prefix:
+
+```bash
+GEOAPIFY_API_KEY=your-api-key
+GEOAPIFY_BASE_URL=https://api.geoapify.com/v2
+GEOAPIFY_TIMEOUT_MS=20000
+GEOAPIFY_MAX_PLACES=1000
+```
+
+The free plan allows 3,000 credits per day, and Places API costs 1 credit per
+20 places returned. `GEOAPIFY_MAX_PLACES` caps a single cell, so one cold cell
+costs at most 50 credits; the POI cache means an area is paid for once per
+`POI_CACHE_TTL_SECONDS`.
+
+Leave `GEOAPIFY_API_KEY` empty and the API falls back to Overpass for POIs.
 
 ---
 
@@ -350,7 +380,7 @@ gcloud run deploy gayatama-api \
   --region asia-southeast2 \
   --allow-unauthenticated \
   --set-env-vars "NODE_ENV=production,TRUST_PROXY_HOPS=1,CORS_ORIGINS=https://your-app.web.app,FIREBASE_PROJECT_ID=your-project-id" \
-  --set-secrets "FIREBASE_SERVICE_ACCOUNT_JSON=gayatama-sa:latest,GOOGLE_PLACES_API_KEY=gayatama-places-key:latest"
+  --set-secrets "FIREBASE_SERVICE_ACCOUNT_JSON=gayatama-sa:latest,GEOAPIFY_API_KEY=gayatama-geoapify:latest,GOOGLE_PLACES_API_KEY=gayatama-places-key:latest"
 ```
 
 Leave out `GOOGLE_PLACES_API_KEY` to run without Google counts.
@@ -387,7 +417,9 @@ you plan to demo, so those answers come from Firestore during judging.
 | `Cannot find module '@gayatama/scoring'` | Engine not built | `npm run build --workspace @gayatama/scoring`. The root `npm run dev` and `npm test` build it first |
 | Log: "Firebase is not configured" | `FIREBASE_PROJECT_ID` is empty | Expected in development; the POI cache is in memory. Set it to persist the cache |
 | Log: "Firestore read failed" or "Firestore write failed" | Wrong credentials or project | Check `FIREBASE_PROJECT_ID` matches the service account's `project_id` |
-| Requests return `504 UPSTREAM_TIMEOUT` | Overpass unreachable or overloaded, and nothing cached for the area | Retry shortly, or point `OVERPASS_URL` at an alternative instance |
+| Requests return `504 UPSTREAM_TIMEOUT` | The POI source failed and nothing is cached for the area | Check the log for which source failed. Geoapify: verify `GEOAPIFY_API_KEY` and the daily credit quota. Overpass: retry, or point `OVERPASS_URL` at an alternative instance |
+| Log: "Geoapify responded 401" | Invalid or restricted API key | Check the key, and any IP or referrer restrictions on the Geoapify project |
+| Response reports `siteConditions: "unavailable"` | The Overpass site query failed | Site inputs are scored as unknown. Point `OVERPASS_URL` at a reachable instance to restore them |
 | Every visitor is rate-limited together in production | The proxy is not trusted | Set `TRUST_PROXY_HOPS=1` |
 | CORS errors in the browser | Frontend origin not allowed | Add it to `CORS_ORIGINS`, comma-separated |
 | Overpass returns 429 | Rate limited | Raise `POI_CACHE_TTL_SECONDS`, or use an alternative instance |

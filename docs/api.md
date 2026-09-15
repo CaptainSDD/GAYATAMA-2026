@@ -31,7 +31,7 @@ Every scored result, in every endpoint, uses the same shape. A client renders
 all of them the same way, and never has a score without its interval.
 
 ```json
-{ "value": 75.15, "band": "suitable", "confidence": 81, "margin": 8, "range": [67, 83] }
+{ "value": 75.52, "band": "suitable", "confidence": 81, "margin": 8, "range": [68, 84] }
 ```
 
 | Field | Meaning |
@@ -66,10 +66,12 @@ Maps business counts, and `overture` the shops added from Overture Maps.
 
 - `stale` is `true` when Overpass was unavailable and an expired cache entry was
   served instead; `fetchedAt` then shows how old the data is.
-- `via` is `"overpass"` for data from a live Overpass query (possibly cached),
-  or `"snapshot"` for one of the offline OSM snapshots covering the demo areas.
-  For a snapshot, `fetchedAt` is the date of its OpenStreetMap data and
-  `cacheHit` is `false`.
+- `via` is `"snapshot"` for an offline OSM snapshot. The current public
+  compatibility value is `"overpass"` for every live/cached OSM facility path,
+  including a live lookup transported through Geoapify Places; it therefore
+  identifies the broad live path, not necessarily the literal upstream HTTP
+  provider. For a snapshot, `fetchedAt` is the date of its OpenStreetMap data
+  and `cacheHit` is `false`.
 - `siteConditions` is `"unavailable"` when the query for conditions at the site
   itself — road class, pedestrian features, waterways, industrial land use —
   failed and nothing was cached. Those inputs are then scored as unknown and
@@ -114,14 +116,54 @@ Maps business counts, and `overture` the shops added from Overture Maps.
 | Code | Status | Meaning |
 |------|--------|---------|
 | `VALIDATION_FAILED` | 400 | Malformed body, invalid field, unknown field, or a coordinate outside Indonesia. `details.issues` lists each problem |
+| `UNAUTHORIZED` | 401 | Missing, invalid or expired Firebase ID token on the protected profile route |
 | `NOT_FOUND` | 404 | Unknown route |
+| `USERNAME_TAKEN` | 409 | The requested case-insensitive username reservation belongs to another UID |
 | `INSUFFICIENT_DATA` | 422 | Confidence below 40 — no definitive recommendation given |
 | `RATE_LIMITED` | 429 | Client exceeded the throttle |
-| `UPSTREAM_TIMEOUT` | 504 | Overpass did not respond and nothing was cached for the area |
+| `REQUEST_FAILED` | 503 | Firebase Auth or Firestore required by profile registration is not configured |
+| `UPSTREAM_TIMEOUT` | 504 | The live POI provider did not respond and nothing was cached for the area |
 
 `INSUFFICIENT_DATA` is a deliberate design choice, not a failure: below a
 confidence of 40 the system refuses to answer rather than guessing. See
 [methodology](methodology.md#confidence-score-and-warnings).
+
+---
+
+## `GET /api/v1/location`
+
+Performs a lightweight reverse-geocoding lookup for a point selected on the
+map. It does **not** load nearby POIs, request Google place counts, or run the
+scoring engine. The web client uses this response to let the user verify the
+location before explicitly starting an analysis.
+
+```http
+GET /api/v1/location?lat=-7.005&lng=110.435
+```
+
+```json
+{
+  "location": { "lat": -7.005, "lng": 110.435 },
+  "address": {
+    "name": "Masjid Al-Mukhlisin",
+    "street": "Jalan Belimbing I",
+    "village": "Peterongan",
+    "district": "Semarang Selatan",
+    "city": "Kota Semarang",
+    "postcode": "50242",
+    "state": "Jawa Tengah",
+    "formatted": "Jalan Belimbing I, Peterongan, Kota Semarang 50242"
+  },
+  "source": {
+    "provider": "Geoapify",
+    "attribution": "© OpenStreetMap contributors",
+    "licence": "Open Database License"
+  }
+}
+```
+
+`address` and `source` are `null` when reverse geocoding is unavailable. The
+point can still be confirmed and analysed from its coordinates.
 
 ---
 
@@ -164,11 +206,20 @@ endpoint.
   },
 
   "components": {
-    "demandFit":         { "value": 74.75, "weight": 0.35 },
-    "accessibility":     { "value": 67.0,  "weight": 0.20 },
-    "competition":       { "value": 77.54, "weight": 0.20 },
-    "supportingFacility":{ "value": 73.0,  "weight": 0.15 },
-    "risk":              { "value": 95.0,  "weight": 0.10 }
+    "demandFit":         { "value": 74.75, "weight": 0.35, "availability": "available" },
+    "accessibility":     { "value": 67.0,  "weight": 0.20, "availability": "available" },
+    "competition":       { "value": 77.54, "weight": 0.20, "availability": "available" },
+    "supportingFacility":{ "value": 73.0,  "weight": 0.15, "availability": "available" },
+    "risk":              { "value": 95.0,  "weight": 0.10, "availability": "available" }
+  },
+
+  "accessibility": {
+    "value": 67.0,
+    "road": 80,
+    "transit": 60,
+    "walkability": 70,
+    "parking": 50,
+    "siteInputsAvailable": true
   },
 
   "segments": {
@@ -189,16 +240,29 @@ endpoint.
     "radiusMeters": 1500,
     "strongest": [
       { "id": "node/4012345678", "name": "Laundry Kilat", "kind": "laundry", "zone": "b", "distanceMeters": 420, "count": 1, "source": "openstreetmap", "contribution": 0.6 }
+    ],
+    "namedCompetitors": [
+      { "id": "node/4012345678", "name": "Laundry Kilat", "kind": "laundry", "zone": "b", "distanceMeters": 420, "source": "openstreetmap" }
     ]
   },
 
   "strengths": [
-    { "factor": "risk", "detail": "Risk and Operability scores 95/100" },
-    { "factor": "competition", "detail": "Competition Opportunity scores 76/100" },
-    { "factor": "demandFit", "detail": "Demand Fit scores 75/100" }
+    { "factor": "risk", "detail": "Keamanan Operasional bernilai 95/100" },
+    { "factor": "competition", "detail": "Kondisi Persaingan bernilai 78/100" },
+    { "factor": "demandFit", "detail": "Potensi Pelanggan bernilai 75/100" }
   ],
   "risks": [],
   "warnings": [],
+
+  "narrative": {
+    "headline": "Lokasi ini cocok untuk usaha laundry",
+    "summary": "Kelompok pelanggan yang relevan untuk laundry terlihat kuat di sekitar lokasi.",
+    "positives": ["Kelompok pelanggan yang relevan untuk laundry terlihat kuat di sekitar lokasi."],
+    "cautions": [],
+    "nextSteps": ["Lakukan survei lokasi pada hari kerja dan akhir pekan sebelum menyewa tempat."],
+    "provisional": false,
+    "generatedBy": "template"
+  },
 
   "evidence": {
     "facilityCount": 47,
@@ -222,6 +286,11 @@ endpoint.
 
 - `score.value` is unrounded; `score.range` is already rounded because it is a
   display artefact.
+- `components.*.availability` is `available`, `partial`, or `unavailable`.
+  When site conditions fail, risk uses a neutral value of 50 and is marked
+  `unavailable`; accessibility is marked `partial` because its mapped-facility
+  inputs remain usable. The interface must not present an unavailable component
+  as a measured result.
 - `competition.strongest` lists up to five competitors by contribution to the
   Competitor Equivalent Count. A listed competitor's `source` is
   `"openstreetmap"`, or `"overture"` for a shop added from Overture Maps, whose
@@ -229,10 +298,20 @@ endpoint.
   competitors in one zone: its `source` is `"google"`, its `id` is
   `google:<kind>:<zone>` (with `:<scale>` when not medium), and its `name` and
   `distanceMeters` are `null`, because a count has no single place or position.
+- `competition.namedCompetitors` lists up to five named mapped competitors,
+  nearest first. When Google counts are active, this list answers who is nearby
+  without adding those mapped records to the score a second time.
 - `evidence.facilityCount` and `evidence.zones` include every facility Google
   counted.
 - `strengths` are up to three components scoring 60 or more; `risks` are up to
   three scoring below 60.
+- `narrative` is the plain-language explanation layer. When `GROQ_API_KEY` is
+  configured, the API asks Groq to produce this object from the already computed
+  facts. Without a key, or when Groq fails, deterministic Indonesian templates
+  are used instead. `generatedBy` is `"ai"` or `"template"`; `provisional` is
+  true when site data is unavailable/stale or requested Google counts are not
+  usable. In every case, this object must not change scores, bands, component
+  values, evidence, source status, warnings, or invent place names.
 - `warnings` entries are `{ code, message }`. Codes: `flood_risk_proxy`,
   `unsuitable_surroundings`, `stale_data` — see
   [hard warnings](methodology.md#hard-warnings-the-engine-raises). The message
@@ -268,24 +347,24 @@ I open here?".
       "score": { "value": 75.15, "band": "suitable", "confidence": 81, "margin": 8, "range": [67, 83] },
       "status": "primary",
       "dominantSegment": "resident",
-      "rationale": "Resident score 82 with healthy competitor saturation (0.55)",
-      "differentiator": "Lower footfall dependence than food or beverages"
+      "rationale": "Kelompok penghuni sekitar terlihat kuat. Jumlah pesaing masih seimbang dengan potensi permintaan.",
+      "differentiator": "Lebih mengandalkan penghuni sekitar daripada orang yang hanya lewat."
     },
     {
       "businessType": "salon",
       "score": { "value": 71.6, "band": "suitable", "confidence": 81, "margin": 8, "range": [64, 80] },
       "status": "primary",
       "dominantSegment": "resident",
-      "rationale": "Resident score 82 with low competitor saturation (0.31)",
-      "differentiator": "Relies on repeat local customers rather than passing trade"
+      "rationale": "Kelompok penghuni sekitar terlihat kuat. Permintaan di area ini belum cukup terbukti dibanding sedikitnya pesaing.",
+      "differentiator": "Lebih mengandalkan pelanggan tetap di sekitar lokasi."
     },
     {
       "businessType": "minimarket",
       "score": { "value": 69.2, "band": "moderately_suitable", "confidence": 81, "margin": 8, "range": [61, 77] },
       "status": "alternative",
       "dominantSegment": "resident",
-      "rationale": "Resident score 82 with healthy competitor saturation (0.72)",
-      "differentiator": "Needs the most stock and shelf space to open"
+      "rationale": "Kelompok penghuni sekitar terlihat kuat. Jumlah pesaing masih seimbang dengan potensi permintaan.",
+      "differentiator": "Membutuhkan modal stok dan ruang penyimpanan yang lebih besar."
     }
   ],
 
@@ -296,13 +375,13 @@ I open here?".
       "businessType": "beverages",
       "score": { "value": 57.9, "band": "risky", "confidence": 81, "margin": 8, "range": [50, 66] },
       "status": "not_recommended",
-      "reason": "Competition Opportunity is 16/100, its weakest component"
+      "reason": "kondisi persaingan menjadi hambatan terbesar untuk jenis usaha ini"
     },
     {
       "businessType": "pharmacy",
       "score": { "value": 52.4, "band": "risky", "confidence": 81, "margin": 8, "range": [44, 60] },
       "status": "not_recommended",
-      "reason": "Supporting Facility Fit is 22/100, its weakest component"
+      "reason": "fasilitas pendukung menjadi hambatan terbesar untuk jenis usaha ini"
     }
   ],
 
@@ -349,8 +428,8 @@ no `primary` or `alternative` entries — every category scoring 60 or more is
   "score": { "value": 75.15, "band": "suitable", "confidence": 52, "margin": 12, "range": [63, 87] },
   "status": "needs_validation",
   "dominantSegment": "resident",
-  "rationale": "Resident score 82, but facility data around this location is incomplete",
-  "differentiator": "Lower footfall dependence than food or beverages"
+  "rationale": "Kelompok penghuni sekitar terlihat menjanjikan, tetapi kelengkapan datanya masih perlu diperiksa",
+  "differentiator": "Lebih mengandalkan penghuni sekitar daripada orang yang hanya lewat."
 }
 ```
 
@@ -378,10 +457,9 @@ never as a recommendation.
 
 ## `GET /api/v1/pois`
 
-Normalised facilities, Google business counts when requested, and site
-conditions around a point. Used by the map layer, and by the client-side what-if
-simulator, which reruns the scoring engine in the browser without further
-requests.
+Normalised mapped facilities, Google small-business counts when requested, and
+site conditions around a point. The map/evidence views consume this endpoint;
+it also exposes the complete scoring input shape for integrations.
 
 ### Query parameters
 
@@ -416,16 +494,19 @@ For `googleMap=true`:
     }
   ],
   "facilityCounts": [
-    { "kind": "campus", "zone": "a", "count": 1, "scale": "large", "source": "google", "dataQuality": 0.65 },
     { "kind": "cafe", "zone": "b", "count": 7, "scale": "medium", "source": "google", "dataQuality": 0.65 }
   ],
-  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "via": "overpass", "siteConditions": "available", "places": { "provider": "Google Maps", "status": "used", "attribution": "Google Maps", "fetchedAt": "2026-09-11T02:10:05Z", "cacheHit": false, "kinds": ["campus", "school", "office", "…"] }, "overture": null }
+  "dataSource": { "provider": "OpenStreetMap", "attribution": "© OpenStreetMap contributors", "licence": "ODbL 1.0", "fetchedAt": "2026-09-09T13:22:41Z", "cacheHit": true, "stale": false, "via": "overpass", "siteConditions": "available", "places": { "provider": "Google Maps", "status": "used", "attribution": "Google Maps", "fetchedAt": "2026-09-11T02:10:05Z", "cacheHit": false, "kinds": ["cafe", "bubble_tea", "restaurant", "fast_food", "food_court", "laundry", "convenience", "supermarket", "hairdresser", "beauty", "pharmacy", "chemist"] }, "overture": null }
 }
 ```
 
-- `site.discouragingSurroundings` lists any of `cemetery`, `waste`, `quarry`,
-  `military` and `prison` mapped close to the point; the field is absent when
-  there are none.
+- `site` may contain `roadClass`, `pedestrianFeatureCount`,
+  `nearestWaterwayMeters`, `industrialLanduseNearby` and
+  `discouragingSurroundings`. The last field lists mapped `cemetery`, `waste`,
+  `quarry`, `military` or `prison` surroundings and is absent when none are
+  found. Raw site data is shared by geohash-7 in bounded memory, then filtered
+  and every field is recomputed from the exact selected point; it is never
+  Firestore-cached.
 - `facilities` are sorted by distance. Each carries the engine's own fields —
   the `Facility` type in `@gayatama/scoring` — plus its distance, zone, Data
   Quality and Access Factor from this location. Shops added from Overture Maps
@@ -436,6 +517,38 @@ For `googleMap=true`:
   within `radius`. The list is empty unless `dataSource.places.status` is
   `used`.
 - With `location`, `site` and `asOf`, the response is a complete engine input.
+
+---
+
+## `POST /api/v1/auth/register-profile`
+
+Creates the application profile and reserves a case-insensitive username after
+Firebase Auth signup. Signup, login, logout, email verification and ID-token
+retrieval happen directly through the Firebase Web Auth SDK; this is the only
+backend auth/profile endpoint.
+
+```http
+Authorization: Bearer <Firebase ID token>
+Content-Type: application/json
+```
+
+```json
+{ "username": "usaha_semarang" }
+```
+
+The trimmed username must be 3–20 characters, start with an ASCII letter, and
+contain only letters, numbers or underscores. Unknown fields are rejected.
+
+```json
+{ "username": "usaha_semarang" }
+```
+
+The token guard verifies the ID token through Firebase Admin and derives UID and
+email from it; identity is never accepted from the request body. One Firestore
+transaction reserves `usernames/{lowercaseUsername}` and writes
+`users/{uid}`. Retrying as the same UID is idempotent; another UID cannot claim
+the reservation. Missing/invalid tokens return `401`; unavailable server-side
+Firebase Auth or Firestore returns `503`.
 
 ---
 
@@ -469,7 +582,7 @@ shared service and the cache is what keeps GAYATAMA a well-behaved client of it.
 | Endpoint | Limit |
 |----------|-------|
 | `/analysis`, `/recommend` | 30 requests / minute |
-| `/pois` | 60 requests / minute |
+| `/pois`, `/location`, `/auth/register-profile` | 60 requests / minute (global default) |
 | `/health` | unlimited |
 
 Exceeding a limit returns `429` with a `Retry-After` header. Behind a proxy

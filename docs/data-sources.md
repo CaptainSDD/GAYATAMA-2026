@@ -2,26 +2,46 @@
 
 | Source | Supplies | When |
 |--------|----------|------|
-| [OpenStreetMap](https://www.openstreetmap.org/) | Facilities, and conditions at the site itself: roads, footways, waterways, land use | Always |
+| [OpenStreetMap](https://www.openstreetmap.org/) | Facilities and exact-site conditions: roads, footways, waterways, land use and discouraging surroundings | Always |
+| [Geoapify](https://www.geoapify.com/) Places and Geocoding | Live transport for OSM-derived facilities; reverse geocoding for location confirmation | Places when a server key is configured; reverse geocoding when configured |
 | [Overture Maps](https://overturemaps.org/) Places | Photocopy, printing and stationery shops that OpenStreetMap lacks | Only in the areas prepared offline, listed in `apps/api/scripts/overture-areas.json` |
-| Google Maps ([Places Aggregate API](https://developers.google.com/maps/documentation/places-aggregate/overview)) | How many businesses and facilities of each kind lie in each distance zone, for the kinds in [Google Maps business counts](#google-maps-business-counts) | Only when the web app draws a Google map and the API has a Google server key. Otherwise OpenStreetMap supplies those kinds too |
+| Google Maps ([Places Aggregate API](https://developers.google.com/maps/documentation/places-aggregate/overview)) | Counts for the selected small-business kinds in [Google Maps business counts](#google-maps-business-counts) | Only when the web app draws a Google map and the API has a Google server key. Otherwise OpenStreetMap supplies those kinds too |
 
 ## Primary source: OpenStreetMap
 
-OpenStreetMap data reaches the API by one of two routes:
+OpenStreetMap data reaches the facility pipeline by three routes:
 
-- **Live**, queried through the [Overpass API](https://overpass-api.de/), falling
-  back to other public Overpass instances when the main one is unavailable.
+- **Live through Geoapify Places** when `GEOAPIFY_API_KEY` is configured.
+  Geoapify returns OSM IDs and tags, which are normalized through the same OSM
+  mapping as Overpass.
+- **Live through the [Overpass API](https://overpass-api.de/)** when Geoapify is
+  not configured, with fallback instances for retryable failures. A failing
+  configured Geoapify request does not switch to Overpass during that request;
+  the API serves a stale POI cache entry when possible, otherwise returns an
+  upstream error.
 - **From a snapshot**, for the demo areas listed in
   `apps/api/scripts/osm-areas.json`. Snapshots are extracted offline from a
   [Geofabrik](https://download.geofabrik.de/) download, so those areas keep
-  working when every Overpass instance is down.
+  working when live providers are unavailable.
 
-Every response says which route it used (`dataSource.via`); for a snapshot,
-`fetchedAt` is the date of its data. Both routes carry the same OpenStreetMap
-data, including each element's last-edit timestamp — Geofabrik's public
-extracts omit only user names, user IDs and changeset IDs — so a record is dated
-identically either way.
+The public `dataSource.via` field currently exposes a coarse route:
+`"snapshot"` for an offline snapshot and `"overpass"` for the live/cached OSM
+facility path, including facilities transported through Geoapify. The latter is
+a compatibility label, not a claim that every live request went directly to
+Overpass. Firestore's diagnostic POI-cache `source` distinguishes `"geoapify"`
+from `"overpass"`.
+
+For a snapshot, `fetchedAt` is the date of its data. All routes carry
+OpenStreetMap-derived records, including each element's last-edit timestamp;
+Geofabrik's public extracts omit only user names, user IDs and changeset IDs, so
+a record is dated identically either way.
+
+Site conditions are deliberately separate from facility lookup. A snapshot is
+used when one covers the point; otherwise raw Overpass site elements are held
+in a bounded memory-only cache by geohash-7 cell. Each response filters those
+raw elements and recomputes road class, pedestrian features, waterway distance,
+industrial land use and discouraging surroundings from the **exact selected
+point**. Site elements are never written to Firestore.
 
 ### Licence and attribution
 
@@ -87,20 +107,23 @@ opening hours or ratings. The code is in `apps/api/src/places/`.
 1. The location snaps to the centre of its geohash-8 cell (about 38 × 19 m), so
    the circles sit within about 22 m of the chosen point and nearby clicks share
    one set of counts.
-2. Each kind is counted within 1,500 m, 800 m and 300 m. Zone C is the 1,500 m
+2. The implementation has exactly 12 small-business queries. Each is counted
+   largest-circle first within 1,500 m, 800 m and 300 m. Zone C is the 1,500 m
    count minus the 800 m count, Zone B the 800 m count minus the 300 m count,
-   and Zone A the 300 m count. A smaller circle is not requested when a larger
-   one is empty, so a new location takes 25 to 75 requests.
+   and Zone A the 300 m count. A smaller circle is skipped when a larger one is
+   empty, so a cold location takes **12 to 36 requests**. The kinds run
+   concurrently while the HTTP client bounds active requests.
 3. A zone's count enters the engine as that many facilities at the zone's outer
    edge, undated (Data Quality 0.65) and with unknown opening hours — see
    [methodology.md](methodology.md#counted-facilities). Facilities of one kind
    sharing a zone then count with
    [diminishing returns](methodology.md#crowding-repeated-facilities-count-for-less),
    as mapped ones do.
-4. Google counts replace OpenStreetMap facilities of the same kinds; every other
-   kind still comes from OpenStreetMap. If any count request fails, no count is
-   used: every kind comes from OpenStreetMap, and `dataSource.places.status` is
-   `unavailable`.
+4. Google counts replace OpenStreetMap facilities only for those 12
+   small-business kinds; every demand anchor and supporting facility remains
+   mapped data. If any count request fails, remaining work is cancelled and no
+   partial Google set is used: every kind comes from OpenStreetMap, and
+   `dataSource.places.status` is `unavailable`.
 
 ### Type mapping
 
@@ -142,26 +165,30 @@ Everything else comes from OpenStreetMap:
 
 ### Cost and caching
 
-A new location takes 12 to 36 requests. Google's free usage covers 5,000
-requests a month — at least 138 new locations — and each further 1,000 costs
-USD 10 (pricing checked in September 2026). Counts are cached in memory per
-geohash-8 cell for `PLACE_COUNT_CACHE_TTL_SECONDS` (7 days by default, 30 at
-most), so repeated clicks cost nothing. They are never written to Firestore. To
-cap spending, set a daily quota — see
+A cold geohash-8 cell takes 12 to 36 requests. Counts are cached for
+`PLACE_COUNT_CACHE_TTL_SECONDS` in a bounded in-process map of at most 2,000
+cells; in-flight requests for the same cell are shared. The configured lifetime
+cannot exceed 30 days. Repeated requests handled by a live API process can hit
+that cache, but entries do not survive a restart and are **never written to
+Firestore**. Set a daily provider quota to cap spending — see
 [installation.md](installation.md#google-maps-platform-optional).
+
+Provider free allowances and per-request prices change independently of this
+codebase; check current Google Maps Platform pricing before deployment rather
+than relying on a hard-coded estimate here.
 
 ### Terms that shape the design
 
 | Rule | Source | What GAYATAMA does |
 |------|--------|--------------------|
 | Google Maps Core Services may not be used with or near a non-Google map | [Google Maps Platform Terms of Service](https://cloud.google.com/maps-platform/terms), 3.2.3(e) | The API uses Google counts only for requests with `googleMap: true`. The web app sets it only when it draws a Google map; without a browser key it draws an OpenStreetMap map and never asks for them |
-| Place counts may be used to create derived metrics that cannot substitute for the counts or be reverse-engineered into them | [Service Specific Terms](https://cloud.google.com/maps-platform/terms/maps-service-terms), 13.1 | Counts feed the segment, competition, supporting-facility and confidence scores |
-| Place counts may be cached for at most 30 days, solely to calculate those metrics | Service Specific Terms, 13.2 | The cache lifetime cannot be set above 30 days, and counts are kept in memory only |
+| Place counts may be used to create derived metrics that cannot substitute for the counts or be reverse-engineered into them | [Service Specific Terms](https://cloud.google.com/maps-platform/terms/maps-service-terms), 13.1 | Counts feed small-business competition and the resulting score/evidence |
+| Place counts may be cached for at most 30 days, solely to calculate those metrics | Service Specific Terms, 13.2 | The bounded memory-only cache lifetime cannot be configured above 30 days; counts are never written to Firestore |
 | Counts may not be used to make decisions about individuals' housing, employment, credit or insurance | Service Specific Terms, 13.3 | GAYATAMA scores locations for businesses, not people |
 | "Google Maps" attribution wherever counts are shown or feed a result | [Places Aggregate API policies](https://developers.google.com/maps/documentation/places-aggregate/policies) | Every result that uses counts says "Business counts: Google Maps"; the map shows Google's own logo |
 
 > **To confirm before production.** The interface also shows some counts
-> directly — "3 × Café" among the strongest competitors, and per-kind evidence
+> directly in its Google Maps count summary, and per-kind evidence
 > for each customer group. The attribution policy anticipates counts shown as a
 > standalone metric, but whether showing a count *from the cache* fits 13.2's
 > "solely to calculate" is our reading, not settled. Check it with Google before
@@ -170,6 +197,24 @@ cap spending, set a daily quota — see
 The Places API (New and Legacy), which returns names and positions, is not used:
 its terms forbid storing business names, using its coordinates for spatial
 analysis such as point-in-polygon tests, and using it with a non-Google map.
+Named competitors shown by GAYATAMA come from mapped OpenStreetMap/Overture
+records, not Google counts.
+
+---
+
+## Geoapify transport and attribution
+
+Geoapify is an API transport, not the owner of the mapped POIs. Facilities
+returned by Geoapify Places retain OpenStreetMap IDs/tags and are presented as
+OpenStreetMap-derived data with `© OpenStreetMap contributors` and ODbL
+attribution. The POI cache records `source: "geoapify"` only as an operational
+diagnostic.
+
+`GET /api/v1/location` separately uses Geoapify reverse geocoding. Its response
+identifies `provider: "Geoapify"` while preserving the returned datasource
+attribution and licence (falling back to OpenStreetMap/Open Database License).
+If reverse geocoding is unavailable, coordinates remain usable and the address
+and source are `null`.
 
 ---
 
@@ -305,7 +350,7 @@ Supporting facilities feed Supporting Facility Fit — see
 | Parking | `amenity=parking` with `capacity` |
 | Severance | `highway=primary`/`trunk`/`motorway`, `toll=yes`, `railway=rail`, `waterway=river`/`canal` — feeds the Access Factor when the mapped geometry intersects the direct line to a facility |
 | Barrier passages | `highway=crossing`, `railway=level_crossing`, `highway=ford`, plus mapped highway bridges and tunnels — cancel a matching barrier penalty when close to the intersection |
-| Discouraging neighbours | `landuse=cemetery`/`landfill`/`quarry`/`military`, `amenity=grave_yard`/`waste_transfer_station`/`prison` — feeds Risk and Operability |
+| Discouraging neighbours | `landuse=cemetery`/`landfill`/`quarry`/`military`, `amenity=grave_yard`/`waste_transfer_station`/`prison` — feeds Risk and Operability and the `unsuitable_surroundings` warning. Cemeteries count within 150 m; waste, quarry, military and prison features within 300 m. The warning names the mapped kinds found |
 
 The Access Factor is a straight-line OSM proxy, not a route calculation. It is
 applied only to individually mapped facilities because aggregate zone counts

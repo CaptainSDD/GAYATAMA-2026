@@ -11,6 +11,7 @@ import { PlaceCountsService } from '../places/place-counts.service';
 import { GOOGLE_COUNTED_KINDS } from '../places/place-types';
 import { PoiService } from '../poi/poi.service';
 import { withMappedSeverance } from '../overpass/severance';
+import { NarrativeService } from './narrative.service';
 import { presentAnalysis, presentPois, presentRecommendation, type SourceSnapshot } from './presenters';
 import type { AnalysisRequest, PoisQuery, RecommendRequest } from './schemas';
 
@@ -20,13 +21,24 @@ export class AnalysisService {
   constructor(
     private readonly pois: PoiService,
     private readonly places: PlaceCountsService,
+    private readonly narratives: NarrativeService,
   ) {}
 
   async analyze(request: AnalysisRequest) {
     const { input, source } = await this.load(request);
     const result = scoreLocation(input, request.businessType);
     if (result.insufficientData) throw insufficientData(result.evidence.facilityCount, result.confidence.value);
-    return presentAnalysis(result, input.location, source);
+    const response = presentAnalysis(result, input, source);
+    const narrative = await this.narratives.forAnalysis(
+      result,
+      {
+        siteAvailable: source.siteAvailable,
+        stale: source.stale,
+        placesStatus: source.places.status,
+      },
+      response,
+    );
+    return { ...response, narrative };
   }
 
   async recommend(request: RecommendRequest) {
@@ -67,6 +79,7 @@ export class AnalysisService {
       location,
       facilities: mappedFacilities,
       site: site.site,
+      siteAvailable: site.available,
       asOf: new Date().toISOString().slice(0, 10),
     };
     if (places.status === 'used') {

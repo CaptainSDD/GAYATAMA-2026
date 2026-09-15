@@ -27,33 +27,6 @@ function Icon({ size = 18, children }: IconProps & { children: ReactNode }) {
   );
 }
 
-/** Points down when a panel is open, and is rotated by CSS when it is collapsed. */
-export function ChevronDownIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="m6 9 6 6 6-6" />
-    </Icon>
-  );
-}
-
-export function HelpIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.6 9.2a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.5" />
-      <path d="M12 17h.01" />
-    </Icon>
-  );
-}
-
-export function CloseIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M18 6 6 18M6 6l12 12" />
-    </Icon>
-  );
-}
-
 export function SunIcon(props: IconProps) {
   return (
     <Icon {...props}>
@@ -141,6 +114,24 @@ export function StoreIcon(props: IconProps) {
       <path d="M3.5 9.5V20h17V9.5" />
       <path d="M2.5 9.5 4.4 4.5h15.2l1.9 5a3 3 0 0 1-5.9 0 3 3 0 0 1-5.9 0 3 3 0 0 1-5.9 0Z" />
       <path d="M9.5 20v-5h5v5" />
+    </Icon>
+  );
+}
+
+/** Used by the current compiled FloatingPanel component without changing the stage-2 App layout. */
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </Icon>
+  );
+}
+
+/** Used by the current compiled Tour component without wiring the tour into the stage-2 App. */
+export function CloseIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M18 6 6 18M6 6l12 12" />
     </Icon>
   );
 }

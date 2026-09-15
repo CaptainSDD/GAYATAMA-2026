@@ -142,6 +142,8 @@ export interface LocationInput {
   /** Facilities known only as counts. A kind should come from either facilities or counts, not both. */
   facilityCounts?: readonly FacilityCount[];
   site?: SiteConditions;
+  /** False when site-condition lookup failed; unknown risk inputs then receive a neutral score. */
+  siteAvailable?: boolean;
   /** ISO date the data is evaluated against. The engine never reads the clock. */
   asOf: string;
 }

@@ -752,6 +752,12 @@ there, not support.
 Risk and Operability = clamp(100 − penalties, 0, 100)
 ```
 
+This formula is used only when the site-condition lookup succeeds. If that
+lookup fails, the engine uses the neutral value 50 and the API marks the
+component `unavailable`. Missing risk data therefore neither rewards the
+location with 100 nor punishes it with zero; the interface tells the user to
+verify road access, parking, drainage, and flood history in the field.
+
 | Condition | Penalty |
 |-----------|--------:|
 | Mapped river, canal or stream within 100 m | −20 |
