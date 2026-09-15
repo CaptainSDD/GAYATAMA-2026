@@ -4,12 +4,14 @@ import { ANALYSIS_RADIUS_METERS, type Facility, type LatLng, type SiteConditions
 import { upstreamUnavailable } from '../common/errors';
 import { encodeGeohash, geohashCenter, geohashHalfDiagonalMeters } from '../common/geohash';
 import type { Env } from '../config/env';
+import { GeoapifyPlacesClient } from '../geoapify/geoapify-places.client';
 import { OSM_SNAPSHOTS, type OsmSnapshots } from '../osm-snapshots/osm-snapshots';
 import { withoutOpenStreetMapDuplicates } from '../overture/overture-place';
 import { OVERTURE_PLACES, type OverturePlaces } from '../overture/overture-places';
 import { toFacilities } from '../overpass/normalize';
 import { OverpassClient } from '../overpass/overpass.client';
 import { buildPoiQuery, buildSiteQuery } from '../overpass/queries';
+import { accessContext, type AccessContext } from '../overpass/severance';
 import { siteConditions } from '../overpass/site';
 import { POI_CACHE, type PoiCache } from './poi-cache';
 
@@ -27,7 +29,7 @@ export interface PoiSnapshot {
   /** Served from an expired cache entry because Overpass was unavailable. */
   stale: boolean;
   /** A live Overpass query (possibly cached), or an offline OSM snapshot. */
-  via: 'overpass' | 'snapshot';
+  via: 'overpass' | 'geoapify' | 'snapshot';
   /** Overture shops added to the OpenStreetMap facilities, or null outside the Overture areas. */
   overture: { areaId: string; release: string; added: number } | null;
 }
@@ -36,6 +38,7 @@ type OpenStreetMapSnapshot = Omit<PoiSnapshot, 'overture'>;
 
 export interface SiteLookup {
   site: SiteConditions;
+  access: AccessContext;
   /** False when the site query failed with nothing cached, so every site input is scored as unknown. */
   available: boolean;
 }
@@ -43,7 +46,7 @@ export interface SiteLookup {
 @Injectable()
 export class PoiService {
   private readonly logger = new Logger(PoiService.name);
-  private readonly siteCache = new Map<string, { site: SiteConditions; fetchedAt: number }>();
+  private readonly siteCache = new Map<string, { site: SiteConditions; access: AccessContext; fetchedAt: number }>();
   // Requests that arrive while the same cell is loading share its Overpass
   // query instead of each sending their own.
   private readonly pendingFacilities = new Map<string, Promise<PoiSnapshot>>();
@@ -51,6 +54,7 @@ export class PoiService {
 
   constructor(
     private readonly overpass: OverpassClient,
+    private readonly geoapify: GeoapifyPlacesClient,
     @Inject(POI_CACHE) private readonly cache: PoiCache,
     private readonly config: ConfigService<Env, true>,
     @Inject(OSM_SNAPSHOTS) private readonly snapshots: OsmSnapshots,
@@ -117,48 +121,77 @@ export class PoiService {
 
     const cached = await this.cache.get(cell);
     if (cached !== null && this.isFresh(Date.parse(cached.fetchedAt))) {
-      return { facilities: cached.facilities, fetchedAt: cached.fetchedAt, cacheHit: true, stale: false, via: 'overpass' };
+      return {
+        facilities: cached.facilities,
+        fetchedAt: cached.fetchedAt,
+        cacheHit: true,
+        stale: false,
+        via: cached.via ?? 'overpass',
+      };
     }
 
     const started = Date.now();
     try {
-      const elements = await this.overpass.query(buildPoiQuery(center, radius, this.overpass.queryTimeoutSeconds));
-      this.logger.log(`Overpass POI query for ${cell}: ${elements.length} elements in ${Date.now() - started} ms`);
-      const entry = { cell, facilities: toFacilities(elements), fetchedAt: new Date().toISOString() };
+      const via = this.geoapify.configured ? ('geoapify' as const) : ('overpass' as const);
+      const facilities = this.geoapify.configured
+        ? await this.geoapify.placesAround(center, radius)
+        : toFacilities(await this.overpass.query(buildPoiQuery(center, radius, this.overpass.queryTimeoutSeconds)));
+      this.logger.log(`${via === 'geoapify' ? 'Geoapify' : 'Overpass'} POI query for ${cell}: ${facilities.length} facilities in ${Date.now() - started} ms`);
+      const entry = { cell, facilities, fetchedAt: new Date().toISOString(), via };
       await this.cache.set(entry);
-      return { facilities: entry.facilities, fetchedAt: entry.fetchedAt, cacheHit: false, stale: false, via: 'overpass' };
+      return { facilities: entry.facilities, fetchedAt: entry.fetchedAt, cacheHit: false, stale: false, via };
     } catch (error) {
       if (cached !== null) {
-        this.logger.warn(`Overpass unavailable, serving stale cache for ${cell}: ${String(error)}`);
-        return { facilities: cached.facilities, fetchedAt: cached.fetchedAt, cacheHit: true, stale: true, via: 'overpass' };
+        this.logger.warn(`POI provider unavailable, serving stale cache for ${cell}: ${String(error)}`);
+        return {
+          facilities: cached.facilities,
+          fetchedAt: cached.fetchedAt,
+          cacheHit: true,
+          stale: true,
+          via: cached.via ?? 'overpass',
+        };
       }
-      this.logger.warn(`Overpass unavailable and nothing cached for ${cell}: ${String(error)}`);
+      this.logger.warn(`POI provider unavailable and nothing cached for ${cell}: ${String(error)}`);
       throw upstreamUnavailable();
     }
   }
 
   private async loadSite(key: string, point: LatLng): Promise<SiteLookup> {
     const snapshot = this.snapshots.site(point);
-    if (snapshot !== null) return { site: siteConditions(snapshot.elements, point), available: true };
+    if (snapshot !== null) {
+      return { site: siteConditions(snapshot.elements, point), access: accessContext(snapshot.elements), available: true };
+    }
 
     const cached = this.siteCache.get(key);
-    if (cached !== undefined && this.isFresh(cached.fetchedAt)) return { site: cached.site, available: true };
+    if (cached !== undefined && this.isFresh(cached.fetchedAt)) {
+      return { site: cached.site, access: cached.access, available: true };
+    }
+
+    // Geoapify is the latency-bounded runtime provider, but it does not expose
+    // the road/waterway geometries used for site scoring. Never make a user wait
+    // for public Overpass when the fast provider is configured.
+    if (this.geoapify.configured) {
+      return { site: {}, access: { barriers: [], passages: [] }, available: false };
+    }
 
     const started = Date.now();
     try {
       const elements = await this.overpass.query(buildSiteQuery(point, this.overpass.queryTimeoutSeconds));
       this.logger.log(`Overpass site query for ${key}: ${elements.length} elements in ${Date.now() - started} ms`);
       const site = siteConditions(elements, point);
+      const access = accessContext(elements);
       this.siteCache.delete(key);
-      this.siteCache.set(key, { site, fetchedAt: Date.now() });
+      this.siteCache.set(key, { site, access, fetchedAt: Date.now() });
       if (this.siteCache.size > MAX_SITE_ENTRIES) {
         const oldest = this.siteCache.keys().next().value;
         if (oldest !== undefined) this.siteCache.delete(oldest);
       }
-      return { site, available: true };
+      return { site, access, available: true };
     } catch (error) {
       this.logger.warn(`Site query failed for ${key}, scoring site inputs as unknown: ${String(error)}`);
-      return cached !== undefined ? { site: cached.site, available: true } : { site: {}, available: false };
+      return cached !== undefined
+        ? { site: cached.site, access: cached.access, available: true }
+        : { site: {}, access: { barriers: [], passages: [] }, available: false };
     }
   }
 

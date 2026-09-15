@@ -58,7 +58,9 @@ export class OverpassClient {
 
   /** Server-side query timeout, kept below the client timeout so Overpass gives up first. */
   get queryTimeoutSeconds(): number {
-    return Math.max(5, Math.floor(this.config.get('OVERPASS_TIMEOUT_MS', { infer: true }) / 1000) - 5);
+    const requestMs = this.config.get('OVERPASS_TIMEOUT_MS', { infer: true });
+    const totalMs = this.config.get('OVERPASS_TOTAL_TIMEOUT_MS', { infer: true });
+    return Math.max(5, Math.floor(Math.min(requestMs, totalMs) / 1000) - 1);
   }
 
   /** OVERPASS_URL, then each distinct fallback. */
@@ -72,16 +74,19 @@ export class OverpassClient {
   async query(query: string): Promise<OverpassElement[]> {
     const endpoints = this.endpoints;
     const attempts = endpoints.length > 1 ? endpoints : [...endpoints, ...endpoints];
+    const deadline = Date.now() + this.config.get('OVERPASS_TOTAL_TIMEOUT_MS', { infer: true });
     let lastError: OverpassRequestError | undefined;
 
     for (const [index, url] of attempts.entries()) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
       if (lastError !== undefined) {
         const sameInstance = url === attempts[index - 1];
         this.logger.warn(`${lastError.message}; ${sameInstance ? 'retrying once' : `trying ${hostOf(url)}`}`);
-        if (sameInstance) await pause(RETRY_DELAY_MS);
+        if (sameInstance) await pause(Math.min(RETRY_DELAY_MS, remainingMs));
       }
       try {
-        return await this.limiter.run(() => this.send(url, query));
+        return await this.limiter.run(() => this.send(url, query, Math.max(1, deadline - Date.now())));
       } catch (error) {
         if (!(error instanceof OverpassRequestError) || !error.retryable) throw error;
         lastError = error;
@@ -90,7 +95,7 @@ export class OverpassClient {
     throw lastError ?? new OverpassRequestError('No Overpass instance is configured', false);
   }
 
-  private async send(url: string, query: string): Promise<OverpassElement[]> {
+  private async send(url: string, query: string, remainingMs: number): Promise<OverpassElement[]> {
     const host = hostOf(url);
     let response: Response;
     try {
@@ -98,12 +103,20 @@ export class OverpassClient {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
         body: new URLSearchParams({ data: query }),
-        signal: AbortSignal.timeout(this.config.get('OVERPASS_TIMEOUT_MS', { infer: true })),
+        signal: AbortSignal.timeout(
+          Math.min(this.config.get('OVERPASS_TIMEOUT_MS', { infer: true }), remainingMs),
+        ),
       });
     } catch (error) {
-      const timedOut = error instanceof Error && error.name === 'TimeoutError';
+      // Node fetch throws a DOMException here, which is not consistently an
+      // instanceof Error across runtimes and test environments.
+      const timedOut =
+        typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'TimeoutError';
       throw timedOut
-        ? new OverpassRequestError(`Overpass request to ${host} timed out`, false)
+        // A timeout describes this public instance, not the query. Let the
+        // caller continue to the next configured endpoint. Query-level
+        // timeouts returned in a successful JSON response remain terminal.
+        ? new OverpassRequestError(`Overpass request to ${host} timed out`, true)
         : new OverpassRequestError(`Overpass request to ${host} failed (${causeOf(error)})`, true);
     }
 

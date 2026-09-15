@@ -303,8 +303,15 @@ Supporting facilities feed Supporting Facility Fit — see
 | Road capacity | `lanes`, `width` |
 | Walkability | `sidewalk=*`, `highway=footway`, `highway=crossing` |
 | Parking | `amenity=parking` with `capacity` |
-| Severance | `highway=motorway`/`trunk`, `railway=rail`, `waterway=river` — feeds the Access Factor |
+| Severance | `highway=primary`/`trunk`/`motorway`, `toll=yes`, `railway=rail`, `waterway=river`/`canal` — feeds the Access Factor when the mapped geometry intersects the direct line to a facility |
+| Barrier passages | `highway=crossing`, `railway=level_crossing`, `highway=ford`, plus mapped highway bridges and tunnels — cancel a matching barrier penalty when close to the intersection |
 | Discouraging neighbours | `landuse=cemetery`/`landfill`/`quarry`/`military`, `amenity=grave_yard`/`waste_transfer_station`/`prison` — feeds Risk and Operability |
+
+The Access Factor is a straight-line OSM proxy, not a route calculation. It is
+applied only to individually mapped facilities because aggregate zone counts
+have no coordinates. Existing offline snapshots must be rebuilt after access
+rules change so they contain the same barrier and passage geometries as a live
+Overpass query.
 
 ---
 

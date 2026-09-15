@@ -47,4 +47,8 @@ describe('siteConditions', () => {
   it('counts crossings as pedestrian features', () => {
     expect(siteConditions([node({ highway: 'crossing' }, 10, 10)], ORIGIN).pedestrianFeatureCount).toBe(1);
   });
+
+  it('does not count access-query crossings beyond the 300 m walkability radius', () => {
+    expect(siteConditions([node({ highway: 'crossing' }, 400, 0)], ORIGIN).pedestrianFeatureCount).toBe(0);
+  });
 });

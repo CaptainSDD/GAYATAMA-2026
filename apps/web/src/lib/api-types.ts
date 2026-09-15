@@ -51,8 +51,8 @@ export interface DataSource {
   cacheHit: boolean;
   /** Served from an expired cache entry because OpenStreetMap data was unavailable. */
   stale: boolean;
-  /** A live Overpass query (possibly cached), or an offline OpenStreetMap snapshot dated `fetchedAt`. */
-  via: 'overpass' | 'snapshot';
+  /** A managed Geoapify lookup, live Overpass query, or offline OpenStreetMap snapshot. */
+  via: 'overpass' | 'geoapify' | 'snapshot';
   /** `unavailable` when conditions at the site could not be loaded, so those inputs were scored as unknown. */
   siteConditions: 'available' | 'unavailable';
   places: PlacesSource;

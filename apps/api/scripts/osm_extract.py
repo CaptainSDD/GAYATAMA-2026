@@ -29,6 +29,7 @@ import osmium.index
 QUERY_KEYS = (
     'amenity', 'shop', 'tourism', 'office', 'highway', 'railway',
     'public_transport', 'craft', 'landuse', 'waterway', 'sidewalk',
+    'bridge', 'tunnel', 'toll', 'ford',
 )
 # Only these building values are queried; filtering here skips millions of house footprints.
 BUILDING_VALUES = frozenset(('office', 'apartments', 'dormitory'))

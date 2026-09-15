@@ -13,6 +13,16 @@ import {
   discouragingRadiusMeters,
   distanceToGeometryMeters,
 } from './site';
+import {
+  ACCESS_BARRIER_RADIUS_METERS,
+  ACCESS_RAILWAYS,
+  ACCESS_WATERWAYS,
+  MAJOR_ROAD_HIGHWAYS,
+  RAIL_PASSAGES,
+  TOLL_ROAD_HIGHWAYS,
+  barrierKind,
+  passageKind,
+} from './severance';
 
 const exact = (values: Iterable<string>): string => `"^(${[...values].join('|')})$"`;
 
@@ -46,6 +56,7 @@ export function buildPoiQuery(center: LatLng, radiusMeters: number, timeoutSecon
 
 /** Road, waterway, land use and pedestrian features at the candidate site. */
 export function buildSiteQuery(point: LatLng, timeoutSeconds: number): string {
+  const accessArea = around(point, ACCESS_BARRIER_RADIUS_METERS);
   return [
     `[out:json][timeout:${timeoutSeconds}];`,
     '(',
@@ -57,6 +68,16 @@ export function buildSiteQuery(point: LatLng, timeoutSeconds: number): string {
     `  node${around(point, SITE_RADII_METERS.pedestrian)}[highway=crossing];`,
     `  nwr${around(point, SITE_RADII_METERS.nuisance)}[landuse~${exact(DISCOURAGING_LANDUSE.keys())}];`,
     `  nwr${around(point, SITE_RADII_METERS.nuisance)}[amenity~${exact(DISCOURAGING_AMENITY.keys())}];`,
+    `  way${accessArea}[highway~${exact([...MAJOR_ROAD_HIGHWAYS, ...TOLL_ROAD_HIGHWAYS])}];`,
+    `  way${accessArea}[highway][toll=yes];`,
+    `  way${accessArea}[railway~${exact(ACCESS_RAILWAYS)}];`,
+    `  way${accessArea}[waterway~${exact(ACCESS_WATERWAYS)}];`,
+    `  node${accessArea}[highway=crossing];`,
+    `  node${accessArea}[railway~${exact(RAIL_PASSAGES)}];`,
+    `  node${accessArea}[highway=ford];`,
+    `  node${accessArea}[ford];`,
+    `  way${accessArea}[highway][bridge];`,
+    `  way${accessArea}[highway][tunnel];`,
     ');',
     'out geom;',
   ].join('\n');
@@ -88,6 +109,16 @@ const SITE_QUERY_RULES: readonly SiteQueryRule[] = [
   // The query fetches every discouraging neighbour within the widest radius; a
   // cemetery is then judged at its own, closer one.
   { type: 'any', radiusMeters: SITE_RADII_METERS.nuisance, matches: (tags) => discouragingKind(tags) !== undefined },
+  { type: 'way', radiusMeters: ACCESS_BARRIER_RADIUS_METERS, matches: (tags) => barrierKind(tags) !== null },
+  {
+    type: 'node',
+    radiusMeters: ACCESS_BARRIER_RADIUS_METERS,
+    matches: (tags) => {
+      const passage = passageKind(tags);
+      return passage !== null && passage !== 'all';
+    },
+  },
+  { type: 'way', radiusMeters: ACCESS_BARRIER_RADIUS_METERS, matches: (tags) => passageKind(tags) === 'all' },
 ];
 
 /** The radius that decides whether a fetched element counts, which for a cemetery is closer than the query's. */

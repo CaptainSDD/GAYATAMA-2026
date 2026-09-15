@@ -8,6 +8,8 @@ export interface CachedPois {
   cell: string;
   facilities: Facility[];
   fetchedAt: string;
+  /** Missing on cache entries created before Geoapify support. */
+  via?: 'overpass' | 'geoapify';
 }
 
 export interface PoiCache {
@@ -52,7 +54,8 @@ export class FirestorePoiCache implements PoiCache {
     const snapshot = await this.firestore.collection(COLLECTION).doc(cell).get();
     const data = snapshot.data();
     if (data === undefined || typeof data.facilities !== 'string' || typeof data.fetchedAt !== 'string') return null;
-    return { cell, fetchedAt: data.fetchedAt, facilities: JSON.parse(data.facilities) as Facility[] };
+    const via = data.source === 'geoapify' ? 'geoapify' : 'overpass';
+    return { cell, fetchedAt: data.fetchedAt, facilities: JSON.parse(data.facilities) as Facility[], via };
   }
 
   async set(entry: CachedPois): Promise<void> {
@@ -61,7 +64,7 @@ export class FirestorePoiCache implements PoiCache {
     await this.firestore
       .collection(COLLECTION)
       .doc(entry.cell)
-      .set({ facilities, fetchedAt: entry.fetchedAt, source: 'overpass' });
+      .set({ facilities, fetchedAt: entry.fetchedAt, source: entry.via ?? 'overpass' });
   }
 }
 

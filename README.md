@@ -1,6 +1,6 @@
 <div align="center">
 
-# GAYATAMA
+# GAYATAMA / LOKABIS
 
 **Location intelligence for micro-entrepreneurs — open data first, honest about uncertainty.**
 
@@ -12,7 +12,7 @@
 Submitted to the **International Web Technology Competition — GAYATAMA 5**,
 Universitas Negeri Surabaya.
 
-[Live Demo](#) · [Documentation](docs/) · [Methodology](docs/methodology.md)
+[Local Setup](docs/installation.md) · [Documentation](docs/) · [Methodology](docs/methodology.md)
 
 </div>
 
@@ -39,6 +39,8 @@ Pick a point on the map, choose a business type, and GAYATAMA returns a
 **0–100 suitability score** with the reasoning fully unpacked: which nearby
 facilities create demand, how saturated the competition already is, who the
 likely customers are, and how confident the system is in its own answer.
+The LOKABIS web interface adds Firebase sign-in/sign-up, email verification,
+shareable analysis URLs, light/dark themes, and a replayable guided tour.
 
 ### What makes it different
 
@@ -73,7 +75,11 @@ is enforced in the scoring engine, not left to interface copy.
 | 2 | **Business Type Recommendation** | *I have a location but no fixed plan — what should I open here?* All seven MVP categories scored and ranked, with the reasoning for each. |
 | 3 | **Competitor Analysis** | *How crowded is this market really?* Not a raw shop count — a distance-, access- and similarity-weighted **Competitor Equivalent Count**, compared against estimated demand to produce a saturation ratio. |
 | 4 | **Target Market Insight** | *Which customer segments are most likely to be present around this location?* Six customer segments scored 0–100, each backed by the specific facilities that produced the score, plus what that implies for product, pricing, and opening hours. |
-| 5 | **Simulation & Report** | *What would change if I fixed the parking?* A consolidated, exportable report plus a what-if simulator for the operational variables an owner can actually control. |
+| 5 | **Authentication & Guided Tour** | *Can I enter securely and understand the workflow?* Firebase email/password accounts, email-verification guidance, protected app routes, and a replayable product tour. |
+
+The scoring package already exposes a pure simulation function. The interactive
+what-if interface and report/PDF export are planned rather than current UI/API
+features; see [docs/roadmap.md](docs/roadmap.md).
 
 Full formulas, weights, and worked examples: **[docs/methodology.md](docs/methodology.md)**.
 
@@ -107,7 +113,7 @@ more balanced and participatory local economic planning.
 | Mapping | Leaflet + React Leaflet with OpenStreetMap tiles; Google Maps through `@vis.gl/react-google-maps` when a browser key is set | Runs with no API key. With keys the map is a Google map, because Google's terms allow Google data to be shown only on one |
 | Server state | TanStack Query | Request deduplication and caching for slow geospatial queries |
 | Backend | NestJS 11, TypeScript | Modular architecture with dependency injection; keeps the geospatial, scoring, and caching concerns genuinely separated |
-| Database | Cloud Firestore | POI cache and saved reports; serverless, so there is no instance to keep alive during judging |
+| Database | Cloud Firestore (optional) | Persistent POI cache and authenticated user profiles; without Firebase the API uses an in-memory POI cache |
 | POI data | OpenStreetMap: live through the Overpass API, with fallback instances; offline snapshots for the demo areas. Overture Maps shops for photocopy, printing and stationery in the demo areas. Optionally, Google Maps business counts from the Places Aggregate API | OpenStreetMap is open, global and attributable, and the demo does not depend on a shared public service. Google counts fill its small-business gaps, and any Google failure falls back to it — see [Data sources](#data-sources-and-attribution) |
 | Scoring | `@gayatama/scoring` — a shared, dependency-free TypeScript package | See below |
 | Validation | Zod | One schema definition validating both API boundaries and engine inputs |
@@ -119,10 +125,11 @@ more balanced and participatory local economic planning.
 is a set of pure functions from facility data to scores. Three consequences
 worth stating explicitly:
 
-- **The what-if simulator runs in the browser.** Moving a slider recomputes the
-  score locally at interactive speed, with no server round trip.
-- **The frontend and backend minimize scoring drift.** Both import the same scoring functions, while the backend
-  remains the authoritative source for saved reports and final recommendations.
+- **A future what-if UI can run in the browser.** The exported pure simulation
+  function can recompute locally with no server round trip.
+- **The frontend and backend minimize scoring drift.** Both import shared scoring
+  types and rules, while the backend is authoritative for current analysis and
+  recommendations.
 - **The methodology is testable as a unit.** Every worked example in
   [docs/methodology.md](docs/methodology.md) exists as an assertion in the test
   suite, so the documentation cannot silently drift from the implementation.
@@ -136,16 +143,16 @@ worth stating explicitly:
 │  • Map: OpenStreetMap/Google │ ──────► │  • Request validation        │
 │  • Score breakdown panel     │ ◄────── │  • POI cache lookup          │
 │  • Business ranking          │         │  • Overpass, Google counts   │
-│  • What-if simulator         │         │  • Scoring orchestration     │
-│  • Report / PDF export       │         │  • Rate limiting             │
-│                              │         │  • Report / PDF endpoint     │
+│  • Auth and guided tour      │         │  • Barrier/access mapping    │
+│  • Target/competition views │         │  • Scoring orchestration     │
+│                              │         │  • Auth and rate limiting    │
 └──────────────┬───────────────┘         └───┬────────────────┬─────────┘
                │                             │                │
                │ imports for local preview   │ reads/writes   │ fetches on miss
                │ optional only               ▼                ▼
                │                  ┌──────────────────┐ ┌──────────────────────┐
-               │                  │ Firestore POI    │ │ Overpass API         │
-               │                  │ Cache            │ │ OpenStreetMap source │
+               │                  │ Firestore cache  │ │ Overpass API         │
+               │                  │ and profiles     │ │ OpenStreetMap source │
                │                  └──────────────────┘ └──────────────────────┘
                │                             │
                │                             │ raw / cached POI data
@@ -157,6 +164,7 @@ worth stating explicitly:
                │                  │ • Duplicate cleanup          │
                │                  │ • Distance calculation       │
                │                  │ • Distance zone assignment   │
+               │                  │ • Access-barrier mapping     │
                │                  │ • Data freshness check       │
                │                  │ • Data quality scoring       │
                │                  └──────────────┬───────────────┘
@@ -176,6 +184,12 @@ worth stating explicitly:
 ### Data Normalization Layer
 
 GAYATAMA does not score raw OpenStreetMap tags directly. The normalization layer converts messy OSM tags into stable internal categories, removes duplicates, calculates distance zones, and assigns data quality signals before the scoring engine runs.
+
+For accessibility, the API also tests the straight line from the selected point
+to each facility against mapped major roads, motorway/toll roads, railways, and
+rivers/canals. Nearby crossings, fords, bridges, and tunnels cancel a matching
+penalty. The resulting Access Factor is `1.00`, `0.65`, or `0.40`; full rules
+and caveats are in [docs/methodology.md](docs/methodology.md#access-factor).
 
 Raw OSM tags are normalized into internal facility kinds:
 
@@ -234,6 +248,17 @@ npm run dev:web           # frontend only  → http://localhost:5173
 npm run dev:api           # backend only   → http://localhost:3000
 ```
 
+If the API exits with `EADDRINUSE :::3000`, port 3000 is already owned by
+another process—usually an older development server. On PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -State Listen
+Get-Process -Id <OwningProcess>
+```
+
+Stop that process, or set `PORT=3001` and
+`VITE_API_BASE_URL=http://localhost:3001` together before starting the apps.
+
 Other tasks:
 
 ```bash
@@ -248,7 +273,8 @@ npm run typecheck         # type-check without emitting
 
 | Variable | Needed for | Notes |
 |----------|-----------|-------|
-| `FIREBASE_PROJECT_ID` + credentials | POI caching, saved reports | See [installation.md](docs/installation.md#firebase-setup) |
+| `FIREBASE_PROJECT_ID` + Admin credentials | Persistent POI caching and authenticated profile registration | See [installation.md](docs/installation.md#firebase-setup) |
+| `VITE_FIREBASE_*` | Browser sign-up, sign-in, and email verification | Must describe the same Firebase project as the Admin credentials |
 | `OVERPASS_URL` | POI lookups outside the demo areas | Defaults to the main public instance; `OVERPASS_FALLBACK_URLS` lists the instances tried when it fails |
 | `GOOGLE_PLACES_API_KEY`, `VITE_GOOGLE_MAPS_API_KEY` | Optional: the Google map and Google business counts | A server key and a browser key, each restricted — see [installation.md](docs/installation.md#google-maps-platform-optional) |
 
@@ -308,8 +334,12 @@ than none:
 - **Baseline weights are calibrated judgement, not fitted parameters.** The
   numbers in [docs/methodology.md](docs/methodology.md) are documented MVP
   baselines intended for recalibration against field data.
-- **Field verification is required before investment.** Every report ends with a
-  checklist of what to confirm on site, on both a weekday and a weekend.
+- **Access Factor is a geometry proxy, not pedestrian routing.** It checks
+  straight-line barrier crossings and known passages; incomplete OSM geometry
+  or an indirect real-world route can change the practical result. Rebuild old
+  offline snapshots after access-query changes to capture full barrier coverage.
+- **Field verification is required before investment.** Confirm access, traffic,
+  parking, rent, and competition on site on both a weekday and a weekend.
 
 ## Roadmap
 

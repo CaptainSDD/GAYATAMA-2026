@@ -31,8 +31,8 @@ describe('OsmSnapshots', () => {
     expect(snapshots.pois(ORIGIN, 1608)).not.toBeNull();
     expect(snapshots.pois(at(1300, 0), 1608)).not.toBeNull();
     expect(snapshots.pois(at(1500, 0), 1608)).toBeNull();
-    expect(snapshots.site(at(2650, 0))).not.toBeNull();
-    expect(snapshots.site(at(2750, 0))).toBeNull();
+    expect(snapshots.site(at(1400, 0))).not.toBeNull();
+    expect(snapshots.site(at(1600, 0))).toBeNull();
   });
 
   it('returns the POIs inside the query radius, as Overpass would', () => {
@@ -53,7 +53,11 @@ describe('matchesSiteQuery', () => {
     expect(matchesSiteQuery(line({ landuse: 'industrial' }, [[-50, 150], [50, 150]]), ORIGIN)).toBe(false);
     expect(matchesSiteQuery(line({ highway: 'footway' }, [[-10, 280], [10, 280]]), ORIGIN)).toBe(true);
     expect(matchesSiteQuery(node({ highway: 'crossing' }, 0, 290), ORIGIN)).toBe(true);
-    expect(matchesSiteQuery(node({ highway: 'crossing' }, 0, 310), ORIGIN)).toBe(false);
+    // Beyond the walkability radius, crossings are still retained as mapped
+    // passages for access-barrier analysis.
+    expect(matchesSiteQuery(node({ highway: 'crossing' }, 0, 310), ORIGIN)).toBe(true);
+    expect(matchesSiteQuery(line({ highway: 'primary' }, [[-10, 1400], [10, 1400]]), ORIGIN)).toBe(true);
+    expect(matchesSiteQuery(line({ highway: 'primary' }, [[-10, 1600], [10, 1600]]), ORIGIN)).toBe(false);
     expect(matchesSiteQuery(line({ building: 'yes' }, [[0, 0], [10, 10]]), ORIGIN)).toBe(false);
   });
 

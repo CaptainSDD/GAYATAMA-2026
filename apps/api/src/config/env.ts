@@ -34,11 +34,16 @@ export const envSchema = z.object({
   OVERPASS_URL: z.string().url().default('https://overpass-api.de/api/interpreter'),
   OVERPASS_FALLBACK_URLS: urlList.default(DEFAULT_OVERPASS_FALLBACK_URLS),
   OVERPASS_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  /** Hard deadline across the primary and every fallback. */
+  OVERPASS_TOTAL_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
   POI_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(604_800),
   /** Directory of OSM snapshot files. Defaults to apps/api/data/osm-snapshots. */
   OSM_SNAPSHOT_DIR: optionalString,
   /** Directory of Overture place files. Defaults to apps/api/data/overture-places. */
   OVERTURE_PLACES_DIR: optionalString,
+  /** Managed open-data POI provider. When set, runtime requests do not wait for public Overpass. */
+  GEOAPIFY_API_KEY: optionalString,
+  GEOAPIFY_TIMEOUT_MS: z.coerce.number().int().positive().default(6_000),
   /** Server key for the Google Places Aggregate API. Without it, every facility comes from OpenStreetMap. */
   GOOGLE_PLACES_API_KEY: optionalString,
   GOOGLE_PLACES_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
