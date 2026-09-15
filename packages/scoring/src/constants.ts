@@ -1,6 +1,7 @@
 import type {
   BusinessType,
   ComponentKey,
+  DiscouragingSurrounding,
   FacilityKind,
   FacilityScale,
   RoadClass,
@@ -201,7 +202,12 @@ export const SATURATION_THRESHOLDS = {
   heavilySaturated: 2.0,
 } as const;
 
-export const COMPETITION_SCORE = { base: 95, perSaturation: 35 } as const;
+/**
+ * `decayPerSaturation` is 35 / 95: the curve leaves 0 at the same slope as the
+ * straight line it replaces, so lightly contested places score as before, while
+ * a crowded one decays towards 0 instead of hitting it at a ratio of 2.7.
+ */
+export const COMPETITION_SCORE = { base: 95, decayPerSaturation: 35 / 95 } as const;
 
 export const VALIDATION_BONUS = {
   noCompetitors: -10,
@@ -211,6 +217,14 @@ export const VALIDATION_BONUS = {
 } as const;
 
 // --- 4. Target Market Insight --------------------------------------------------
+
+/**
+ * PROPOSED: diminishing returns for facilities of one kind in one zone. The
+ * first `freeCount` count fully; past that each further facility adds less, on a
+ * logarithmic tail of width `scale`. Without this, a source that reports whole
+ * city-centre counts floods every score at once.
+ */
+export const CROWDING = { freeCount: 3, scale: 5 } as const;
 
 export const SEGMENT_CAP = 100;
 
@@ -264,6 +278,13 @@ export const RISK = {
   waterwayMidMeters: 300,
   waterwayMidPenalty: 10,
   industrialPenalty: 15,
+  /** PROPOSED: neighbours customers avoid. A cemetery counts within 150 m, the rest within 300 m. */
+  surroundingPenalty: { cemetery: 10, waste: 20, quarry: 15, military: 10, prison: 10 } as Record<
+    DiscouragingSurrounding,
+    number
+  >,
+  /** PROPOSED: the most those neighbours can take off together, so one bad corner cannot zero the component. */
+  maxSurroundingPenalty: 30,
 } as const;
 
 /** PROPOSED: a mapped waterway this close raises the flood hard warning (proxy). */

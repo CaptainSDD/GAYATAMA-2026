@@ -438,8 +438,25 @@ Baseline `T` values (demand required to support one competitor-equivalent):
 ### Competition Opportunity score
 
 ```
-Competition Score = clamp(95 − 35 × Saturation Ratio + Validation Bonus, 0, 100)
+Competition Score = clamp((95 + Validation Bonus) x exp(-(35/95) x Saturation Ratio), 0, 100)
 ```
+
+| Saturation Ratio | Score (no bonus) |
+|---|---|
+| 0.00 | 95.0 |
+| 0.55 | 77.5 |
+| 1.00 | 65.7 |
+| 2.00 | 45.4 |
+| 3.50 | 25.9 |
+| 6.00 | 10.4 |
+
+The model used a straight line, `95 − 35 × ratio`, until a city-centre test
+showed what that costs: the line reaches 0 at a ratio of 2.7, and ratios of 3 to
+5 are ordinary in a dense Indonesian centre, so every point there scored the
+same 0 and the component stopped telling locations apart. The decay keeps the
+opening slope of that line — the first units of saturation cost what they always
+did — but a crowded market is now separated from a hopeless one instead of both
+being nothing.
 
 The validation bonus encodes a deliberately counter-intuitive rule: **zero
 competitors is a penalty, not a prize.** An empty market is more often an
@@ -726,6 +743,16 @@ verify road access, parking, drainage, and flood history in the field.
 | Mapped river, canal or stream within 100 m | −20 |
 | Mapped waterway more than 100 m and up to 300 m away | −10 |
 | Industrial land use within 100 m | −15 |
+| Cemetery within 150 m | −10 |
+| Landfill or waste transfer station within 300 m | −20 |
+| Quarry within 300 m | −15 |
+| Military area within 300 m | −10 |
+| Prison within 300 m | −10 |
+
+The last five are capped at −30 together, so one awkward corner cannot empty the
+component on its own. The map can say that such a neighbour is there; it cannot
+say how much custom it costs. The penalty is therefore deliberately modest, and
+the warning beside the score carries the real message.
 
 These are proxies from OpenStreetMap, not authoritative risk data, and reports
 must label them as such.
@@ -735,6 +762,7 @@ must label them as such.
 | Warning | Rule |
 |---------|------|
 | `flood_risk_proxy` | A mapped waterway within 50 m |
+| `unsuitable_surroundings` | A cemetery within 150 m, or a landfill, waste transfer station, quarry, military area or prison within 300 m. The warning names which were found |
 | `stale_data` | More than half of the dated records within 1,500 m are older than 36 months |
 
 Incompatible zoning and missing legal access have no data source yet. The
@@ -786,11 +814,46 @@ enters every formula as *n* facilities of that kind with these factors:
 | Operating-Hours Factor | 0.80 | Hours unknown |
 | Facility Scale | Large for the types that match large OpenStreetMap tags (university, hospital, mall, rail station); otherwise medium | Consistent with OpenStreetMap facilities |
 
+A count passes through
+[the crowding rule](#crowding-repeated-facilities-count-for-less) exactly as the
+same number of mapped facilities would.
+
 Every contribution is multiplied by *n*. A count of 3 in Zone B therefore
 contributes exactly what three undated facilities with unknown hours inside Zone
 B would, and the engine's tests assert this for all seven categories
 (`test/counts.test.ts`). The raw competitor count, the evidence counts and Data
 Freshness count each counted facility once.
+
+### Crowding: repeated facilities count for less
+
+Facilities of one kind sharing one zone count fully up to three. Past that, each
+further facility adds less:
+
+```
+Effective count = n                             for n <= 3
+                = 3 + 5 x ln(1 + (n - 3) / 5)   for n > 3
+```
+
+| Facilities of one kind in one zone | Counts as |
+|---|---|
+| 1 to 3 | 1 to 3 |
+| 5 | 4.68 |
+| 20 | 10.41 |
+| 100 | 18.07 |
+| 500 | 26.05 |
+
+Every formula uses the effective count. Everything reported uses the real one:
+the facility count, the zone counts, and the raw competitor count.
+
+Without this rule the model breaks exactly where data is richest. Google counts
+507 cafes within 1,500 m of Simpang Lima in Semarang. Counted one for one they
+come to 130 competitor-equivalents and a saturation ratio of 23 — far past the
+point where any location can be told from any other. Under the rule the same
+place comes to 20 equivalents and a ratio of 4.1, which still reads as heavily
+saturated but leaves the ordering between locations intact.
+
+The rule is source-neutral: three mapped cafes and a count of three are treated
+identically, so which source supplied the data cannot move a score by itself.
 
 ### Data Quality from OpenStreetMap metadata
 
@@ -835,6 +898,11 @@ model 0.1.0.
 Deviations from the original internal specification, recorded here so the
 change is visible rather than silent:
 
+- **Competition Opportunity curve.** The straight line `95 − 35 × ratio` from the
+  source specification is replaced by an exponential decay with the same opening
+  slope, because the line bottomed out at a saturation ratio of 2.7 and erased
+  every difference between busy locations. See
+  [Competition Opportunity score](#competition-opportunity-score).
 - **Location Potential Score worked example.** The source specification stated a
   result of 75.25 for the laundry example. The correct sum is 75.30
   (`26.25 + 13.40 + 15.20 + 10.95 + 9.50`). Both round to 75, so the stated

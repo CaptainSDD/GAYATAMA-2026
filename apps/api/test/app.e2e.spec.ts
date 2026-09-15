@@ -220,8 +220,9 @@ describe('API (end to end, fake Overpass)', () => {
       const body = await readJson(response);
 
       expect(response.status).toBe(200);
-      // Housing, apartments, a guest house and parking from OpenStreetMap, plus 35 places counted by Google.
-      expect(body.evidence.facilityCount).toBe(39);
+      // Google replaces only the business kinds: 12 of the 15 mapped facilities stay,
+      // and Google adds 9 cafes and 4 laundries.
+      expect(body.evidence.facilityCount).toBe(25);
       expect(body.competition.rawCount).toBe(5);
       expect(body.competition.strongest[0]).toMatchObject({
         name: null,
@@ -252,29 +253,33 @@ describe('API (end to end, fake Overpass)', () => {
       const body = await readJson(await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&googleMap=true`));
 
       expect(body.facilities.map((facility: { kind: string }) => facility.kind).sort()).toEqual([
+        'atm',
         'boarding_house',
+        'campus',
+        'government_office',
+        'hospital',
         'housing',
         'housing',
+        'office',
         'parking',
+        'school',
+        'school',
+        'transit',
       ]);
-      expect(body.facilityCounts).toHaveLength(16);
+      // Cafes in all three zones, laundries in two.
+      expect(body.facilityCounts).toHaveLength(5);
       expect(body.facilityCounts).toContainEqual({
-        kind: 'campus',
-        zone: 'c',
-        count: 1,
-        scale: 'large',
+        kind: 'cafe',
+        zone: 'a',
+        count: 2,
+        scale: 'medium',
         source: 'google',
         dataQuality: 0.65,
       });
 
       const near = await readJson(await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&radius=300&googleMap=true`));
-      expect(near.facilities).toHaveLength(1);
-      expect(near.facilityCounts.map((entry: { kind: string }) => entry.kind).sort()).toEqual([
-        'atm',
-        'cafe',
-        'office',
-        'transit',
-      ]);
+      expect(near.facilities).toHaveLength(3);
+      expect(near.facilityCounts.map((entry: { kind: string }) => entry.kind)).toEqual(['cafe']);
     });
 
     it('falls back to OpenStreetMap for every kind, with a notice, when Google fails', async () => {

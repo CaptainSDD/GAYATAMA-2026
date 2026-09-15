@@ -1,6 +1,11 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import type { AnalysisResponse, ApiErrorBody, LocationDetailsResponse, PoisResponse, RecommendResponse } from './api-types';
 
+/** A username reserved and a profile document created. Nothing more — the account itself lives in Firebase Auth. */
+export interface RegisterProfileResponse {
+  username: string;
+}
+
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 /** An error from the API, carrying the stable `error` code from docs/api.md. */
@@ -50,10 +55,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
-function postJson<T>(path: string, payload: unknown, signal?: AbortSignal): Promise<T> {
+function postJson<T>(path: string, payload: unknown, signal?: AbortSignal, headers?: Record<string, string>): Promise<T> {
   return request<T>(path, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(payload),
     signal,
   });
@@ -78,4 +83,15 @@ export function fetchPois(point: LatLng, googleMap: boolean, signal?: AbortSigna
 export function fetchLocationDetails(point: LatLng, signal?: AbortSignal) {
   const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
   return request<LocationDetailsResponse>(`/location?${query.toString()}`, { signal });
+}
+
+/**
+ * Reserves a username and creates the Firestore profile document. `idToken`
+ * proves who the caller is — the API verifies it against Firebase Auth
+ * itself before trusting anything in the body.
+ */
+export function registerProfile(idToken: string, username: string, signal?: AbortSignal) {
+  return postJson<RegisterProfileResponse>('/auth/register-profile', { username }, signal, {
+    authorization: `Bearer ${idToken}`,
+  });
 }

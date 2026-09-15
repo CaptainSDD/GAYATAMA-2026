@@ -23,9 +23,9 @@
   "sideEffects": false,
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-    "build": "npm run clean && tsc -p tsconfig.build.json && tsc -p tsconfig.cjs.json && npm run mark-cjs",
-    "mark-cjs": "node -e \"require('node:fs').writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }))\"",
-    "dev": "concurrently --raw \"tsc -p tsconfig.build.json --watch --preserveWatchOutput\" \"tsc -p tsconfig.cjs.json --watch --preserveWatchOutput\"",
+    "build": "npm run clean && npm run mark-cjs && tsc -p tsconfig.build.json && tsc -p tsconfig.cjs.json",
+    "mark-cjs": "node -e \"const fs=require('node:fs'); fs.mkdirSync('dist/cjs', { recursive: true }); fs.writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }))\"",
+    "dev": "npm run mark-cjs && concurrently --raw \"tsc -p tsconfig.build.json --watch --preserveWatchOutput\" \"tsc -p tsconfig.cjs.json --watch --preserveWatchOutput\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json"

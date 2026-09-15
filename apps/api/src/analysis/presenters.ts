@@ -5,6 +5,7 @@ import {
   evaluateFacilities,
   similarity,
   type ComponentKey,
+  type DiscouragingSurrounding,
   type EvaluatedFacility,
   type Facility,
   type HardWarning,
@@ -52,8 +53,24 @@ const COMPONENT_LABELS: Record<ComponentKey, string> = {
 const WARNING_MESSAGES: Record<WarningCode, string> = {
   flood_risk_proxy:
     'Ada sungai, kanal, atau saluran air terpetakan dalam radius 50 m. Ini perkiraan dari peta, bukan data banjir resmi: periksa riwayat banjir langsung di lokasi.',
+  unsuitable_surroundings: 'Ada tetangga yang bisa membuat pelanggan enggan datang, terpetakan dekat titik ini.',
   stale_data: 'Sebagian besar fasilitas terpetakan di sekitar sini belum diperbarui lebih dari 36 bulan.',
 };
+
+const SURROUNDING_LABELS: Record<DiscouragingSurrounding, string> = {
+  cemetery: 'kuburan',
+  waste: 'TPA atau TPS sampah',
+  quarry: 'tambang galian',
+  military: 'kawasan militer',
+  prison: 'lembaga pemasyarakatan',
+};
+
+/** The warning names what was found: a penalty on its own explains nothing. */
+function listSurroundings(surroundings: readonly DiscouragingSurrounding[]): string {
+  const labels = surroundings.map((kind) => SURROUNDING_LABELS[kind]);
+  const last = labels[labels.length - 1] ?? '';
+  return labels.length <= 1 ? last : `${labels.slice(0, -1).join(', ')} dan ${last}`;
+}
 
 const ZONE_ORDER = ['a', 'b', 'c'];
 
@@ -106,7 +123,13 @@ export function presentDataSource(source: SourceSnapshot) {
 }
 
 function presentWarnings(warnings: readonly HardWarning[]) {
-  return warnings.map(({ code }) => ({ code, message: WARNING_MESSAGES[code] }));
+  return warnings.map(({ code, surroundings }) => ({
+    code,
+    message:
+      surroundings === undefined || surroundings.length === 0
+        ? WARNING_MESSAGES[code]
+        : `${WARNING_MESSAGES[code]} Yang terpetakan di dekat sini: ${listSurroundings(surroundings)}.`,
+  }));
 }
 
 export function presentAnalysis(
@@ -163,6 +186,14 @@ export function presentAnalysis(
         },
       ]),
     ),
+    accessibility: {
+      value: result.accessibility.value,
+      road: result.accessibility.road,
+      transit: result.accessibility.transit,
+      walkability: result.accessibility.walkability,
+      parking: result.accessibility.parking,
+      siteInputsAvailable: source.siteAvailable,
+    },
     segments: Object.fromEntries(
       SEGMENTS.map((segment) => [segment, { score: result.segments[segment], role: result.segmentRoles[segment] }]),
     ),

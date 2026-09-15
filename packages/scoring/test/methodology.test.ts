@@ -202,9 +202,11 @@ describe('3. Competitor Analysis', () => {
     expect(competitionScore(0, 0)).toBe(85);
   });
 
-  it('clamps the Competition Opportunity score to 0–100', () => {
-    expect(competitionScore(10, 4)).toBe(0);
+  it('keeps the Competition Opportunity score inside 0–100, decaying towards 0', () => {
     expect(competitionScore(1, 0)).toBe(100);
+    expect(competitionScore(10, 4)).toBeCloseTo(90 * Math.exp((-35 / 95) * 4), 9);
+    expect(competitionScore(10, 4)).toBeGreaterThan(competitionScore(10, 8));
+    expect(competitionScore(10, 100)).toBeCloseTo(0, 6);
   });
 });
 

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AnalysisModule } from './analysis/analysis.module';
+import { AuthModule } from './auth/auth.module';
 import { ApiExceptionFilter } from './common/api-exception.filter';
 import { validateEnv } from './config/env';
 import { FirebaseModule } from './firebase/firebase.module';
@@ -23,6 +24,7 @@ import { LocationModule } from './location/location.module';
     FirebaseModule,
     LocationModule,
     AnalysisModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [
