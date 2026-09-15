@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
+import { GeoapifyPlacesClient } from '../src/geoapify/geoapify-places.client';
 import { OSM_SNAPSHOTS, OsmSnapshots } from '../src/osm-snapshots/osm-snapshots';
 import { OVERTURE_PLACES, OverturePlaces } from '../src/overture/overture-places';
 import { OverpassClient } from '../src/overpass/overpass.client';
@@ -21,6 +22,8 @@ class FakeOverpassClient {
     return result;
   }
 }
+
+const fakeGeoapify = { configured: false, placesAround: async () => [] };
 
 /** An Overture area 20 km from ORIGIN, with one photocopy shop 200 m from its centre. */
 const OVERTURE_CENTER = (() => {
@@ -90,6 +93,8 @@ describe('API (end to end, fake Overpass)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(OverpassClient)
       .useValue(overpass)
+      .overrideProvider(GeoapifyPlacesClient)
+      .useValue(fakeGeoapify)
       // The test location is inside a real snapshot area; these tests exercise the Overpass path.
       .overrideProvider(OSM_SNAPSHOTS)
       .useValue(new OsmSnapshots([]))

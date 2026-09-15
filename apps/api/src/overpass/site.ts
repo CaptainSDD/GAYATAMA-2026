@@ -123,9 +123,15 @@ export function siteConditions(elements: readonly OverpassElement[], point: LatL
         (tags.highway !== undefined && PEDESTRIAN_WAYS.includes(tags.highway)) ||
         (tags.sidewalk !== undefined && SIDEWALK_VALUES.includes(tags.sidewalk))
       ) {
-        pedestrianFeatureCount += 1;
+        if (distanceToGeometryMeters(point, geometryOf(element)) <= SITE_RADII_METERS.pedestrian) {
+          pedestrianFeatureCount += 1;
+        }
       }
-    } else if (element.type === 'node' && tags.highway === 'crossing') {
+    } else if (
+      element.type === 'node' &&
+      tags.highway === 'crossing' &&
+      distanceToGeometryMeters(point, geometryOf(element)) <= SITE_RADII_METERS.pedestrian
+    ) {
       pedestrianFeatureCount += 1;
     }
   }

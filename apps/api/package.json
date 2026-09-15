@@ -2,7 +2,7 @@
   "name": "@gayatama/api",
   "version": "0.1.0",
   "private": true,
-  "description": "NestJS API — fetches OpenStreetMap POIs via Overpass, caches them in Firestore, and runs the scoring engine.",
+  "description": "NestJS API — fetches and caches open POI data, then runs the scoring engine.",
   "license": "Apache-2.0",
   "scripts": {
     "dev": "nest start --watch",

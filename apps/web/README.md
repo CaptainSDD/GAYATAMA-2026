@@ -1,7 +1,9 @@
 # @gayatama/web
 
-React + Vite frontend: map picker, score breakdown, business type
-recommendations, and the target market and competitor panels.
+React 19 + Vite frontend for **LOKABIS**, the product interface in this
+GAYATAMA repository. It includes Firebase email/password authentication, a
+guided first-run tour, map selection, score breakdowns, business rankings,
+target-market evidence, and competitor analysis.
 
 The interface is in **Indonesian**, because the people it is for are Indonesian
 micro-entrepreneurs. The documentation in `docs/` stays English.
@@ -21,10 +23,16 @@ requests set `googleMap`, so the API may add Google business counts. Without it,
 the map is an OpenStreetMap map and Google data is never requested — see
 [../../docs/installation.md](../../docs/installation.md#google-maps-platform-optional).
 
+Firebase browser variables (`VITE_FIREBASE_*`) enable sign-up, sign-in, email
+verification, and authenticated profile registration. The analysis API can run
+without Firebase, but account creation cannot be completed in that mode.
+
 Every analysis has its own URL (`?lat=…&lng=…&type=…`), so a result can be
 shared as a link.
 
-The what-if simulator and report export are not built yet.
+The current UI implements analysis, recommendations, shareable URLs, auth,
+theme selection, and the guided tour. The what-if simulator and report/PDF
+export are not built yet.
 
 ## Structure
 
@@ -33,6 +41,8 @@ src/
 ├── App.tsx            Layout; keeps the selected point and business type in the URL
 ├── components/        Tabs, cards, skeletons, icons, theme toggle, share, notices
 ├── features/
+│   ├── auth/          Sign-in, sign-up, email verification, protected routes
+│   ├── tour/          First-run guidance and replay controls
 │   ├── map/           OpenStreetMap or Google map picker, zone rings, facility markers, controls
 │   ├── location/      Tabs for a selected location
 │   ├── score/         Score gauge with its interval, component breakdown, warnings
@@ -97,5 +107,5 @@ listed above, it stops reading as an accent and the eye loses its anchor.
 npm run test -w @gayatama/web
 ```
 
-Unit tests cover the logic behind the interface: URL state, API errors and
-retries, score formatting, and segment evidence.
+Unit tests cover URL state, authentication validation, API errors and retries,
+score formatting, and segment evidence.

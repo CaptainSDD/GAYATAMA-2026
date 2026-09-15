@@ -10,6 +10,7 @@ import { insufficientData } from '../common/errors';
 import { PlaceCountsService } from '../places/place-counts.service';
 import { GOOGLE_COUNTED_KINDS } from '../places/place-types';
 import { PoiService } from '../poi/poi.service';
+import { withMappedSeverance } from '../overpass/severance';
 import { presentAnalysis, presentPois, presentRecommendation, type SourceSnapshot } from './presenters';
 import type { AnalysisRequest, PoisQuery, RecommendRequest } from './schemas';
 
@@ -61,14 +62,15 @@ export class AnalysisService {
       request.googleMap ? this.places.countsAround(location) : Promise.resolve({ status: 'not_requested' as const }),
     ]);
 
+    const mappedFacilities = withMappedSeverance(snapshot.facilities, location, site.access);
     const input: LocationInput = {
       location,
-      facilities: snapshot.facilities,
+      facilities: mappedFacilities,
       site: site.site,
       asOf: new Date().toISOString().slice(0, 10),
     };
     if (places.status === 'used') {
-      input.facilities = snapshot.facilities.filter((facility) => !GOOGLE_COUNTED_KINDS.has(facility.kind));
+      input.facilities = mappedFacilities.filter((facility) => !GOOGLE_COUNTED_KINDS.has(facility.kind));
       input.facilityCounts = places.counts;
     }
     return { input, source: { ...snapshot, siteAvailable: site.available, places } };

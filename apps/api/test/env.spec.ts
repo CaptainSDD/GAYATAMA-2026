@@ -3,6 +3,7 @@ import { DEFAULT_OVERPASS_FALLBACK_URLS, MAX_PLACE_COUNT_CACHE_SECONDS, validate
 describe('validateEnv', () => {
   it('uses the public fallback instances by default', () => {
     expect(validateEnv({}).OVERPASS_FALLBACK_URLS).toEqual(DEFAULT_OVERPASS_FALLBACK_URLS);
+    expect(validateEnv({}).OVERPASS_TOTAL_TIMEOUT_MS).toBe(8_000);
   });
 
   it('reads a comma-separated list, where an empty value means no fallbacks', () => {
@@ -27,5 +28,9 @@ describe('validateEnv', () => {
 
   it('treats an empty Google key as unset', () => {
     expect(validateEnv({ GOOGLE_PLACES_API_KEY: '' }).GOOGLE_PLACES_API_KEY).toBeUndefined();
+  });
+
+  it('treats an empty Geoapify key as unset', () => {
+    expect(validateEnv({ GEOAPIFY_API_KEY: '' }).GEOAPIFY_API_KEY).toBeUndefined();
   });
 });

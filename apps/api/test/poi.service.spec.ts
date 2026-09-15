@@ -1,8 +1,9 @@
 import type { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { LatLng } from '@gayatama/scoring';
+import type { Facility, LatLng } from '@gayatama/scoring';
 import { encodeGeohash } from '../src/common/geohash';
 import type { Env } from '../src/config/env';
+import type { GeoapifyPlacesClient } from '../src/geoapify/geoapify-places.client';
 import { OsmSnapshots, type OsmSnapshot } from '../src/osm-snapshots/osm-snapshots';
 import type { OverturePlace } from '../src/overture/overture-place';
 import { OverturePlaces, type OvertureArea } from '../src/overture/overture-places';
@@ -26,18 +27,31 @@ class FakeOverpass {
   }
 }
 
+class FakeGeoapify {
+  configured = false;
+  facilities: Facility[] = [];
+  readonly requests: { center: LatLng; radiusMeters: number }[] = [];
+
+  async placesAround(center: LatLng, radiusMeters: number): Promise<Facility[]> {
+    this.requests.push({ center, radiusMeters });
+    return this.facilities;
+  }
+}
+
 function setup(ttlSeconds = 3600, snapshots = new OsmSnapshots([]), overture = new OverturePlaces([])) {
   const overpass = new FakeOverpass();
+  const geoapify = new FakeGeoapify();
   const cache = new InMemoryPoiCache();
   const config = new ConfigService({ POI_CACHE_TTL_SECONDS: ttlSeconds, OVERPASS_TIMEOUT_MS: 30_000 });
   const service = new PoiService(
     overpass as unknown as OverpassClient,
+    geoapify as unknown as GeoapifyPlacesClient,
     cache,
     config as unknown as ConfigService<Env, true>,
     snapshots,
     overture,
   );
-  return { service, overpass, cache };
+  return { service, overpass, geoapify, cache };
 }
 
 const poiQueries = (overpass: FakeOverpass) => overpass.queries.filter((query) => query.includes('out center meta'));
@@ -115,13 +129,30 @@ describe('PoiService.facilitiesAround', () => {
     await expect(service.facilitiesAround(ORIGIN)).resolves.toMatchObject({ cacheHit: false, stale: false });
     expect(poiQueries(overpass)).toHaveLength(2);
   });
+
+  it('uses Geoapify without waiting for Overpass when it is configured', async () => {
+    const { service, overpass, geoapify } = setup();
+    geoapify.configured = true;
+    geoapify.facilities = [
+      { id: 'geoapify/cafe-1', kind: 'cafe', name: 'Kopi Cepat', location: ORIGIN },
+    ];
+
+    await expect(service.facilitiesAround(ORIGIN)).resolves.toMatchObject({
+      via: 'geoapify',
+      cacheHit: false,
+      facilities: geoapify.facilities,
+    });
+    expect(geoapify.requests).toHaveLength(1);
+    expect(overpass.queries).toHaveLength(0);
+  });
 });
 
 describe('PoiService.siteConditions', () => {
   it('derives and caches site conditions', async () => {
     const { service, overpass } = setup();
-    expect(await service.siteConditions(ORIGIN)).toEqual({
+    expect(await service.siteConditions(ORIGIN)).toMatchObject({
       site: { roadClass: 'service', pedestrianFeatureCount: 2 },
+      access: { barriers: [] },
       available: true,
     });
     await service.siteConditions(ORIGIN);
@@ -137,7 +168,23 @@ describe('PoiService.siteConditions', () => {
   it('reports site inputs as unavailable when the query fails', async () => {
     const { service, overpass } = setup();
     overpass.site = new Error('Overpass down');
-    expect(await service.siteConditions(ORIGIN)).toEqual({ site: {}, available: false });
+    expect(await service.siteConditions(ORIGIN)).toEqual({
+      site: {},
+      access: { barriers: [], passages: [] },
+      available: false,
+    });
+  });
+
+  it('does not wait for an Overpass site query when Geoapify is configured', async () => {
+    const { service, overpass, geoapify } = setup();
+    geoapify.configured = true;
+
+    expect(await service.siteConditions(ORIGIN)).toEqual({
+      site: {},
+      access: { barriers: [], passages: [] },
+      available: false,
+    });
+    expect(overpass.queries).toHaveLength(0);
   });
 });
 

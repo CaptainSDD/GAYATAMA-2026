@@ -24,10 +24,14 @@ describe('buildPoiQuery', () => {
 });
 
 describe('buildSiteQuery', () => {
-  it('queries roads within 50 m and returns geometry', () => {
+  it('queries site conditions plus mapped access barriers and returns geometry', () => {
     const query = buildSiteQuery(ORIGIN, 25);
     expect(query).toContain('way(around:50,-7.3145000,112.7263000)[highway~"^(motorway|');
     expect(query).toContain('living_street');
+    expect(query).toContain('way(around:1500,-7.3145000,112.7263000)[railway~"^(rail)$"]');
+    expect(query).toContain('way(around:1500,-7.3145000,112.7263000)[waterway~"^(river|canal)$"]');
+    expect(query).toContain('node(around:1500,-7.3145000,112.7263000)[railway~"^(crossing|level_crossing)$"]');
+    expect(query).toContain('[highway][bridge]');
     expect(query.trimEnd().endsWith('out geom;')).toBe(true);
   });
 });

@@ -131,9 +131,10 @@ function presentPlaces(places: PlacesSource) {
 }
 
 export function presentDataSource(source: SourceSnapshot) {
+  const geoapify = source.via === 'geoapify';
   return {
-    provider: 'OpenStreetMap',
-    attribution: '© OpenStreetMap contributors',
+    provider: geoapify ? 'Geoapify / OpenStreetMap' : 'OpenStreetMap',
+    attribution: geoapify ? '© OpenStreetMap contributors · Powered by Geoapify' : '© OpenStreetMap contributors',
     licence: 'ODbL 1.0',
     fetchedAt: source.fetchedAt,
     cacheHit: source.cacheHit,

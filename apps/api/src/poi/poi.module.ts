@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Firestore } from 'firebase-admin/firestore';
 import type { Env } from '../config/env';
 import { FIRESTORE } from '../firebase/firebase.module';
+import { GeoapifyPlacesClient } from '../geoapify/geoapify-places.client';
 import { DEFAULT_SNAPSHOT_DIR, OSM_SNAPSHOTS, OsmSnapshots } from '../osm-snapshots/osm-snapshots';
 import { DEFAULT_OVERTURE_DIR, OVERTURE_PLACES, OverturePlaces } from '../overture/overture-places';
 import { OverpassClient } from '../overpass/overpass.client';
@@ -12,6 +13,7 @@ import { PoiService } from './poi.service';
 @Module({
   providers: [
     OverpassClient,
+    GeoapifyPlacesClient,
     PoiService,
     {
       provide: POI_CACHE,

@@ -13,6 +13,7 @@ const configWith = (fallbacks: string[]) =>
     OVERPASS_URL: PRIMARY,
     OVERPASS_FALLBACK_URLS: fallbacks,
     OVERPASS_TIMEOUT_MS: 30_000,
+    OVERPASS_TOTAL_TIMEOUT_MS: 8_000,
   }) as unknown as ConfigService<Env, true>;
 
 const ok = () => new Response(JSON.stringify({ elements: [{ type: 'node', id: 1, lat: 0, lon: 0 }] }), { status: 200 });
@@ -82,6 +83,22 @@ describe('OverpassClient', () => {
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([PRIMARY, FALLBACK]);
     expect(warn).toHaveBeenCalledWith(
       'Overpass request to primary.invalid failed (UND_ERR_CONNECT_TIMEOUT); trying fallback.invalid',
+    );
+  });
+
+  it('moves on to the next instance when the previous request times out', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockRejectedValueOnce(new DOMException('timed out', 'TimeoutError'))
+      .mockResolvedValueOnce(ok());
+
+    const client = new OverpassClient(configWith([FALLBACK]));
+    await expect(client.query('q')).resolves.toHaveLength(1);
+
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([PRIMARY, FALLBACK]);
+    expect(warn).toHaveBeenCalledWith(
+      'Overpass request to primary.invalid timed out; trying fallback.invalid',
     );
   });
 

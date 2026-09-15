@@ -120,6 +120,26 @@ not 200 m away in any sense a customer experiences.
 | Severed by a major road with no nearby crossing | 0.65 |
 | Severed by rail, river, or toll road | 0.40 |
 
+For mapped OpenStreetMap facilities, the API draws a straight line from the
+candidate location to each facility and checks whether it intersects a mapped
+barrier within the 1,500 m analysis radius:
+
+- `highway=primary|trunk` is a major-road barrier;
+- `highway=motorway`, `toll=yes`, `railway=rail`, and
+  `waterway=river|canal` are strong barriers;
+- an intersection within 15 m of either endpoint is treated as frontage rather
+  than severance;
+- a matching crossing, level crossing, ford, bridge, or tunnel mapped within
+  100 m of the intersection cancels that barrier penalty.
+
+If several barriers are crossed, the strongest factor wins. This is a
+conservative straight-line proxy, not pedestrian routing: an unmapped crossing
+can make the factor too low, while a mapped crossing can still be inconvenient
+in practice. The result therefore remains subject to the Confidence Score and
+field verification. Facilities supplied only as aggregate zone counts keep an
+Access Factor of 1.00 because they have no position from which a barrier can be
+tested.
+
 ### Data Quality
 
 Freshness and reliability discount a facility's contribution rather than
@@ -699,7 +719,7 @@ Accessibility = 0.35 × Road + 0.25 × Transit + 0.20 × Walkability + 0.20 × P
 | Sub-score | How it is measured |
 |-----------|--------------------|
 | Road | Class of the nearest road: primary 100, secondary 90, tertiary 75, residential 55, service 30. Unknown: 50 |
-| Transit | 100 × distance weight × Access Factor of the nearest transit stop — 100 in Zone A, 60 in Zone B, 25 in Zone C. No stop within 1,500 m: 0 |
+| Transit | Highest `100 × distance weight × Access Factor` among usable transit stops — normally 100 in Zone A, 60 in Zone B, 25 in Zone C, then reduced by a mapped barrier. No stop within 1,500 m: 0 |
 | Walkability | 50 + 10 for each mapped sidewalk, footway or crossing within 300 m, capped at 100. None counted: 50 |
 | Parking | 20 + 5 for each parking space within 300 m, capped at 100. A car park without a `capacity` tag counts as 10 spaces, weighted by Data Quality and Access Factor. On-site spaces from the simulator count at full weight |
 
