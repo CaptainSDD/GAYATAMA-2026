@@ -22,7 +22,9 @@ export function createFirebaseApp(config: ConfigService<Env, true>): App | null 
   const serviceAccountJson = config.get('FIREBASE_SERVICE_ACCOUNT_JSON', { infer: true });
 
   if (projectId === undefined && serviceAccountJson === undefined) {
-    logger.warn('Firebase is not configured: POI cache is in-memory only, and sign-up cannot be completed.');
+    logger.warn(
+      'Firebase is not configured: POI and Google place-count caches are in-memory only, and sign-up cannot be completed.',
+    );
     return null;
   }
 

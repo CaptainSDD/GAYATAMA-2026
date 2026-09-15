@@ -39,8 +39,9 @@ export function DataNotices({ dataSource, onRefresh, refreshing }: DataNoticesPr
       {dataSource.siteConditions === 'unavailable' && (
         <div className="notice" role="status">
           <p>
-            Data jalan, kemudahan jalan kaki, dan perkiraan banjir untuk titik ini gagal dimuat. Input itu dihitung
-            sebagai tidak diketahui, jadi skor di bawah belum lengkap.
+            Data jalan, kemudahan jalan kaki, dan perkiraan banjir untuk titik ini gagal dimuat. Agar kegagalan data
+            tidak menurunkan skor menjadi nol, jalan dan jalan kaki memakai nilai netral 50, sedangkan transportasi
+            dan parkir tetap dihitung dari data fasilitas. Keamanan operasional juga memakai nilai netral 50.
           </p>
           {retry}
         </div>

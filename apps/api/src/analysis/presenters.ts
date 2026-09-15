@@ -2,7 +2,8 @@ import {
   COMPONENT_KEYS,
   COMPONENT_WEIGHTS,
   SEGMENTS,
-  type BusinessType,
+  evaluateFacilities,
+  similarity,
   type ComponentKey,
   type DiscouragingSurrounding,
   type EvaluatedFacility,
@@ -11,17 +12,20 @@ import {
   type LatLng,
   type LocationInput,
   type LocationScoreResult,
-  type RankedCategory,
   type RecommendationResult,
-  type SaturationReading,
-  type Segment,
-  type SegmentScores,
   type WarningCode,
 } from '@gayatama/scoring';
 import { OVERTURE_ID_PREFIX, OVERTURE_KINDS, OVERTURE_SOURCE } from '../overture/overture-place';
 import type { PlaceCountsLookup } from '../places/place-counts.service';
 import { GOOGLE_COUNTED_KINDS } from '../places/place-types';
 import type { PoiSnapshot } from '../poi/poi.service';
+import {
+  buildAnalysisNarrative,
+  type AnalysisNarrative,
+  notRecommendedReason,
+  recommendationDifferentiator,
+  recommendationRationale,
+} from './narratives';
 
 // Maps engine results onto the response shapes in docs/api.md.
 
@@ -39,38 +43,11 @@ export interface SourceSnapshot extends PoiSnapshot {
 const OPENSTREETMAP_SOURCE = 'openstreetmap';
 
 const COMPONENT_LABELS: Record<ComponentKey, string> = {
-  demandFit: 'Kecocokan Permintaan',
-  accessibility: 'Aksesibilitas',
-  competition: 'Peluang Persaingan',
+  demandFit: 'Potensi Pelanggan',
+  accessibility: 'Kemudahan Akses',
+  competition: 'Kondisi Persaingan',
   supportingFacility: 'Fasilitas Pendukung',
-  risk: 'Risiko & Operasional',
-};
-
-const SEGMENT_LABELS: Record<Segment, string> = {
-  student: 'Pelajar & mahasiswa',
-  office: 'Pekerja kantor',
-  resident: 'Penghuni sekitar',
-  commuter: 'Pengguna transportasi',
-  health: 'Pengunjung fasilitas kesehatan',
-  general: 'Pengunjung umum',
-};
-
-const SATURATION_WORDS: Record<SaturationReading, string> = {
-  not_saturated: 'rendah',
-  healthy: 'sehat',
-  becoming_saturated: 'mulai naik',
-  saturated: 'tinggi',
-  heavily_saturated: 'sangat tinggi',
-};
-
-const DIFFERENTIATORS: Record<BusinessType, string> = {
-  beverages: 'Bergantung pada orang yang lewat dan lalu-lalang pelajar',
-  food: 'Melayani beberapa kelompok pelanggan, tapi persaingannya paling padat',
-  laundry: 'Tidak terlalu bergantung pada orang lewat dibanding makanan atau minuman',
-  stationery: 'Terikat erat pada sekolah dan kampus, jadi sepi saat libur',
-  minimarket: 'Butuh modal stok dan ruang rak paling besar untuk buka',
-  salon: 'Mengandalkan pelanggan tetap di sekitar, bukan orang yang kebetulan lewat',
-  pharmacy: 'Butuh apoteker berizin dan fasilitas kesehatan di dekatnya',
+  risk: 'Keamanan Operasional',
 };
 
 const WARNING_MESSAGES: Record<WarningCode, string> = {
@@ -156,16 +133,68 @@ function presentWarnings(warnings: readonly HardWarning[]) {
   }));
 }
 
-export function presentAnalysis(result: LocationScoreResult, location: LatLng, source: SourceSnapshot) {
+export function presentAnalysis(
+  result: LocationScoreResult,
+  input: LocationInput,
+  source: SourceSnapshot,
+  narrative: AnalysisNarrative = buildAnalysisNarrative(result, {
+    siteAvailable: source.siteAvailable,
+    stale: source.stale,
+    placesStatus: source.places.status,
+  }),
+) {
   const { competition } = result;
+  const namedCompetitors = evaluateFacilities({
+    ...input,
+    // Google counts replace these facilities for scoring, but the mapped
+    // records are still useful for answering "who are the competitors?".
+    facilities: source.facilities,
+    facilityCounts: [],
+  })
+    .filter(
+      (entry) =>
+        entry.distanceMeters <= competition.radiusMeters &&
+        similarity(result.businessType, entry.facility) > 0 &&
+        entry.facility.name?.trim(),
+    )
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    .slice(0, 5)
+    .map((entry) => ({
+      id: entry.facility.id,
+      name: entry.facility.name as string,
+      kind: entry.facility.kind,
+      zone: entry.zone,
+      distanceMeters: Math.round(entry.distanceMeters),
+      source: facilitySource(entry.facility),
+    }));
   return {
     modelVersion: result.modelVersion,
-    location,
+    location: input.location,
     businessType: result.businessType,
     score: result.score,
     components: Object.fromEntries(
-      COMPONENT_KEYS.map((key) => [key, { value: result.components[key], weight: COMPONENT_WEIGHTS[key] }]),
+      COMPONENT_KEYS.map((key) => [
+        key,
+        {
+          value: result.components[key],
+          weight: COMPONENT_WEIGHTS[key],
+          availability:
+            !source.siteAvailable && key === 'risk'
+              ? 'unavailable'
+              : !source.siteAvailable && key === 'accessibility'
+                ? 'partial'
+                : 'available',
+        },
+      ]),
     ),
+    accessibility: {
+      value: result.accessibility.value,
+      road: result.accessibility.road,
+      transit: result.accessibility.transit,
+      walkability: result.accessibility.walkability,
+      parking: result.accessibility.parking,
+      siteInputsAvailable: source.siteAvailable,
+    },
     segments: Object.fromEntries(
       SEGMENTS.map((segment) => [segment, { score: result.segments[segment], role: result.segmentRoles[segment] }]),
     ),
@@ -187,35 +216,28 @@ export function presentAnalysis(result: LocationScoreResult, location: LatLng, s
         source: competitor.countedFrom ?? facilitySource(competitor.facility),
         contribution: competitor.contribution,
       })),
+      namedCompetitors,
     },
-    strengths: result.strengths.map(({ component, value }) => ({
-      factor: component,
-      detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
-    })),
-    risks: result.weaknesses.map(({ component, value }) => ({
-      factor: component,
-      detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
-    })),
+    strengths: result.strengths
+      .filter(({ component }) => source.siteAvailable || component !== 'risk')
+      .map(({ component, value }) => ({
+        factor: component,
+        detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
+      })),
+    risks: result.weaknesses
+      .filter(({ component }) => source.siteAvailable || component !== 'risk')
+      .map(({ component, value }) => ({
+        factor: component,
+        detail: `${COMPONENT_LABELS[component]} bernilai ${whole(value)}/100`,
+      })),
     warnings: presentWarnings(result.warnings),
     evidence: result.evidence,
     dataSource: presentDataSource(source),
+    narrative,
   };
 }
 
-function rationale(entry: RankedCategory, segments: SegmentScores): string {
-  const segment = `${SEGMENT_LABELS[entry.dominantSegment]} bernilai ${whole(segments[entry.dominantSegment])}`;
-  if (entry.status === 'needs_validation') {
-    return `${segment}, tapi data fasilitas di sekitar lokasi ini belum lengkap`;
-  }
-  return `${segment}, dengan kejenuhan kompetitor ${SATURATION_WORDS[entry.saturationReading]} (${entry.saturationRatio.toFixed(2)})`;
-}
-
-function reason(entry: RankedCategory): string {
-  const weakest = COMPONENT_KEYS.reduce((lowest, key) =>
-    entry.components[key] < entry.components[lowest] ? key : lowest,
-  );
-  return `${COMPONENT_LABELS[weakest]} hanya ${whole(entry.components[weakest])}/100, komponen terlemahnya`;
-}
+export type PresentedAnalysis = ReturnType<typeof presentAnalysis>;
 
 export function presentRecommendation(result: RecommendationResult, location: LatLng, source: SourceSnapshot) {
   return {
@@ -226,15 +248,15 @@ export function presentRecommendation(result: RecommendationResult, location: La
       score: entry.score,
       status: entry.status,
       dominantSegment: entry.dominantSegment,
-      rationale: rationale(entry, result.segments),
-      differentiator: DIFFERENTIATORS[entry.businessType],
+      rationale: recommendationRationale(entry),
+      differentiator: recommendationDifferentiator(entry.businessType),
     })),
     equivalent: result.equivalent,
     notRecommended: result.notRecommended.map((entry) => ({
       businessType: entry.businessType,
       score: entry.score,
       status: entry.status,
-      reason: reason(entry),
+      reason: notRecommendedReason(entry),
     })),
     warnings: presentWarnings(result.warnings),
     segments: result.segments,

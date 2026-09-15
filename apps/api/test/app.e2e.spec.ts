@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import { GeoapifyPlacesClient } from '../src/geoapify/geoapify-places.client';
+import { GeoapifyClient } from '../src/geoapify/geoapify.client';
 import { OSM_SNAPSHOTS, OsmSnapshots } from '../src/osm-snapshots/osm-snapshots';
 import { OVERTURE_PLACES, OverturePlaces } from '../src/overture/overture-places';
 import { OverpassClient } from '../src/overpass/overpass.client';
@@ -23,7 +23,11 @@ class FakeOverpassClient {
   }
 }
 
-const fakeGeoapify = { configured: false, placesAround: async () => [] };
+const fakeGeoapify = {
+  enabled: false,
+  places: async () => [],
+  reverseGeocode: async () => null,
+};
 
 /** An Overture area 20 km from ORIGIN, with one photocopy shop 200 m from its centre. */
 const OVERTURE_CENTER = (() => {
@@ -93,7 +97,7 @@ describe('API (end to end, fake Overpass)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(OverpassClient)
       .useValue(overpass)
-      .overrideProvider(GeoapifyPlacesClient)
+      .overrideProvider(GeoapifyClient)
       .useValue(fakeGeoapify)
       // The test location is inside a real snapshot area; these tests exercise the Overpass path.
       .overrideProvider(OSM_SNAPSHOTS)
@@ -137,6 +141,10 @@ describe('API (end to end, fake Overpass)', () => {
       Math.min(100, Math.round(body.score.value + body.score.margin)),
     ]);
     expect(Object.keys(body.components)).toEqual(['demandFit', 'accessibility', 'competition', 'supportingFacility', 'risk']);
+    expect(body.components.risk.availability).toBe('available');
+    expect(body.narrative).toMatchObject({ provisional: false });
+    expect(body.narrative.headline).toContain('laundry');
+    expect(body.narrative.nextSteps.length).toBeGreaterThan(0);
     expect(body.competition.radiusMeters).toBe(1500);
     expect(body.competition.strongest[0]).toMatchObject({ kind: 'laundry', zone: 'c', count: 1, source: 'openstreetmap' });
     expect(body.evidence.facilityCount).toBe(15);
@@ -232,6 +240,12 @@ describe('API (end to end, fake Overpass)', () => {
         distanceMeters: null,
         count: 2,
         source: 'google',
+      });
+      expect(body.competition.namedCompetitors[0]).toMatchObject({
+        name: 'Kopi Kampus',
+        kind: 'cafe',
+        zone: 'a',
+        source: 'openstreetmap',
       });
       expect(body.dataSource).toMatchObject({
         attribution: '© OpenStreetMap contributors',

@@ -28,8 +28,7 @@ export function ThemeToggle() {
       aria-label={label}
       title={label}
     >
-      {resolved === 'dark' ? <SunIcon size={20} /> : <MoonIcon size={20} />}
-      <span className="button-text">{resolved === 'dark' ? 'Mode terang' : 'Mode gelap'}</span>
+      {resolved === 'dark' ? <SunIcon /> : <MoonIcon />}
     </button>
   );
 }

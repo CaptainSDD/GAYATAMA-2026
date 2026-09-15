@@ -1,5 +1,5 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
-import type { AnalysisResponse, ApiErrorBody, PoisResponse, RecommendResponse } from './api-types';
+import type { AnalysisResponse, ApiErrorBody, LocationDetailsResponse, PoisResponse, RecommendResponse } from './api-types';
 
 /** A username reserved and a profile document created. Nothing more — the account itself lives in Firebase Auth. */
 export interface RegisterProfileResponse {
@@ -77,6 +77,12 @@ export function fetchRecommendation(point: LatLng, googleMap: boolean, signal?: 
 export function fetchPois(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
   const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng), googleMap: String(googleMap) });
   return request<PoisResponse>(`/pois?${query.toString()}`, { signal });
+}
+
+/** Lightweight address lookup. This endpoint does not load POIs or run the scoring engine. */
+export function fetchLocationDetails(point: LatLng, signal?: AbortSignal) {
+  const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
+  return request<LocationDetailsResponse>(`/location?${query.toString()}`, { signal });
 }
 
 /**

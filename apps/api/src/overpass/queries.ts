@@ -55,19 +55,20 @@ export function buildPoiQuery(center: LatLng, radiusMeters: number, timeoutSecon
 }
 
 /** Road, waterway, land use and pedestrian features at the candidate site. */
-export function buildSiteQuery(point: LatLng, timeoutSeconds: number): string {
-  const accessArea = around(point, ACCESS_BARRIER_RADIUS_METERS);
+export function buildSiteQuery(point: LatLng, timeoutSeconds: number, paddingMeters = 0): string {
+  const radius = (meters: number) => meters + paddingMeters;
+  const accessArea = around(point, radius(ACCESS_BARRIER_RADIUS_METERS));
   return [
     `[out:json][timeout:${timeoutSeconds}];`,
     '(',
-    `  way${around(point, SITE_RADII_METERS.road)}[highway~${exact(ROAD_CLASSES.keys())}];`,
-    `  way${around(point, SITE_RADII_METERS.waterway)}[waterway~${exact(WATERWAYS)}];`,
-    `  way${around(point, SITE_RADII_METERS.industrial)}[landuse=industrial];`,
-    `  way${around(point, SITE_RADII_METERS.pedestrian)}[highway~${exact(PEDESTRIAN_WAYS)}];`,
-    `  way${around(point, SITE_RADII_METERS.pedestrian)}[sidewalk~${exact(SIDEWALK_VALUES)}];`,
-    `  node${around(point, SITE_RADII_METERS.pedestrian)}[highway=crossing];`,
-    `  nwr${around(point, SITE_RADII_METERS.nuisance)}[landuse~${exact(DISCOURAGING_LANDUSE.keys())}];`,
-    `  nwr${around(point, SITE_RADII_METERS.nuisance)}[amenity~${exact(DISCOURAGING_AMENITY.keys())}];`,
+    `  way${around(point, radius(SITE_RADII_METERS.road))}[highway~${exact(ROAD_CLASSES.keys())}];`,
+    `  way${around(point, radius(SITE_RADII_METERS.waterway))}[waterway~${exact(WATERWAYS)}];`,
+    `  way${around(point, radius(SITE_RADII_METERS.industrial))}[landuse=industrial];`,
+    `  way${around(point, radius(SITE_RADII_METERS.pedestrian))}[highway~${exact(PEDESTRIAN_WAYS)}];`,
+    `  way${around(point, radius(SITE_RADII_METERS.pedestrian))}[sidewalk~${exact(SIDEWALK_VALUES)}];`,
+    `  node${around(point, radius(SITE_RADII_METERS.pedestrian))}[highway=crossing];`,
+    `  nwr${around(point, radius(SITE_RADII_METERS.nuisance))}[landuse~${exact(DISCOURAGING_LANDUSE.keys())}];`,
+    `  nwr${around(point, radius(SITE_RADII_METERS.nuisance))}[amenity~${exact(DISCOURAGING_AMENITY.keys())}];`,
     `  way${accessArea}[highway~${exact([...MAJOR_ROAD_HIGHWAYS, ...TOLL_ROAD_HIGHWAYS])}];`,
     `  way${accessArea}[highway][toll=yes];`,
     `  way${accessArea}[railway~${exact(ACCESS_RAILWAYS)}];`,
