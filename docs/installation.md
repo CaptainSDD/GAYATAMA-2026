@@ -54,7 +54,7 @@ comes from OpenStreetMap — see [Google Maps Platform](#google-maps-platform-op
 
 ## Firebase setup
 
-Needed for the POI cache and saved reports.
+Needed for the POI cache, saved reports, and now sign-up/login.
 
 ### 1. Create the project
 
@@ -64,6 +64,9 @@ Needed for the POI cache and saved reports.
    mode**; the rules below replace the defaults.
 3. Choose a region close to your users (`asia-southeast2`, Jakarta, for
    Indonesia).
+4. **Build → Authentication → Get started → Sign-in method → Email/Password
+   → Enable.** Without this, sign-up and login fail immediately — the pages
+   render, but Firebase rejects every request.
 
 ### 2. Server credentials (`apps/api`)
 
@@ -88,16 +91,28 @@ elsewhere.
 
 ### 3. Web app (`apps/web`)
 
-The web app needs no Firebase configuration: it reads everything through the
-API. Only the API's address is configurable:
+Most of what the web app does still reads through the API, but login and
+sign-up talk to Firebase Authentication directly from the browser — that's
+the standard Firebase pattern, and it's what lets the client keep a signed-in
+session without a round trip to `apps/api` for every request. It needs the
+project's public Web SDK config:
+
+**Project settings → General → Your apps → Web app** (create one if none
+exists yet):
 
 ```bash
 # .env
 VITE_API_BASE_URL=http://localhost:3000
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_APP_ID=...
 ```
 
-The Firestore security rules below still matter: they are what stops any
-client from reading or writing the database directly.
+These values are **public by design** — a Firebase Web API key identifies the
+project, it does not authorise access. Security comes from the Firestore
+rules below and from Authentication's own sign-in method gate, not from
+keeping this key secret.
 
 ### 4. Firestore security rules
 
@@ -124,6 +139,16 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow get: if true;
       allow list, write: if false;
+    }
+
+    // User profiles and the username-uniqueness reservation: server-side
+    // only. The API verifies the caller's Firebase ID token before writing
+    // either — these rules cannot express that check themselves.
+    match /users/{uid} {
+      allow read, write: if false;
+    }
+    match /usernames/{username} {
+      allow read, write: if false;
     }
 
     match /{document=**} {
@@ -236,7 +261,7 @@ Vite reads `VITE_` variables when it starts or builds.
 
 ### 4. Cap the cost
 
-A new location takes 25 to 75 Places Aggregate requests, and 5,000 a month are
+A new location takes 12 to 36 Places Aggregate requests, and 5,000 a month are
 free. On the Places Aggregate API's **Quotas & System Limits** page, lower the
 requests-per-day limit, and add a budget alert under **Billing → Budgets &
 alerts**. When the quota runs out, the API falls back to OpenStreetMap and the

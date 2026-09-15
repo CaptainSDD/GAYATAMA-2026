@@ -80,9 +80,14 @@ module that does not exist yet.
 
 ### User accounts, saved projects, team sharing
 
-Reports are shareable by ID without authentication. Accounts add a full auth
-surface, session handling, and access rules for no demonstrable gain in the
-core value proposition.
+**Revised.** This was originally cut deliberately — reports were shareable by
+ID without authentication, and accounts seemed like a full auth surface for
+no demonstrable gain. That decision has since been reversed: login and
+sign-up now exist (Firebase Authentication, email/password), with usernames
+enforced unique via a Firestore reservation document. Email verification
+uses Firebase's own built-in email, not a third-party sender — nothing to
+configure, nothing extra to run. Saved projects and team sharing (multiple
+people on one account) are still not built.
 
 ---
 

@@ -17,7 +17,19 @@ export function riskAndOperability(site: SiteConditions = {}, available = true):
     else if (waterway <= RISK.waterwayMidMeters) score -= RISK.waterwayMidPenalty;
   }
   if (site.industrialLanduseNearby === true) score -= RISK.industrialPenalty;
+  score -= surroundingPenalty(site);
   return clamp(score, 0, 100);
+}
+
+/**
+ * PROPOSED: what nearby cemeteries, waste sites, quarries, military land and
+ * prisons take off, capped so a single awkward corner cannot zero the component.
+ * The map says what is there, not how much custom it costs — so this is a
+ * flag with a modest weight, and the warning beside it carries the real message.
+ */
+export function surroundingPenalty(site: SiteConditions = {}): number {
+  const total = (site.discouragingSurroundings ?? []).reduce((sum, kind) => sum + RISK.surroundingPenalty[kind], 0);
+  return Math.min(total, RISK.maxSurroundingPenalty);
 }
 
 /** Warnings surfaced regardless of how high the score is. */
@@ -31,6 +43,9 @@ export function hardWarnings(
   if (site.nearestWaterwayMeters !== undefined && site.nearestWaterwayMeters <= FLOOD_WARNING_METERS) {
     warnings.push({ code: 'flood_risk_proxy' });
   }
+
+  const surroundings = site.discouragingSurroundings ?? [];
+  if (surroundings.length > 0) warnings.push({ code: 'unsuitable_surroundings', surroundings: [...surroundings] });
 
   let dated = 0;
   let stale = 0;

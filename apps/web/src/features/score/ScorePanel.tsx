@@ -1,11 +1,11 @@
-import { COMPONENT_KEYS } from '@gayatama/scoring';
+import { ACCESSIBILITY_WEIGHTS, COMPONENT_KEYS } from '@gayatama/scoring';
 import { Card } from '../../components/Card';
 import { AlertIcon, CheckIcon } from '../../components/Icons';
 import { Attribution, DataNotices, WarningList } from '../../components/Notices';
 import type { AnalysisResponse, DataSource } from '../../lib/api-types';
 import { toneColor } from '../../lib/band-color';
 import { BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/copy';
-import { formatPercent, formatWhole } from '../../lib/format';
+import { formatPercent } from '../../lib/format';
 import { ScoreGauge } from './ScoreGauge';
 
 interface ScorePanelProps {
@@ -66,14 +66,15 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
                   <span>{COMPONENT_LABELS[key]}</span>
                   <span>
                     {analysis.components[key].availability === 'unavailable' ? 'netral ' : ''}
-                    {formatWhole(value)} × {formatPercent(weight)} = {contribution.toFixed(1)}
+                    {formatCalculationNumber(value)} × {formatPercent(weight)} = {formatCalculationNumber(contribution)}
                   </span>
                 </li>
               ))}
             </ul>
+            <AccessibilityCalculation analysis={analysis} />
             <p className="contribution-total">
               <span>Total sebelum pembulatan</span>
-              <strong>{total.toFixed(1)}</strong>
+              <strong>{formatCalculationNumber(total)}</strong>
             </p>
           </div>
         </details>
@@ -99,6 +100,24 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
 
       <Attribution dataSource={dataSource} modelVersion={analysis.modelVersion} />
     </article>
+  );
+}
+
+function AccessibilityCalculation({ analysis }: { analysis: AnalysisResponse }) {
+  const accessibility = (analysis as Partial<AnalysisResponse>).accessibility;
+  if (accessibility === undefined) {
+    return <p className="muted">Rincian akses belum tersedia. Muat ulang setelah API selesai diperbarui.</p>;
+  }
+  const neutralNote = accessibility.siteInputsAvailable ? '' : ' (netral karena data gagal dimuat)';
+  return (
+    <p className="muted">
+      Rincian akses: jalan {formatCalculationNumber(accessibility.road)}{neutralNote} ×{' '}
+      {formatPercent(ACCESSIBILITY_WEIGHTS.road)} + transportasi {formatCalculationNumber(accessibility.transit)} ×{' '}
+      {formatPercent(ACCESSIBILITY_WEIGHTS.transit)} + jalan kaki {formatCalculationNumber(accessibility.walkability)}
+      {neutralNote} × {formatPercent(ACCESSIBILITY_WEIGHTS.walkability)} + parkir{' '}
+      {formatCalculationNumber(accessibility.parking)} × {formatPercent(ACCESSIBILITY_WEIGHTS.parking)} ={' '}
+      {formatCalculationNumber(accessibility.value)}.
+    </p>
   );
 }
 
@@ -158,6 +177,11 @@ function componentReading(
   if (value >= 50) return { label: `Cukup${suffix}`, tone: 'fair' as const };
   if (value >= 35) return { label: `Lemah${suffix}`, tone: 'poor' as const };
   return { label: `Sangat lemah${suffix}`, tone: 'bad' as const };
+}
+
+function formatCalculationNumber(value: number): string {
+  if (value > 0 && value < 0.1) return '<0,1';
+  return value.toLocaleString('id-ID', { maximumFractionDigits: 1 });
 }
 
 function evidenceSummary(count: number): string {

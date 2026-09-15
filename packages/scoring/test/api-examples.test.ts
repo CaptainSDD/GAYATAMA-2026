@@ -26,12 +26,12 @@ describe('docs/api.md — POST /api/v1/analysis example', () => {
     expect(saturationReading(ratio)).toBe('healthy');
     expect(densityBand(equivalentCount, 1500)).toBe('low');
     expect(validationBonus(equivalentCount)).toBe(0);
-    expect(competition).toBeCloseTo(75.71, 2);
+    expect(competition).toBeCloseTo(77.54, 2);
   });
 
   it('score block', () => {
-    expect(value).toBeCloseTo(75.15, 2);
-    expect(summarizeScore(value, 81)).toEqual({ value, band: 'suitable', confidence: 81, margin: 8, range: [67, 83] });
+    expect(value).toBeCloseTo(75.52, 2);
+    expect(summarizeScore(value, 81)).toEqual({ value, band: 'suitable', confidence: 81, margin: 8, range: [68, 84] });
   });
 
   it('segment roles', () => {

@@ -100,6 +100,15 @@ export interface AnalysisResponse {
   businessType: BusinessType;
   score: ScoreSummary;
   components: Record<ComponentKey, { value: number; weight: number; availability: 'available' | 'partial' | 'unavailable' }>;
+  /** Subscores behind Kemudahan Akses. Site inputs use neutral 50 when their lookup fails. */
+  accessibility: {
+    value: number;
+    road: number;
+    transit: number;
+    walkability: number;
+    parking: number;
+    siteInputsAvailable: boolean;
+  };
   segments: Record<Segment, { score: number; role: SegmentRole }>;
   competition: {
     rawCount: number;

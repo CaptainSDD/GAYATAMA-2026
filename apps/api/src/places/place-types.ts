@@ -1,11 +1,19 @@
 import type { FacilityKind, FacilityScale } from '@gayatama/scoring';
 
 // Google place types → engine facility kinds, for the Places Aggregate API.
+//
+// Google counts the small businesses OpenStreetMap misses, and nothing else.
+// The facilities that drive demand — campuses, schools, offices, housing,
+// transit stops, hospitals, malls — stay with OpenStreetMap, which maps those
+// large features well and which the segment points were calibrated against.
+// Counting them from Google as well pinned every segment in an Indonesian city
+// to 100, so the score stopped telling locations apart. Photocopy, print and
+// stationery shops have no Table A type at all, and come from OpenStreetMap
+// and Overture. See docs/data-sources.md#google-maps-business-counts.
+//
 // Filters accept only the types in Table A of Google's place types list. Types
 // excluded from one query are the ones counted by another, so a place carrying
-// both is counted once. Photocopy, print and stationery shops have no Table A
-// type, so those kinds, like housing and parking, stay with OpenStreetMap.
-// See docs/data-sources.md.
+// both is counted once.
 
 export const GOOGLE_PLACES_SOURCE = 'google';
 
@@ -17,23 +25,7 @@ export interface PlaceCountQuery {
   scale?: FacilityScale;
 }
 
-const RAIL_STATIONS = ['train_station', 'light_rail_station', 'subway_station'];
-
 export const PLACE_COUNT_QUERIES: readonly PlaceCountQuery[] = [
-  // Facilities that indicate customer segments
-  { kind: 'campus', includedTypes: ['university'], scale: 'large' },
-  { kind: 'school', includedTypes: ['school', 'primary_school', 'secondary_school'], excludedTypes: ['university'] },
-  { kind: 'office', includedTypes: ['corporate_office', 'business_center', 'coworking_space'] },
-  { kind: 'government_office', includedTypes: ['city_hall', 'local_government_office', 'government_office'] },
-  { kind: 'transit', includedTypes: RAIL_STATIONS, scale: 'large' },
-  {
-    kind: 'transit',
-    includedTypes: ['bus_station', 'bus_stop', 'transit_station', 'transit_stop'],
-    excludedTypes: RAIL_STATIONS,
-  },
-  { kind: 'hospital', includedTypes: ['hospital'], scale: 'large' },
-  { kind: 'mall', includedTypes: ['shopping_mall', 'department_store'], scale: 'large' },
-  // Businesses that compete with one or more categories
   { kind: 'cafe', includedTypes: ['cafe', 'coffee_shop', 'coffee_stand'] },
   { kind: 'bubble_tea', includedTypes: ['tea_house', 'juice_shop'], excludedTypes: ['cafe', 'coffee_shop', 'coffee_stand'] },
   {
@@ -50,15 +42,6 @@ export const PLACE_COUNT_QUERIES: readonly PlaceCountQuery[] = [
   { kind: 'beauty', includedTypes: ['beauty_salon', 'nail_salon'], excludedTypes: ['hair_salon', 'barber_shop'] },
   { kind: 'pharmacy', includedTypes: ['pharmacy'] },
   { kind: 'chemist', includedTypes: ['drugstore'], excludedTypes: ['pharmacy'] },
-  // Facilities that support transactions
-  { kind: 'atm', includedTypes: ['atm'], excludedTypes: ['bank'] },
-  { kind: 'bank', includedTypes: ['bank'] },
-  { kind: 'marketplace', includedTypes: ['market'] },
-  {
-    kind: 'place_of_worship',
-    includedTypes: ['mosque', 'church', 'hindu_temple', 'buddhist_temple', 'synagogue', 'shinto_shrine'],
-  },
-  { kind: 'clinic', includedTypes: ['doctor', 'medical_clinic'], excludedTypes: ['hospital'] },
 ];
 
 /** Kinds that come from Google counts whenever they are used, replacing OpenStreetMap facilities of the same kind. */

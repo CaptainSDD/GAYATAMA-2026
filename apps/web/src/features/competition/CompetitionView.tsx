@@ -13,6 +13,7 @@ export function CompetitionView({ analysis }: { analysis: AnalysisResponse }) {
     .sort((a, b) => ['a', 'b', 'c'].indexOf(a.zone) - ['a', 'b', 'c'].indexOf(b.zone));
   const mappedStrongest = competition.strongest.filter((competitor) => competitor.distanceMeters !== null);
   const namedCompetitors = competition.namedCompetitors ?? [];
+  const usesGoogleCounts = analysis.dataSource.places.status === 'used';
 
   return (
     <div className="competition">
@@ -38,6 +39,10 @@ export function CompetitionView({ analysis }: { analysis: AnalysisResponse }) {
       <details className="panel-disclosure">
         <summary>Cara persaingan dihitung</summary>
         <div className="disclosure-content">
+          <p>
+            Nilai Kondisi Persaingan mengukur ruang peluang, bukan jumlah pesaing. Semakin padat dan jenuh pasar,
+            nilainya semakin mendekati 0 meskipun daftar pesaing berisi data.
+          </p>
           <p>
             Jumlah pesaing disesuaikan menurut jarak, kualitas data, jam operasional, kemiripan usaha, dan skala.
             Hasilnya setara {competition.equivalentCount.toLocaleString('id-ID', { maximumFractionDigits: 2 })}{' '}
@@ -97,7 +102,11 @@ export function CompetitionView({ analysis }: { analysis: AnalysisResponse }) {
             ) : (
               <p className="notice notice-neutral">Nama pesaing belum tersedia pada data peta terbuka.</p>
             )}
-            <p className="competitor-source-note">Daftar nama dapat belum lengkap dan perlu dicek langsung.</p>
+            <p className="competitor-source-note">
+              {usesGoogleCounts
+                ? 'Jumlah dan skor memakai hitungan Google Maps per zona. Nama di atas hanya contoh dari data peta terbuka dan tidak dihitung dua kali.'
+                : 'Jumlah, skor, dan nama memakai data peta terbuka. Daftar nama dapat belum lengkap dan perlu dicek langsung.'}
+            </p>
           </div>
         </details>
       )}
