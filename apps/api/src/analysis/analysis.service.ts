@@ -3,6 +3,7 @@ import {
   evaluateFacilities,
   recommendBusinessTypes,
   scoreLocation,
+  simulate,
   type LatLng,
   type LocationInput,
 } from '@gayatama/scoring';
@@ -10,10 +11,23 @@ import { insufficientData } from '../common/errors';
 import { PlaceCountsService } from '../places/place-counts.service';
 import { GOOGLE_COUNTED_KINDS } from '../places/place-types';
 import { PoiService } from '../poi/poi.service';
+import { LocationEligibilityService } from '../location/location-eligibility';
 import { withMappedSeverance } from '../overpass/severance';
 import { NarrativeService } from './narrative.service';
-import { presentAnalysis, presentPois, presentRecommendation, type SourceSnapshot } from './presenters';
-import type { AnalysisRequest, PoisQuery, RecommendRequest } from './schemas';
+import { presentAnalysis, presentPois, presentRecommendation, presentSimulation, type SourceSnapshot } from './presenters';
+import type { AnalysisRequest, OpportunitiesRequest, PoisQuery, RecommendRequest, SimulationRequest } from './schemas';
+
+const OPPORTUNITY_GRID_SIDE = 3;
+const OPPORTUNITY_GRID_SPACING_METERS = 350;
+
+export interface OpportunityCell {
+  id: string;
+  lat: number;
+  lng: number;
+  status: 'scored' | 'insufficient_data' | 'unavailable';
+  score: number | null;
+  confidence: number | null;
+}
 
 /** Controllers orchestrate; they do not calculate. All scoring happens in @gayatama/scoring. */
 @Injectable()
@@ -22,6 +36,7 @@ export class AnalysisService {
     private readonly pois: PoiService,
     private readonly places: PlaceCountsService,
     private readonly narratives: NarrativeService,
+    private readonly locations: LocationEligibilityService,
   ) {}
 
   async analyze(request: AnalysisRequest) {
@@ -53,6 +68,50 @@ export class AnalysisService {
     return presentRecommendation(result, input.location, source);
   }
 
+  async simulate(request: SimulationRequest) {
+    const { input } = await this.load(request);
+    const result = simulate(input, request.businessType, request.options);
+    if (result.baseline.insufficientData) {
+      throw insufficientData(result.baseline.evidence.facilityCount, result.baseline.confidence.value);
+    }
+    return presentSimulation(result, request.options);
+  }
+
+  /**
+   * Scores a compact 3 × 3 demo grid around the map centre. Each cell loads
+   * its own OSM evidence, rather than copying the centre's evidence to nearby
+   * cells. This is slower than a cosmetic heatmap but prevents edge cells from
+   * quietly receiving the wrong competitors or demand signals.
+   */
+  async opportunities(request: OpportunitiesRequest) {
+    const cells = opportunityGrid({ lat: request.lat, lng: request.lng });
+    const results = await Promise.all(
+      cells.map(async (cell): Promise<OpportunityCell> => {
+        try {
+          const { input } = await this.load({ ...cell, googleMap: false });
+          const result = scoreLocation(input, request.businessType);
+          return {
+            ...cell,
+            status: result.insufficientData ? 'insufficient_data' : 'scored',
+            score: result.score.value,
+            confidence: result.score.confidence,
+          };
+        } catch {
+          // One unavailable OSM cell should leave a visible gap, not make the
+          // whole map look like it has no opportunity.
+          return { ...cell, status: 'unavailable', score: null, confidence: null };
+        }
+      }),
+    );
+    return {
+      center: { lat: request.lat, lng: request.lng },
+      businessType: request.businessType,
+      source: 'OpenStreetMap',
+      spacingMeters: OPPORTUNITY_GRID_SPACING_METERS,
+      cells: results,
+    };
+  }
+
   async facilities(query: PoisQuery) {
     const { input, source } = await this.load(query);
     // A counted zone sits at its outer edge, so it is included only when the whole zone is within the radius.
@@ -68,6 +127,8 @@ export class AnalysisService {
    */
   private async load(request: LatLng & { googleMap: boolean }): Promise<{ input: LocationInput; source: SourceSnapshot }> {
     const location = { lat: request.lat, lng: request.lng };
+    // Keep this server-side: callers can bypass the map UI and post coordinates directly.
+    await this.locations.assertEligible(location);
     const [snapshot, site, places] = await Promise.all([
       this.pois.facilitiesAround(location),
       this.pois.siteConditions(location),
@@ -88,4 +149,26 @@ export class AnalysisService {
     }
     return { input, source: { ...snapshot, siteAvailable: site.available, places } };
   }
+}
+
+/** Small-distance destination point, sufficient for the 350 m demo grid. */
+function offsetPoint(origin: LatLng, northMeters: number, eastMeters: number): LatLng {
+  const earthRadiusMeters = 6_371_000;
+  const latRadians = (origin.lat * Math.PI) / 180;
+  return {
+    lat: origin.lat + (northMeters / earthRadiusMeters) * (180 / Math.PI),
+    lng: origin.lng + (eastMeters / (earthRadiusMeters * Math.cos(latRadians))) * (180 / Math.PI),
+  };
+}
+
+function opportunityGrid(center: LatLng): Array<Pick<OpportunityCell, 'id' | 'lat' | 'lng'>> {
+  const half = Math.floor(OPPORTUNITY_GRID_SIDE / 2);
+  const cells: Array<Pick<OpportunityCell, 'id' | 'lat' | 'lng'>> = [];
+  for (let row = -half; row <= half; row += 1) {
+    for (let column = -half; column <= half; column += 1) {
+      const point = offsetPoint(center, row * OPPORTUNITY_GRID_SPACING_METERS, column * OPPORTUNITY_GRID_SPACING_METERS);
+      cells.push({ id: `${row}:${column}`, ...point });
+    }
+  }
+  return cells;
 }

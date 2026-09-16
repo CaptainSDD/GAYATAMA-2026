@@ -3,6 +3,7 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 export type ErrorCode =
   | 'VALIDATION_FAILED'
   | 'INSUFFICIENT_DATA'
+  | 'LOCATION_NOT_ELIGIBLE'
   | 'UPSTREAM_TIMEOUT'
   | 'RATE_LIMITED'
   | 'NOT_FOUND'
@@ -36,6 +37,16 @@ export function insufficientData(facilitiesFound: number, confidence: number): A
     'INSUFFICIENT_DATA',
     'Not enough mapped facilities within 1500 m to produce a reliable score.',
     { facilitiesFound, confidence: Math.round(confidence) },
+  );
+}
+
+export function unsuitableLocation(reason: 'water' | 'wetland' | 'aquaculture'): ApiError {
+  const labels = { water: 'air', wetland: 'lahan basah', aquaculture: 'tambak' } as const;
+  return new ApiError(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    'LOCATION_NOT_ELIGIBLE',
+    `This point is mapped as ${labels[reason]} and cannot be analysed as a business location.`,
+    { reason },
   );
 }
 

@@ -1,27 +1,19 @@
-import { Controller, Get, Logger, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { GeoapifyClient } from '../geoapify/geoapify.client';
-import type { GeoapifyReverseResult } from '../geoapify/geoapify-place';
+import { LocationEligibilityService } from './location-eligibility';
 import { type LocationQuery, locationQuerySchema } from './location.schema';
 
 @Controller()
 export class LocationController {
-  private readonly logger = new Logger(LocationController.name);
-
-  constructor(private readonly geoapify: GeoapifyClient) {}
+  constructor(private readonly locations: LocationEligibilityService) {}
 
   @Get('location')
   async location(@Query(new ZodValidationPipe(locationQuerySchema)) query: LocationQuery) {
-    let result: GeoapifyReverseResult | null = null;
-    try {
-      result = await this.geoapify.reverseGeocode(query);
-    } catch (error) {
-      // Address lookup is helpful context, not a prerequisite for analysis.
-      this.logger.warn(error instanceof Error ? error.message : 'Reverse geocoding failed');
-    }
+    const { result, eligibility } = await this.locations.lookup(query);
 
     return {
       location: query,
+      eligibility,
       address:
         result === null
           ? null

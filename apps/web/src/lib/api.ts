@@ -1,5 +1,13 @@
-import type { BusinessType, LatLng } from '@gayatama/scoring';
-import type { AnalysisResponse, ApiErrorBody, LocationDetailsResponse, PoisResponse, RecommendResponse } from './api-types';
+import type { BusinessType, LatLng, OperatorOptions } from '@gayatama/scoring';
+import type {
+  AnalysisResponse,
+  ApiErrorBody,
+  LocationDetailsResponse,
+  OpportunitiesResponse,
+  PoisResponse,
+  RecommendResponse,
+  SimulationResponse,
+} from './api-types';
 
 /** A username reserved and a profile document created. Nothing more — the account itself lives in Firebase Auth. */
 export interface RegisterProfileResponse {
@@ -68,6 +76,21 @@ function postJson<T>(path: string, payload: unknown, signal?: AbortSignal, heade
 
 export function fetchAnalysis(point: LatLng, businessType: BusinessType, googleMap: boolean, signal?: AbortSignal) {
   return postJson<AnalysisResponse>('/analysis', { lat: point.lat, lng: point.lng, businessType, googleMap }, signal);
+}
+
+export function fetchSimulation(
+  point: LatLng,
+  businessType: BusinessType,
+  options: OperatorOptions,
+  googleMap: boolean,
+  signal?: AbortSignal,
+) {
+  return postJson<SimulationResponse>('/simulate', { lat: point.lat, lng: point.lng, businessType, options, googleMap }, signal);
+}
+
+/** Area Opportunity Map intentionally requests OSM-only cells, never Google aggregate counts. */
+export function fetchOpportunities(point: LatLng, businessType: BusinessType, signal?: AbortSignal) {
+  return postJson<OpportunitiesResponse>('/opportunities', { lat: point.lat, lng: point.lng, businessType }, signal);
 }
 
 export function fetchRecommendation(point: LatLng, googleMap: boolean, signal?: AbortSignal) {

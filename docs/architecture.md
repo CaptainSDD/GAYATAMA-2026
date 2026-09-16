@@ -229,8 +229,8 @@ src/
 └── components/           Shared loading, error, notice and navigation UI
 ```
 
-A future UI may expose the pure engine's simulation API and persisted reports,
-but neither simulator controls nor report/PDF export are implemented today.
+The UI exposes simulator controls and a print-ready report export. Persisted
+reports and multi-location comparison remain future work.
 
 ---
 

@@ -77,9 +77,9 @@ is enforced in the scoring engine, not left to interface copy.
 | 4 | **Target Market Insight** | *Which customer segments are most likely to be present around this location?* Six customer segments scored 0–100, each backed by the specific facilities that produced the score, plus what that implies for product, pricing, and opening hours. |
 | 5 | **Authentication & Guided Tour** | *Can I enter securely and understand the workflow?* Firebase email/password accounts, email-verification guidance, protected app routes, and a replayable product tour. |
 
-The scoring package already exposes a pure simulation function. The interactive
-what-if interface and report/PDF export are planned rather than current UI/API
-features; see [docs/roadmap.md](docs/roadmap.md).
+The interface includes a what-if simulator for on-site parking and opening
+hours. A print-ready PDF report can be exported directly from each analysis;
+see [docs/roadmap.md](docs/roadmap.md).
 
 Full formulas, weights, and worked examples: **[docs/methodology.md](docs/methodology.md)**.
 

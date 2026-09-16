@@ -23,6 +23,11 @@ export interface GeoapifyPlacesResponse {
 
 /** A normalized address returned by Geoapify's Reverse Geocoding API. */
 export interface GeoapifyReverseResult {
+  /** Geoapify's normalized classification, e.g. `natural.water` or `building`. */
+  category?: string;
+  /** Some reverse results include several matching classifications. */
+  categories?: readonly string[];
+  result_type?: string;
   name?: string;
   street?: string;
   suburb?: string;
@@ -38,6 +43,8 @@ export interface GeoapifyReverseResult {
     sourcename?: string;
     attribution?: string;
     license?: string;
+    /** Original OSM tags when Geoapify can identify the containing feature. */
+    raw?: Record<string, unknown>;
   };
 }
 

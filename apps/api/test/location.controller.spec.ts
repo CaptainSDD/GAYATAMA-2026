@@ -1,5 +1,6 @@
 import type { GeoapifyClient } from '../src/geoapify/geoapify.client';
 import { LocationController } from '../src/location/location.controller';
+import { LocationEligibilityService } from '../src/location/location-eligibility';
 
 describe('LocationController', () => {
   it('maps Indonesian address levels without running an analysis', async () => {
@@ -19,7 +20,7 @@ describe('LocationController', () => {
         },
       }),
     };
-    const controller = new LocationController(geoapify as unknown as GeoapifyClient);
+    const controller = new LocationController(new LocationEligibilityService(geoapify as unknown as GeoapifyClient));
 
     await expect(controller.location({ lat: -7.005, lng: 110.435 })).resolves.toMatchObject({
       address: {
@@ -29,17 +30,19 @@ describe('LocationController', () => {
         postcode: '50242',
       },
       source: { provider: 'Geoapify' },
+      eligibility: { status: 'eligible' },
     });
   });
 
   it('keeps location confirmation usable when address lookup is unavailable', async () => {
     const geoapify = { reverseGeocode: jest.fn().mockRejectedValue(new Error('offline')) };
-    const controller = new LocationController(geoapify as unknown as GeoapifyClient);
+    const controller = new LocationController(new LocationEligibilityService(geoapify as unknown as GeoapifyClient));
 
     await expect(controller.location({ lat: -7.005, lng: 110.435 })).resolves.toEqual({
       location: { lat: -7.005, lng: 110.435 },
       address: null,
       source: null,
+      eligibility: { status: 'unknown' },
     });
   });
 });

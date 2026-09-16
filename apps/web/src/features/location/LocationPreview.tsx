@@ -13,6 +13,8 @@ interface LocationPreviewProps {
 export function LocationPreview({ point, businessType, onAnalyse }: LocationPreviewProps) {
   const details = useLocationDetails(point);
   const address = details.data?.address ?? null;
+  const eligibility = details.data?.eligibility;
+  const isIneligible = eligibility?.status === 'ineligible';
   const heading = address?.village ?? address?.district ?? address?.city ?? 'Titik di Kota Semarang';
 
   return (
@@ -37,6 +39,12 @@ export function LocationPreview({ point, businessType, onAnalyse }: LocationPrev
         address.formatted !== null && <p className="location-address">{address.formatted}</p>
       )}
 
+      {isIneligible && (
+        <p className="notice" role="alert">
+          Titik ini berada di {surfaceLabel(eligibility.reason)}. Pilih daratan atau bangunan yang akan dipakai untuk usaha.
+        </p>
+      )}
+
       <details className="panel-disclosure location-details">
         <summary>Detail lokasi</summary>
         <div className="disclosure-content">
@@ -59,12 +67,16 @@ export function LocationPreview({ point, businessType, onAnalyse }: LocationPrev
         <p className="analysis-target">
           Siap dianalisis untuk <strong>{BUSINESS_TYPE_LABELS[businessType]}</strong>
         </p>
-        <button type="button" className="button-primary" onClick={onAnalyse}>
+        <button type="button" className="button-primary" onClick={onAnalyse} disabled={details.isPending || isIneligible}>
           <GaugeIcon size={18} /> Analisis lokasi
         </button>
       </div>
     </section>
   );
+}
+
+function surfaceLabel(reason: 'water' | 'wetland' | 'aquaculture'): string {
+  return { water: 'air', wetland: 'lahan basah', aquaculture: 'tambak' }[reason];
 }
 
 function LocationFact({ label, value }: { label: string; value: string | null }) {

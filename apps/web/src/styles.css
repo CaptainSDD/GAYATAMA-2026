@@ -764,6 +764,35 @@ select:hover {
   gap: var(--space-2);
 }
 
+.opportunity-control {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.opportunity-control strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.opportunity-control p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.opportunity-control .button-secondary {
+  justify-self: start;
+}
+
+.opportunity-hint {
+  color: #166534 !important;
+  font-weight: 600;
+}
+
 .button-secondary.button-clear-point {
   color: var(--error-text);
   border-color: var(--error-border);
@@ -1462,6 +1491,42 @@ select:hover {
 .score-card {
   display: grid;
   gap: var(--space-4);
+}
+
+.report-export {
+  justify-self: start;
+}
+
+.simulation-form {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.simulation-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+}
+
+.simulation-hours {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.simulation-result {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--sekunder) 8%, var(--surface-raised));
+  border-left: 3px solid var(--sekunder);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
 }
 
 .decision-summary {

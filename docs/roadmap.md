@@ -18,6 +18,7 @@ that quietly implies everything works.
 | Confidence Score and uncertainty intervals | Core |
 | What-if simulation — parking and opening hours | Core |
 | Map picker with 300 / 800 / 1,500 m zone rings | Core |
+| Area Opportunity Map — 3 × 3 demo grid, OpenStreetMap-only | Core |
 
 ---
 
@@ -125,11 +126,12 @@ Score several candidate sites side by side. A natural extension once reports
 persist, and closer to how the decision is actually made — the real question is
 rarely "is this spot good?" but "which of these three is best?".
 
-### 5. Area opportunity mapping
+### 5. District-scale opportunity mapping
 
-Inverting the query: instead of scoring a point the user picks, highlight
-underserved areas across a district. This is where the SDG 11.3 case becomes
-concrete, since the same computation serves local economic planning.
+The submission ships a small, explicit 3 × 3 OpenStreetMap-only grid around a
+chosen map centre. Expanding that into a district-wide map needs background
+jobs, cache warming, and a policy for showing uncertain cells without implying
+false precision.
 
 ### 6. Additional business categories
 

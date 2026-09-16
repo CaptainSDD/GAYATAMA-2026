@@ -16,6 +16,37 @@ import type {
   Zone,
 } from '@gayatama/scoring';
 
+export interface SimulationResponse {
+  options: { onSiteParkingSpaces?: number; openingHours?: readonly { day: number; from: number; to: number }[] };
+  baseline: {
+    score: ScoreSummary;
+    accessibility: AnalysisResponse['accessibility'];
+    competition: { value: number; saturationRatio: number };
+  };
+  simulated: {
+    score: ScoreSummary;
+    accessibility: AnalysisResponse['accessibility'];
+    competition: { value: number; saturationRatio: number };
+  };
+  scoreChange: number;
+}
+
+/** Compact, OSM-only score cells for the Area Opportunity Map demo. */
+export interface OpportunitiesResponse {
+  center: LatLng;
+  businessType: BusinessType;
+  source: 'OpenStreetMap';
+  spacingMeters: number;
+  cells: Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    status: 'scored' | 'insufficient_data' | 'unavailable';
+    score: number | null;
+    confidence: number | null;
+  }>;
+}
+
 // Response shapes from docs/api.md, as produced by apps/api/src/analysis/presenters.ts.
 
 export interface PlacesSource {
@@ -192,6 +223,10 @@ export interface PoisResponse {
 
 export interface LocationDetailsResponse {
   location: LatLng;
+  eligibility:
+    | { status: 'eligible' }
+    | { status: 'unknown' }
+    | { status: 'ineligible'; reason: 'water' | 'wetland' | 'aquaculture' };
   address: {
     name: string | null;
     street: string | null;

@@ -1,5 +1,6 @@
-import { AdvancedMarker, APIProvider, Circle, ControlPosition, Map, Polygon, Polyline } from '@vis.gl/react-google-maps';
+import { AdvancedMarker, APIProvider, Circle, ControlPosition, Map, Polygon, Polyline, Rectangle } from '@vis.gl/react-google-maps';
 import type { CSSProperties } from 'react';
+import type { OpportunitiesResponse } from '../../lib/api-types';
 import { SEMARANG_MAP_LIMITS } from '../../lib/location';
 import { GOOGLE_MAP_ID, GOOGLE_MAPS_API_KEY } from '../../lib/map-config';
 import { SEMARANG_BOUNDARY } from '../../lib/semarang-boundary';
@@ -18,7 +19,15 @@ const PICK_MARKER_STYLE: CSSProperties = {
 };
 
 /** The Google map, drawn when a Maps JavaScript API key is configured. */
-export function GoogleMapPicker({ initialCenter, point, analysisPoint, onPick, onCenterChange }: MapPickerProps) {
+export function GoogleMapPicker({
+  initialCenter,
+  point,
+  analysisPoint,
+  onPick,
+  onCenterChange,
+  opportunities,
+  onOpportunityPick,
+}: MapPickerProps) {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <Map
@@ -54,6 +63,9 @@ export function GoogleMapPicker({ initialCenter, point, analysisPoint, onPick, o
         }}
       >
         <CoverageOverlay />
+        {opportunities !== null && opportunities !== undefined && onOpportunityPick !== undefined && (
+          <GoogleOpportunityCells opportunities={opportunities} onPick={onOpportunityPick} />
+        )}
         {point !== null && (
           <>
             {analysisPoint !== null &&
@@ -80,6 +92,47 @@ export function GoogleMapPicker({ initialCenter, point, analysisPoint, onPick, o
       </Map>
     </APIProvider>
   );
+}
+
+function GoogleOpportunityCells({
+  opportunities,
+  onPick,
+}: {
+  opportunities: OpportunitiesResponse;
+  onPick: (point: { lat: number; lng: number }) => void;
+}) {
+  return (
+    <>
+      {opportunities.cells.map((cell) => {
+        const style = opportunityStyle(cell.score, cell.status);
+        return (
+          <Rectangle
+            key={cell.id}
+            bounds={opportunityBounds(cell.lat, cell.lng, opportunities.spacingMeters)}
+            strokeColor={style.color}
+            strokeWeight={1.5}
+            strokeOpacity={0.9}
+            fillColor={style.color}
+            fillOpacity={style.fillOpacity}
+            clickable={cell.status === 'scored'}
+            onClick={() => cell.status === 'scored' && onPick({ lat: cell.lat, lng: cell.lng })}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function opportunityBounds(lat: number, lng: number, spacingMeters: number) {
+  const half = spacingMeters / 2;
+  const latDelta = (half / 6_371_000) * (180 / Math.PI);
+  const lngDelta = (half / (6_371_000 * Math.cos((lat * Math.PI) / 180))) * (180 / Math.PI);
+  return { north: lat + latDelta, south: lat - latDelta, east: lng + lngDelta, west: lng - lngDelta };
+}
+
+function opportunityStyle(score: number | null, status: OpportunitiesResponse['cells'][number]['status']) {
+  if (status !== 'scored' || score === null) return { color: '#64748b', fillOpacity: 0.18 };
+  return { color: score >= 70 ? '#15803d' : score >= 60 ? '#65a30d' : score >= 50 ? '#d97706' : '#dc2626', fillOpacity: 0.42 };
 }
 
 const GOOGLE_MASK_OUTER_RING = [

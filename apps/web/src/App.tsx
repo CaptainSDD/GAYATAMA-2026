@@ -2,7 +2,7 @@ import type { BusinessType, LatLng } from '@gayatama/scoring';
 import { useEffect, useState } from 'react';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { FloatingPanel } from './components/FloatingPanel';
-import { HelpIcon, LogOutIcon, MapPinIcon } from './components/Icons';
+import { CompassIcon, HelpIcon, LogOutIcon, MapPinIcon } from './components/Icons';
 import { ShareButton } from './components/ShareButton';
 import { ThemeToggle } from './components/ThemeToggle';
 import { LocationView } from './features/location/LocationView';
@@ -20,6 +20,7 @@ import {
 } from './lib/location';
 import { BUSINESS_TYPE_LABELS } from './lib/copy';
 import { USE_GOOGLE_MAP } from './lib/map-config';
+import { useOpportunities } from './lib/queries';
 import { resetProgress } from './lib/tour';
 
 interface AppProps {
@@ -43,6 +44,7 @@ export function App({
 }: AppProps) {
   const [selection, setSelection] = useState<Selection>(() => parseSelection(window.location.search));
   const [analysisSelection, setAnalysisSelection] = useState<Selection | null>(null);
+  const [opportunityCenter, setOpportunityCenter] = useState<LatLng | null>(null);
   const [initialCenter] = useState<LatLng>(() => selection.point ?? DEFAULT_CENTER);
   const [mapCenter, setMapCenter] = useState<LatLng>(initialCenter);
   const [locationCollapsed, setLocationCollapsed] = useState(false);
@@ -51,6 +53,7 @@ export function App({
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   // Bumping this remounts the tour, which is how "replay" starts it over.
   const [tourRun, setTourRun] = useState(0);
+  const opportunities = useOpportunities(opportunityCenter, selection.businessType);
 
   // Keep the URL in step with the selection, so any result can be shared as a link.
   useEffect(() => {
@@ -80,6 +83,19 @@ export function App({
   const chooseBusinessType = (businessType: BusinessType) => {
     setSelection((current) => ({ ...current, businessType }));
     setAnalysisSelection(null);
+  };
+
+  const toggleOpportunityMap = () => {
+    setOpportunityCenter((current) => (current === null ? roundPoint(mapCenter) : null));
+  };
+
+  const chooseOpportunity = (point: LatLng) => {
+    const next = { point: roundPoint(point), businessType: selection.businessType };
+    setOutsideCoverage(false);
+    setSelection(next);
+    setAnalysisSelection(next);
+    setOpportunityCenter(null);
+    setSheetCollapsed(false);
   };
 
   const analyseLocation = () => {
@@ -165,6 +181,8 @@ export function App({
             analysisPoint={analysisSelection?.point ?? null}
             onPick={pick}
             onCenterChange={setMapCenter}
+            opportunities={opportunityCenter === null ? null : opportunities.data ?? null}
+            onOpportunityPick={chooseOpportunity}
           />
           {outsideCoverage && (
             <p className="coverage-warning" role="status">
@@ -186,6 +204,22 @@ export function App({
               onClearPoint={clearPoint}
             />
             <BusinessTypePicker businessType={selection.businessType} onBusinessTypeChange={chooseBusinessType} />
+            <div className="opportunity-control">
+              <div>
+                <strong>Peta peluang area</strong>
+                <p>Bandingkan 9 titik di sekitar tengah peta dengan data OpenStreetMap.</p>
+              </div>
+              <button type="button" className="button-secondary" onClick={toggleOpportunityMap} disabled={opportunities.isFetching}>
+                <CompassIcon size={17} />
+                {opportunityCenter === null ? 'Tampilkan peluang' : opportunities.isFetching ? 'Menghitung…' : 'Sembunyikan peta'}
+              </button>
+              {opportunityCenter !== null && opportunities.error !== null && (
+                <p className="notice" role="alert">Peta peluang belum dapat dimuat. Coba lagi beberapa saat lagi.</p>
+              )}
+              {opportunityCenter !== null && opportunities.data !== undefined && (
+                <p className="opportunity-hint" role="status">Hijau lebih potensial. Klik sel berwarna untuk analisis lengkap.</p>
+              )}
+            </div>
           </FloatingPanel>
         </div>
 

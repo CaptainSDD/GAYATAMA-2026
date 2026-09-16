@@ -31,8 +31,8 @@ Every analysis has its own URL (`?lat=…&lng=…&type=…`), so a result can be
 shared as a link.
 
 The current UI implements analysis, recommendations, shareable URLs, auth,
-theme selection, and the guided tour. The what-if simulator and report/PDF
-export are not built yet.
+theme selection, the guided tour, a what-if simulator for parking and daily
+opening hours, and a print-ready PDF report export.
 
 ## Structure
 

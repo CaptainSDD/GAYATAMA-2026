@@ -1,4 +1,5 @@
 import { ZONE_LIMITS_METERS, type LatLng } from '@gayatama/scoring';
+import type { OpportunitiesResponse } from '../../lib/api-types';
 
 /** City-level view before the user chooses a point. */
 export const DEFAULT_MAP_ZOOM = 12;
@@ -20,4 +21,7 @@ export interface MapPickerProps {
   analysisPoint: LatLng | null;
   onPick: (point: LatLng) => void;
   onCenterChange: (center: LatLng) => void;
+  /** OSM-only, user-requested cells shown as an opportunity layer. */
+  opportunities?: OpportunitiesResponse | null;
+  onOpportunityPick?: (point: LatLng) => void;
 }

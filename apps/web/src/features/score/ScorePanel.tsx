@@ -1,12 +1,17 @@
 import { ACCESSIBILITY_WEIGHTS, COMPONENT_KEYS } from '@gayatama/scoring';
+import { useState, type FormEvent } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { Card } from '../../components/Card';
 import { AlertIcon, CheckIcon } from '../../components/Icons';
 import { Attribution, DataNotices, WarningList } from '../../components/Notices';
-import type { AnalysisResponse, DataSource } from '../../lib/api-types';
+import { fetchSimulation } from '../../lib/api';
+import type { AnalysisResponse, DataSource, SimulationResponse } from '../../lib/api-types';
 import { toneColor } from '../../lib/band-color';
 import { BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/copy';
 import { formatPercent } from '../../lib/format';
+import { USE_GOOGLE_MAP } from '../../lib/map-config';
 import { ScoreGauge } from './ScoreGauge';
+import { ReportExportButton } from './ReportExportButton';
 
 interface ScorePanelProps {
   analysis: AnalysisResponse;
@@ -25,6 +30,7 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
   return (
     <article className="score-card">
       <ScoreGauge score={score} businessLabel={BUSINESS_TYPE_LABELS[analysis.businessType]} />
+      <ReportExportButton analysis={analysis} />
       <DecisionSummary analysis={analysis} />
 
       <DataNotices dataSource={dataSource} onRefresh={onRefresh} refreshing={refreshing} />
@@ -80,6 +86,8 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
         </details>
       </Card>
 
+      <WhatIfSimulator analysis={analysis} />
+
       <details className="panel-disclosure data-disclosure">
         <summary>Data & cara penilaian</summary>
         <div className="disclosure-content">
@@ -101,6 +109,90 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
       <Attribution dataSource={dataSource} modelVersion={analysis.modelVersion} />
     </article>
   );
+}
+
+function WhatIfSimulator({ analysis }: { analysis: AnalysisResponse }) {
+  const [parking, setParking] = useState('0');
+  const [useHours, setUseHours] = useState(false);
+  const [opensAt, setOpensAt] = useState('08:00');
+  const [closesAt, setClosesAt] = useState('22:00');
+  const simulation = useMutation({
+    mutationFn: (options: { onSiteParkingSpaces: number; openingHours?: { day: number; from: number; to: number }[] }) =>
+      fetchSimulation(analysis.location, analysis.businessType, options, USE_GOOGLE_MAP),
+  });
+  const openingMinutes = timeToMinutes(opensAt);
+  const closingMinutes = timeToMinutes(closesAt);
+  const validHours = !useHours || (openingMinutes !== null && closingMinutes !== null && closingMinutes > openingMinutes);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!validHours) return;
+    const spaces = Math.max(0, Math.min(500, Math.round(Number(parking) || 0)));
+    simulation.mutate({
+      onSiteParkingSpaces: spaces,
+      ...(useHours && openingMinutes !== null && closingMinutes !== null
+        ? { openingHours: Array.from({ length: 7 }, (_, day) => ({ day, from: openingMinutes, to: closingMinutes })) }
+        : {}),
+    });
+  };
+
+  return (
+    <Card title="Coba skenario" note="Tidak mengubah skor asli">
+      <p className="muted">Uji dampak parkir di lokasi dan jam operasional yang sama setiap hari.</p>
+      <form className="simulation-form" onSubmit={submit}>
+        <label className="field">
+          <span className="field-label">Parkir di lokasi (slot)</span>
+          <input type="number" min="0" max="500" value={parking} onChange={(event) => setParking(event.target.value)} />
+        </label>
+        <label className="simulation-check">
+          <input type="checkbox" checked={useHours} onChange={(event) => setUseHours(event.target.checked)} />
+          Gunakan jam buka sendiri
+        </label>
+        {useHours && (
+          <div className="simulation-hours">
+            <label className="field">
+              <span className="field-label">Buka</span>
+              <input type="time" value={opensAt} onChange={(event) => setOpensAt(event.target.value)} />
+            </label>
+            <label className="field">
+              <span className="field-label">Tutup</span>
+              <input type="time" value={closesAt} onChange={(event) => setClosesAt(event.target.value)} />
+            </label>
+          </div>
+        )}
+        {!validHours && <p className="notice" role="alert">Jam tutup harus setelah jam buka.</p>}
+        <button type="submit" className="button-secondary" disabled={simulation.isPending || !validHours}>
+          {simulation.isPending ? 'Menghitung skenario…' : 'Bandingkan skenario'}
+        </button>
+      </form>
+      {simulation.isError && <p className="notice" role="alert">Skenario belum bisa dihitung. Coba lagi sebentar.</p>}
+      {simulation.data !== undefined && <SimulationResult result={simulation.data} />}
+    </Card>
+  );
+}
+
+function SimulationResult({ result }: { result: SimulationResponse }) {
+  const change = result.scoreChange;
+  return (
+    <div className="simulation-result" role="status">
+      <strong>
+        {result.baseline.score.value.toFixed(1)} → {result.simulated.score.value.toFixed(1)}
+        {' '}({change >= 0 ? '+' : ''}{change.toFixed(1)} poin)
+      </strong>
+      <span>
+        Akses {result.baseline.accessibility.value.toFixed(1)} → {result.simulated.accessibility.value.toFixed(1)} · Persaingan{' '}
+        {result.baseline.competition.value.toFixed(1)} → {result.simulated.competition.value.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+function timeToMinutes(value: string): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (match === null) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60 ? hours * 60 + minutes : null;
 }
 
 function AccessibilityCalculation({ analysis }: { analysis: AnalysisResponse }) {

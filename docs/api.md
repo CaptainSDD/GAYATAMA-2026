@@ -120,6 +120,7 @@ Maps business counts, and `overture` the shops added from Overture Maps.
 | `NOT_FOUND` | 404 | Unknown route |
 | `USERNAME_TAKEN` | 409 | The requested case-insensitive username reservation belongs to another UID |
 | `INSUFFICIENT_DATA` | 422 | Confidence below 40 — no definitive recommendation given |
+| `LOCATION_NOT_ELIGIBLE` | 422 | The coordinate is explicitly mapped as water, wetland, or aquaculture and cannot be a business site |
 | `RATE_LIMITED` | 429 | Client exceeded the throttle |
 | `REQUEST_FAILED` | 503 | Firebase Auth or Firestore required by profile registration is not configured |
 | `UPSTREAM_TIMEOUT` | 504 | The live POI provider did not respond and nothing was cached for the area |
@@ -144,6 +145,7 @@ GET /api/v1/location?lat=-7.005&lng=110.435
 ```json
 {
   "location": { "lat": -7.005, "lng": 110.435 },
+  "eligibility": { "status": "eligible" },
   "address": {
     "name": "Masjid Al-Mukhlisin",
     "street": "Jalan Belimbing I",
@@ -162,8 +164,11 @@ GET /api/v1/location?lat=-7.005&lng=110.435
 }
 ```
 
-`address` and `source` are `null` when reverse geocoding is unavailable. The
-point can still be confirmed and analysed from its coordinates.
+`address` and `source` are `null` when reverse geocoding is unavailable. In
+that case `eligibility.status` is `unknown` and the point can still be
+confirmed. When Geoapify explicitly maps the point as water, wetland, or
+aquaculture, the response is `{"status":"ineligible","reason":"…"}` and
+analysis routes answer `422 LOCATION_NOT_ELIGIBLE`.
 
 ---
 
@@ -318,6 +323,55 @@ endpoint.
   for `unsuitable_surroundings` names what was found nearby.
 - `dataSource.fetchedAt` is required for ODbL-compliant attribution in exported
   reports — see [data-sources.md](data-sources.md).
+
+---
+
+## `POST /api/v1/simulate`
+
+Recalculates one scenario without replacing the base analysis. The available
+controls are on-site parking spaces and one daily opening interval applied
+across the week. The response returns baseline and simulated score,
+accessibility, and competition values for comparison.
+
+```json
+{
+  "lat": -7.005,
+  "lng": 110.435,
+  "businessType": "laundry",
+  "options": { "onSiteParkingSpaces": 8 }
+}
+```
+
+---
+
+## `POST /api/v1/opportunities`
+
+Returns a compact 3 × 3 **Area Opportunity Map** around a selected map centre.
+Each cell loads and scores its own OpenStreetMap-derived evidence; Google
+Aggregate counts are deliberately not reused across cells. The response is a
+demo-area layer, not a citywide heatmap.
+
+```json
+{ "lat": -7.005, "lng": 110.435, "businessType": "laundry" }
+```
+
+```json
+{
+  "center": { "lat": -7.005, "lng": 110.435 },
+  "businessType": "laundry",
+  "source": "OpenStreetMap",
+  "spacingMeters": 350,
+  "cells": [
+    { "id": "-1:-1", "lat": -7.008, "lng": 110.432, "status": "scored", "score": 68.4, "confidence": 73 },
+    { "id": "0:0", "lat": -7.005, "lng": 110.435, "status": "insufficient_data", "score": 42.1, "confidence": 31 }
+  ]
+}
+```
+
+`status` is `"scored"`, `"insufficient_data"`, or `"unavailable"`.
+Unavailable cells intentionally remain visible as gaps rather than being
+coloured as low opportunity. A client opens the ordinary `/analysis` flow when
+the user clicks a scored cell.
 
 ---
 

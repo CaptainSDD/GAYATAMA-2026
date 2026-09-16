@@ -7,12 +7,13 @@ import {
   Marker,
   Polygon,
   Polyline,
+  Rectangle,
   ScaleControl,
   TileLayer,
   Tooltip,
   useMapEvents,
 } from 'react-leaflet';
-import type { PoiFacility } from '../../lib/api-types';
+import type { OpportunitiesResponse, PoiFacility } from '../../lib/api-types';
 import { FACILITY_KIND_LABELS } from '../../lib/copy';
 import { formatDistance } from '../../lib/format';
 import { SEMARANG_MAP_LIMITS } from '../../lib/location';
@@ -143,6 +144,8 @@ function OpenStreetMapPicker({
   onPick,
   onCenterChange,
   facilities,
+  opportunities,
+  onOpportunityPick,
 }: MapPickerProps & { facilities: readonly PoiFacility[] }) {
   return (
     <MapContainer
@@ -159,6 +162,9 @@ function OpenStreetMapPicker({
     >
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
       <CoverageOverlay />
+      {opportunities !== null && opportunities !== undefined && onOpportunityPick !== undefined && (
+        <OpportunityCells opportunities={opportunities} onPick={onOpportunityPick} />
+      )}
       <MapEvents onPick={onPick} onCenterChange={onCenterChange} />
       {/* Distance is the whole basis of the zones, so a scale bar earns its
           place here more than on most maps. Metric only. A wider maxWidth,
@@ -186,6 +192,61 @@ function OpenStreetMapPicker({
       )}
     </MapContainer>
   );
+}
+
+function OpportunityCells({
+  opportunities,
+  onPick,
+}: {
+  opportunities: OpportunitiesResponse;
+  onPick: (point: { lat: number; lng: number }) => void;
+}) {
+  return (
+    <>
+      {opportunities.cells.map((cell) => {
+        const bounds = opportunityBounds(cell.lat, cell.lng, opportunities.spacingMeters);
+        return (
+          <Rectangle
+            key={cell.id}
+            bounds={bounds}
+            pathOptions={opportunityStyle(cell.score, cell.status)}
+            eventHandlers={{ click: () => cell.status === 'scored' && onPick({ lat: cell.lat, lng: cell.lng }) }}
+          >
+            <Tooltip sticky>
+              {cell.status === 'scored' ? (
+                <>
+                  <strong>Skor {Math.round(cell.score ?? 0)}</strong>
+                  <br />Klik untuk analisis lengkap
+                </>
+              ) : cell.status === 'insufficient_data' ? (
+                'Data belum cukup untuk menilai sel ini'
+              ) : (
+                'Data sel ini sementara tidak tersedia'
+              )}
+            </Tooltip>
+          </Rectangle>
+        );
+      })}
+    </>
+  );
+}
+
+function opportunityBounds(lat: number, lng: number, spacingMeters: number): [[number, number], [number, number]] {
+  const half = spacingMeters / 2;
+  const latDelta = (half / 6_371_000) * (180 / Math.PI);
+  const lngDelta = (half / (6_371_000 * Math.cos((lat * Math.PI) / 180))) * (180 / Math.PI);
+  return [
+    [lat - latDelta, lng - lngDelta],
+    [lat + latDelta, lng + lngDelta],
+  ];
+}
+
+function opportunityStyle(score: number | null, status: OpportunitiesResponse['cells'][number]['status']) {
+  if (status !== 'scored' || score === null) {
+    return { color: '#64748b', weight: 1, dashArray: '4 4', fillColor: '#94a3b8', fillOpacity: 0.18 };
+  }
+  const color = score >= 70 ? '#15803d' : score >= 60 ? '#65a30d' : score >= 50 ? '#d97706' : '#dc2626';
+  return { color, weight: 1.5, fillColor: color, fillOpacity: 0.42 };
 }
 
 const LEAFLET_BOUNDARY = SEMARANG_BOUNDARY.map(({ lat, lng }) => [lat, lng] as [number, number]);

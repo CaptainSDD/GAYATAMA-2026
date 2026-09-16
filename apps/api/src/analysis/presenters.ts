@@ -12,7 +12,9 @@ import {
   type LatLng,
   type LocationInput,
   type LocationScoreResult,
+  type OperatorOptions,
   type RecommendationResult,
+  type SimulationResult,
   type WarningCode,
 } from '@gayatama/scoring';
 import { OVERTURE_ID_PREFIX, OVERTURE_KINDS, OVERTURE_SOURCE } from '../overture/overture-place';
@@ -238,6 +240,16 @@ export function presentAnalysis(
 }
 
 export type PresentedAnalysis = ReturnType<typeof presentAnalysis>;
+
+/** A compact comparison: exposes only the values the scenario can change. */
+export function presentSimulation(result: SimulationResult, options: OperatorOptions) {
+  const present = (value: LocationScoreResult) => ({
+    score: value.score,
+    accessibility: value.accessibility,
+    competition: { value: value.components.competition, saturationRatio: value.competition.saturationRatio },
+  });
+  return { options, baseline: present(result.baseline), simulated: present(result.simulated), scoreChange: result.scoreChange };
+}
 
 export function presentRecommendation(result: RecommendationResult, location: LatLng, source: SourceSnapshot) {
   return {

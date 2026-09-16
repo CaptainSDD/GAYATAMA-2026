@@ -23,10 +23,11 @@ class FakeOverpassClient {
   }
 }
 
+let reverseResult: object | null = null;
 const fakeGeoapify = {
   enabled: false,
   places: async () => [],
-  reverseGeocode: async () => null,
+  reverseGeocode: async () => reverseResult,
 };
 
 /** An Overture area 20 km from ORIGIN, with one photocopy shop 200 m from its centre. */
@@ -117,6 +118,7 @@ describe('API (end to end, fake Overpass)', () => {
     overpass.poi = neighbourhood();
     places.failure = null;
     places.requests.length = 0;
+    reverseResult = null;
   });
 
   afterAll(async () => {
@@ -158,6 +160,53 @@ describe('API (end to end, fake Overpass)', () => {
       overture: null,
     });
     expect(places.requests).toHaveLength(0);
+  });
+
+  it('POST /simulate compares parking assumptions without changing the baseline analysis', async () => {
+    const response = await post('/simulate', {
+      lat: ORIGIN.lat,
+      lng: ORIGIN.lng,
+      businessType: 'laundry',
+      options: { onSiteParkingSpaces: 10 },
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body.options).toEqual({ onSiteParkingSpaces: 10 });
+    expect(body.baseline.score.value).toBeGreaterThan(0);
+    expect(body.simulated.accessibility.parking).toBeGreaterThan(body.baseline.accessibility.parking);
+    expect(body.scoreChange).toBeGreaterThan(0);
+  });
+
+  it('POST /opportunities returns an OSM-only, clickable 3 × 3 score grid', async () => {
+    const response = await post('/opportunities', { lat: ORIGIN.lat, lng: ORIGIN.lng, businessType: 'laundry' });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ businessType: 'laundry', source: 'OpenStreetMap', spacingMeters: 350 });
+    expect(body.cells).toHaveLength(9);
+    expect(body.cells.filter((cell: { status: string }) => cell.status === 'scored')).not.toHaveLength(0);
+    for (const cell of body.cells) {
+      expect(cell).toEqual(
+        expect.objectContaining({ id: expect.any(String), lat: expect.any(Number), lng: expect.any(Number) }),
+      );
+    }
+    // The feature deliberately never asks Google Aggregate to reuse a count
+    // from one circle across the other grid cells.
+    expect(places.requests).toHaveLength(0);
+  });
+
+  it('rejects a point explicitly mapped as water before loading facilities or scoring', async () => {
+    reverseResult = { category: 'natural.water' };
+    const response = await post('/analysis', { lat: ORIGIN.lat + 0.001, lng: ORIGIN.lng, businessType: 'laundry' });
+
+    expect(response.status).toBe(422);
+    expect(await readJson(response)).toEqual({
+      statusCode: 422,
+      error: 'LOCATION_NOT_ELIGIBLE',
+      message: 'This point is mapped as air and cannot be analysed as a business location.',
+      details: { reason: 'water' },
+    });
   });
 
   it('adds Overture photocopy shops inside an Overture area, with their attribution', async () => {

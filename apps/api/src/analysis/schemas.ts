@@ -28,6 +28,35 @@ export const analysisRequestSchema = z
   .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap })
   .strict();
 
+const openingInterval = z
+  .object({
+    day: z.number().int().min(0).max(6),
+    from: z.number().int().min(0).max(1439),
+    to: z.number().int().min(1).max(1440),
+  })
+  .strict()
+  .refine((value) => value.to > value.from, 'Opening time must be before closing time');
+
+const operatorOptions = z
+  .object({
+    onSiteParkingSpaces: z.number().int().min(0).max(500).optional(),
+    openingHours: z.array(openingInterval).max(7).optional(),
+  })
+  .strict();
+
+export const simulationRequestSchema = z
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap, options: operatorOptions })
+  .strict();
+
+/**
+ * A deliberately small, on-demand grid for the opportunity-map demo. The
+ * endpoint always uses OpenStreetMap-derived data: a Google aggregate is a
+ * count around one circle and cannot be reused truthfully across grid cells.
+ */
+export const opportunitiesRequestSchema = z
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType })
+  .strict();
+
 export const poisQuerySchema = z.object({
   lat: latitude(z.coerce.number()),
   lng: longitude(z.coerce.number()),
@@ -40,4 +69,6 @@ export const poisQuerySchema = z.object({
 
 export type RecommendRequest = z.infer<typeof recommendRequestSchema>;
 export type AnalysisRequest = z.infer<typeof analysisRequestSchema>;
+export type SimulationRequest = z.infer<typeof simulationRequestSchema>;
+export type OpportunitiesRequest = z.infer<typeof opportunitiesRequestSchema>;
 export type PoisQuery = z.infer<typeof poisQuerySchema>;

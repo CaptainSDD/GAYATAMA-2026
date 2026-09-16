@@ -1,6 +1,6 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAnalysis, fetchLocationDetails, fetchPois, fetchRecommendation, shouldRetry } from './api';
+import { fetchAnalysis, fetchLocationDetails, fetchOpportunities, fetchPois, fetchRecommendation, shouldRetry } from './api';
 import { USE_GOOGLE_MAP } from './map-config';
 
 /** Results for a location change only when its map data does, so they stay fresh for a while. */
@@ -47,6 +47,17 @@ export function useLocationDetails(point: LatLng | null) {
     queryFn: ({ signal }) => fetchLocationDetails(requirePoint(point), signal),
     enabled: point !== null,
     staleTime: 24 * 60 * 60_000,
+    retry: shouldRetry,
+  });
+}
+
+/** Explicitly enabled by the user: moving the map does not silently trigger a grid scan. */
+export function useOpportunities(point: LatLng | null, businessType: BusinessType) {
+  return useQuery({
+    queryKey: ['opportunities', point, businessType],
+    queryFn: ({ signal }) => fetchOpportunities(requirePoint(point), businessType, signal),
+    enabled: point !== null,
+    staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
 }
