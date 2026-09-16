@@ -17,12 +17,12 @@ import { API_BASE_URL, ApiError } from './api';
 // docs/ stays English for the competition submission.
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
-  beverages: 'Minuman / kedai kopi',
-  food: 'Warung makan / makanan cepat saji',
+  beverages: 'Minuman / Kedai Kopi',
+  food: 'Warung Makan / Makanan Cepat Saji',
   laundry: 'Laundry',
-  stationery: 'Fotokopi / percetakan / ATK',
+  stationery: 'Fotokopi / Percetakan / ATK',
   minimarket: 'Minimarket',
-  salon: 'Salon / barbershop',
+  salon: 'Salon / Barbershop',
   pharmacy: 'Apotek',
 };
 

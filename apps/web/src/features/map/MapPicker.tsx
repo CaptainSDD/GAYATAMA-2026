@@ -91,13 +91,16 @@ function facilityColor(kind: FacilityKind): string {
  */
 const PICKED_PIN = divIcon({
   className: 'picked-pin',
-  html: `<svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
+  // The pulse sits behind the pin at the anchor point, so it rings the exact
+  // coordinate rather than the middle of the teardrop.
+  html: `<span class="picked-pin-pulse" aria-hidden="true"></span>
+  <svg width="36" height="46" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
     <path d="M14 34.5S25.5 20.5 25.5 13a11.5 11.5 0 1 0-23 0C2.5 20.5 14 34.5 14 34.5Z"
           fill="${PICK_COLOR}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
     <circle cx="14" cy="13" r="4.2" fill="#ffffff"/>
   </svg>`,
-  iconSize: [28, 36],
-  iconAnchor: [14, 36],
+  iconSize: [36, 46],
+  iconAnchor: [18, 46],
 });
 
 /**
@@ -121,11 +124,14 @@ export function MapPicker(props: MapPickerProps) {
       ) : (
         <OpenStreetMapPicker {...props} facilities={facilities} />
       )}
-      <NorthMark />
       <div className="coverage-label" aria-hidden="true">
         <span /> Area cakupan Semarang
       </div>
-      <MapLegend facilityCount={facilities.length} />
+      {/* A rail rather than a bare legend: the scale bar lands under it, and the
+          legend itself grows and shrinks with the facilities found. */}
+      <div className="map-rail">
+        <MapLegend facilityCount={facilities.length} />
+      </div>
     </>
   );
 }
@@ -159,7 +165,7 @@ function OpenStreetMapPicker({
           larger than Leaflet's default of 100px, makes the bar itself longer,
           so it doesn't read as a stray sliver next to the wider attribution
           line beneath it. */}
-      <ScaleControl position="bottomright" imperial={false} maxWidth={160} />
+      <ScaleControl position="bottomleft" imperial={false} maxWidth={160} />
       {point !== null && (
         <>
           {analysisPoint !== null && (
@@ -247,18 +253,6 @@ function FacilityMarkers({ facilities }: { facilities: readonly PoiFacility[] })
   );
 }
 
-/** Leaflet never rotates, so this confirms the orientation rather than tracking it. */
-function NorthMark() {
-  return (
-    <div className="north-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="20" height="20">
-        <path d="M12 3 16 20 12 16.4 8 20 12 3Z" fill="currentColor" />
-      </svg>
-      <span>U</span>
-    </div>
-  );
-}
-
 function MapLegend({ facilityCount }: { facilityCount: number }) {
   return (
     <div className="zone-legend" aria-label="Keterangan peta">
@@ -282,19 +276,18 @@ function MapLegend({ facilityCount }: { facilityCount: number }) {
         </span>
       ))}
 
-      {facilityCount > 0 && (
-        /* Hidden on a phone, where the sheet leaves too little map for it. */
-        <div className="legend-section legend-facilities">
-          {FACILITY_GROUPS.map((group) => (
-            <span key={group.id} className="zone-legend-item">
-              <span className="facility-dot" style={{ background: group.color }} aria-hidden="true" />
-              {group.label}
-            </span>
-          ))}
-          {/* An absence cannot be drawn, so this one fact needs saying. */}
-          <span className="legend-footnote">Usaha yang sudah tutup tidak digambar</span>
-        </div>
-      )}
+      {/* Always shown: the colours mean the same thing whether or not any dots
+          are on screen yet, and the legend is how anyone learns to read them. */}
+      <div className="legend-section legend-facilities">
+        {FACILITY_GROUPS.map((group) => (
+          <span key={group.id} className="zone-legend-item">
+            <span className="facility-dot" style={{ background: group.color }} aria-hidden="true" />
+            {group.label}
+          </span>
+        ))}
+        {/* An absence cannot be drawn, so this one fact needs saying. */}
+        {facilityCount > 0 && <span className="legend-footnote">Usaha yang sudah tutup tidak digambar</span>}
+      </div>
     </div>
   );
 }
