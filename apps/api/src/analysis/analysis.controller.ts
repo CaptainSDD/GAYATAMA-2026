@@ -4,9 +4,13 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AnalysisService } from './analysis.service';
 import {
   type AnalysisRequest,
+  type CompareLocationsRequest,
+  type CompareRequest,
   type PoisQuery,
   type RecommendRequest,
   analysisRequestSchema,
+  compareLocationsRequestSchema,
+  compareRequestSchema,
   poisQuerySchema,
   recommendRequestSchema,
 } from './schemas';
@@ -29,6 +33,21 @@ export class AnalysisController {
   @Throttle(SCORING_LIMIT)
   recommend(@Body(new ZodValidationPipe(recommendRequestSchema)) body: RecommendRequest) {
     return this.analysis.recommend(body);
+  }
+
+  @Post('compare')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(SCORING_LIMIT)
+  compare(@Body(new ZodValidationPipe(compareRequestSchema)) body: CompareRequest) {
+    return this.analysis.compare(body);
+  }
+
+  /** Two points, one category. Exactly two: the request shape has no room for a third. */
+  @Post('compare-locations')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(SCORING_LIMIT)
+  compareLocations(@Body(new ZodValidationPipe(compareLocationsRequestSchema)) body: CompareLocationsRequest) {
+    return this.analysis.compareLocations(body);
   }
 
   @Get('pois')

@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
+  compareBusinessTypes,
   evaluateFacilities,
   recommendBusinessTypes,
   scoreLocation,
+  type BusinessType,
   type LatLng,
   type LocationInput,
 } from '@gayatama/scoring';
@@ -12,8 +14,22 @@ import { GOOGLE_COUNTED_KINDS } from '../places/place-types';
 import { PoiService } from '../poi/poi.service';
 import { withMappedSeverance } from '../overpass/severance';
 import { NarrativeService } from './narrative.service';
-import { presentAnalysis, presentPois, presentRecommendation, type SourceSnapshot } from './presenters';
-import type { AnalysisRequest, PoisQuery, RecommendRequest } from './schemas';
+import {
+  presentAnalysis,
+  presentComparison,
+  presentLocationComparison,
+  presentPois,
+  presentRecommendation,
+  type ScoredLocation,
+  type SourceSnapshot,
+} from './presenters';
+import type {
+  AnalysisRequest,
+  CompareLocationsRequest,
+  CompareRequest,
+  PoisQuery,
+  RecommendRequest,
+} from './schemas';
 
 /** Controllers orchestrate; they do not calculate. All scoring happens in @gayatama/scoring. */
 @Injectable()
@@ -51,6 +67,50 @@ export class AnalysisService {
       throw insufficientData(facilitiesFound, result.confidence.value);
     }
     return presentRecommendation(result, input.location, source);
+  }
+
+  /**
+   * Every category compared for one point, for visitors who have not chosen a
+   * business type. One data load feeds all seven: this costs the same upstream
+   * requests as a single analysis.
+   */
+  async compare(request: CompareRequest) {
+    const { input, source } = await this.load(request);
+    const result = compareBusinessTypes(input);
+    if (result.insufficientData) {
+      const facilitiesFound = evaluateFacilities(input)
+        .filter((entry) => !entry.facility.closed)
+        .reduce((sum, entry) => sum + entry.count, 0);
+      throw insufficientData(facilitiesFound, result.confidence.value);
+    }
+    return presentComparison(result, input.location, source);
+  }
+
+  /**
+   * Two candidate sites for one category. Both points are loaded and scored the
+   * same way, so the comparison is fair by construction: the only difference
+   * between the two results is the place itself.
+   */
+  async compareLocations(request: CompareLocationsRequest) {
+    const [a, b] = await Promise.all([
+      this.scoreFor({ ...request.a, googleMap: request.googleMap }, request.businessType, 'a'),
+      this.scoreFor({ ...request.b, googleMap: request.googleMap }, request.businessType, 'b'),
+    ]);
+    return presentLocationComparison(request.businessType, a, b);
+  }
+
+  /** One side of a comparison. The side is named in the error, so a failure says which point lacks data. */
+  private async scoreFor(
+    request: LatLng & { googleMap: boolean },
+    businessType: BusinessType,
+    side: 'a' | 'b',
+  ): Promise<ScoredLocation> {
+    const { input, source } = await this.load(request);
+    const result = scoreLocation(input, businessType);
+    if (result.insufficientData) {
+      throw insufficientData(result.evidence.facilityCount, result.confidence.value, side);
+    }
+    return { label: side === 'a' ? 'A' : 'B', result, input, source };
   }
 
   async facilities(query: PoisQuery) {

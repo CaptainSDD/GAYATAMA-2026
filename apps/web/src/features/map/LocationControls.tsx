@@ -32,13 +32,22 @@ interface LocationSummaryProps {
   point: LatLng | null;
   onUseMapCenter: () => void;
   onClearPoint: () => void;
+  /** Two sites are being compared for the chosen category. */
+  comparingSites: boolean;
+  onToggleCompareSites: () => void;
 }
 
 /**
  * The coordinate is the answer to "which place am I looking at", so it is set
  * large enough to read at a glance rather than tucked beside its own label.
  */
-export function LocationSummary({ point, onUseMapCenter, onClearPoint }: LocationSummaryProps) {
+export function LocationSummary({
+  point,
+  onUseMapCenter,
+  onClearPoint,
+  comparingSites,
+  onToggleCompareSites,
+}: LocationSummaryProps) {
   return (
     <div className="location-card" data-tour="location">
       {/* Not `location-coordinate`: that name already belongs to the small
@@ -60,8 +69,13 @@ export function LocationSummary({ point, onUseMapCenter, onClearPoint }: Locatio
           </button>
         )}
         <button type="button" className="button-secondary" onClick={onUseMapCenter}>
-          Pakai titik tengah
+          {comparingSites ? 'Pakai titik tengah untuk B' : 'Pakai titik tengah'}
         </button>
+        {point !== null && (
+          <button type="button" className="button-secondary" onClick={onToggleCompareSites}>
+            {comparingSites ? 'Batal bandingkan' : 'Bandingkan 2 lokasi'}
+          </button>
+        )}
       </div>
     </div>
   );

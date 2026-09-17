@@ -6,11 +6,13 @@ import type {
   Density,
   FacilityKind,
   RecommendationStatus,
+  RoadClass,
   SaturationReading,
   Segment,
   SegmentRole,
 } from '@gayatama/scoring';
 import { API_BASE_URL, ApiError } from './api';
+import type { IndicatorLevel, RiskLevel } from './api-types';
 
 // Every user-facing label in one place. The interface is Indonesian because the
 // people it is for are Indonesian micro-entrepreneurs; the documentation in
@@ -24,6 +26,42 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   minimarket: 'Minimarket',
   salon: 'Salon / Barbershop',
   pharmacy: 'Apotek',
+};
+
+/**
+ * What each engine category covers in everyday terms. The engine scores markets
+ * rather than shop names: a coffee shop and a bubble-tea stall compete for the
+ * same customers, so they share one category.
+ */
+export const BUSINESS_TYPE_EXAMPLES: Record<BusinessType, string> = {
+  beverages: 'Kedai kopi, kedai minuman, boba',
+  food: 'Warung makan, rumah makan kecil, jajanan atau dessert',
+  laundry: 'Laundry kiloan, dry cleaning',
+  stationery: 'Fotokopi, percetakan, toko ATK',
+  minimarket: 'Minimarket, toko kelontong',
+  salon: 'Barbershop, salon',
+  pharmacy: 'Apotek, toko obat dan produk kesehatan',
+};
+
+export const ROAD_CLASS_LABELS: Record<RoadClass, string> = {
+  primary: 'Jalan utama',
+  secondary: 'Jalan sekunder',
+  tertiary: 'Jalan lokal',
+  residential: 'Jalan permukiman',
+  service: 'Jalan kecil / gang',
+};
+
+export const INDICATOR_LEVEL_LABELS: Record<IndicatorLevel, string> = {
+  high: 'Tinggi',
+  moderate: 'Sedang',
+  low: 'Rendah',
+};
+
+export const RISK_LEVEL_LABELS: Record<RiskLevel, string> = {
+  low: 'Rendah',
+  moderate: 'Sedang',
+  high: 'Tinggi',
+  unknown: 'Belum dinilai',
 };
 
 export const COMPONENT_LABELS: Record<ComponentKey, string> = {

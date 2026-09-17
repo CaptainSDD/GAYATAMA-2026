@@ -202,6 +202,99 @@ describe('API (end to end, fake Overpass)', () => {
     }
   });
 
+  it('POST /compare compares every category and agrees with /analysis on their scores', async () => {
+    const response = await post('/compare', { lat: ORIGIN.lat, lng: ORIGIN.lng });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body.categories).toHaveLength(7);
+    expect(body.topChoice).toBe(body.categories[0].businessType);
+    expect(typeof body.highlight).toBe('string');
+    expect(body.shared.accessibility.siteInputsAvailable).toBe(true);
+
+    const ranks = body.categories.map((entry: { rank: number }) => entry.rank);
+    expect(ranks).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    const scores = body.categories.map((entry: { score: { value: number } }) => entry.score.value);
+    expect(scores).toEqual([...scores].sort((a: number, b: number) => b - a));
+
+    for (const entry of body.categories) {
+      expect(['high', 'moderate', 'low']).toContain(entry.opportunityLevel);
+      expect(['high', 'moderate', 'low']).toContain(entry.trafficLevel);
+      expect(['low', 'moderate', 'high', 'unknown']).toContain(entry.riskLevel);
+      expect(['high', 'moderate', 'low']).toContain(entry.targetMarket.level);
+      expect(typeof entry.reason).toBe('string');
+      expect(entry.recommended).toBe(entry.status !== 'not_recommended');
+    }
+
+    // The comparison must never disagree with the single-category analysis.
+    const top = body.categories[0];
+    const analysis = await readJson(
+      await post('/analysis', { lat: ORIGIN.lat, lng: ORIGIN.lng, businessType: top.businessType }),
+    );
+    expect(top.score.value).toBe(analysis.score.value);
+    expect(top.components.competition.value).toBe(analysis.components.competition.value);
+  });
+
+  it('POST /compare-locations scores both points the same way and attributes the gap', async () => {
+    const second = offset(ORIGIN, 600, 90);
+    const body = await readJson(
+      await post('/compare-locations', {
+        a: { lat: ORIGIN.lat, lng: ORIGIN.lng },
+        b: { lat: second.lat, lng: second.lon },
+        businessType: 'laundry',
+      }),
+    );
+
+    expect(body.businessType).toBe('laundry');
+    expect(body.locations.a.label).toBe('A');
+    expect(body.locations.b.label).toBe('B');
+    expect(body.locations.a.landmarks).toHaveLength(6);
+
+    // Each side must equal the single-location analysis of that same point.
+    for (const [key, point] of [
+      ['a', { lat: ORIGIN.lat, lng: ORIGIN.lng }],
+      ['b', { lat: second.lat, lng: second.lon }],
+    ] as const) {
+      const alone = await readJson(await post('/analysis', { ...point, businessType: 'laundry' }));
+      expect(body.locations[key].score.value).toBe(alone.score.value);
+    }
+
+    const { verdict } = body;
+    expect(verdict.decidingFactors).toHaveLength(5);
+    // Site conditions load in this fixture, so every factor is a real comparison.
+    expect(verdict.decidingFactors.every((f: { comparable: boolean }) => f.comparable)).toBe(true);
+    const magnitudes = verdict.decidingFactors.map((f: { weightedDelta: number }) => Math.abs(f.weightedDelta));
+    expect(magnitudes).toEqual([...magnitudes].sort((x: number, y: number) => y - x));
+
+    // The weighted differences must account for the whole gap, with nothing left over.
+    const signedGap = body.locations.a.score.value - body.locations.b.score.value;
+    const summed = verdict.decidingFactors.reduce((total: number, f: { weightedDelta: number }) => total + f.weightedDelta, 0);
+    expect(summed).toBeCloseTo(signedGap, 10);
+    expect(verdict.difference).toBeCloseTo(Math.abs(signedGap), 10);
+
+    expect(verdict.tied).toBe(Math.abs(signedGap) <= verdict.equivalenceGap);
+    expect(verdict.winner).toBe(verdict.tied ? null : signedGap > 0 ? 'a' : 'b');
+    expect(typeof verdict.summary).toBe('string');
+    expect(typeof verdict.alternative).toBe('string');
+  });
+
+  it('POST /compare-locations accepts exactly two locations', async () => {
+    const second = offset(ORIGIN, 600, 90);
+    const third = await post('/compare-locations', {
+      a: { lat: ORIGIN.lat, lng: ORIGIN.lng },
+      b: { lat: second.lat, lng: second.lon },
+      c: { lat: second.lat, lng: second.lon },
+      businessType: 'laundry',
+    });
+    expect(third.status).toBe(400);
+
+    const onlyOne = await post('/compare-locations', {
+      a: { lat: ORIGIN.lat, lng: ORIGIN.lng },
+      businessType: 'laundry',
+    });
+    expect(onlyOne.status).toBe(400);
+  });
+
   it('GET /pois returns facilities and site conditions for local recomputation', async () => {
     const response = await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}`);
     const body = await readJson(response);

@@ -19,7 +19,12 @@ export { effectiveCount, evaluateFacilities } from './evaluate.js';
 export { operatingHoursFactor, overlapMinutes, weeklyMinutes } from './hours.js';
 export { band, locationScore, rankFactors, scoreLocation, summarizeScore } from './location-score.js';
 export { accessFactor, ageInMonths, dataQuality, scaleFactor } from './quality.js';
-export { groupEquivalent, recommendationStatus, recommendBusinessTypes } from './recommend.js';
+export {
+  compareBusinessTypes,
+  groupEquivalent,
+  recommendationStatus,
+  recommendBusinessTypes,
+} from './recommend.js';
 export { hardWarnings, riskAndOperability, surroundingPenalty } from './risk.js';
 export { segmentRole, segmentRoles, segmentScores } from './segments.js';
 export { simulate, type SimulationResult } from './simulate.js';

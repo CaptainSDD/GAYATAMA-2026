@@ -4,10 +4,12 @@ import { evaluateFacilities } from './evaluate.js';
 import { scoreEvaluated } from './location-score.js';
 import { atLeast, atMost } from './math.js';
 import { hardWarnings } from './risk.js';
-import { segmentScores } from './segments.js';
+import { segmentRoles, segmentScores } from './segments.js';
 import type {
   BusinessType,
+  ComparisonResult,
   LocationInput,
+  LocationScoreResult,
   RankedCategory,
   RecommendationResult,
   RecommendationStatus,
@@ -49,38 +51,57 @@ export function groupEquivalent(
   return groups;
 }
 
-/** Scores all seven categories for one location and ranks them. */
-export function recommendBusinessTypes(input: LocationInput): RecommendationResult {
+/**
+ * Evaluates the facilities once, then scores every category for the location.
+ * Both the ranking and the comparison start here, so the two never disagree
+ * about a category's score. `categories` is empty below the confidence floor,
+ * where no ranking may be given at all.
+ */
+function scoreEveryCategory(input: LocationInput) {
   const evaluated = evaluateFacilities(input);
   const confidence = confidenceScore(evaluated, input.site);
+  const segments = segmentScores(evaluated);
   const base = {
     modelVersion: MODEL_VERSION,
     confidence,
-    segments: segmentScores(evaluated),
+    segments,
     warnings: hardWarnings(evaluated, input.site, input.asOf),
   };
+  if (confidence.value < CONFIDENCE_FLOOR) return { ...base, categories: [] as LocationScoreResult[] };
 
-  if (confidence.value < CONFIDENCE_FLOOR) {
+  // Array.prototype.sort is stable, so equal scores keep BUSINESS_TYPES order.
+  const categories = BUSINESS_TYPES.map((businessType) =>
+    scoreEvaluated(input, evaluated, confidence, businessType),
+  ).sort((a, b) => b.score.value - a.score.value);
+  return { ...base, categories };
+}
+
+function rankCategory(result: LocationScoreResult, confidence: number): RankedCategory | null {
+  const status = recommendationStatus(result.score.value, confidence);
+  if (status === null) return null;
+  return {
+    businessType: result.businessType,
+    score: result.score,
+    status,
+    dominantSegment: result.dominantSegment,
+    components: result.components,
+    saturationRatio: result.competition.saturationRatio,
+    saturationReading: result.competition.reading,
+  };
+}
+
+/** Scores all seven categories for one location and ranks them. */
+export function recommendBusinessTypes(input: LocationInput): RecommendationResult {
+  const { categories, ...base } = scoreEveryCategory(input);
+
+  if (base.confidence.value < CONFIDENCE_FLOOR) {
     return { ...base, insufficientData: true, recommendations: [], notRecommended: [], equivalent: [] };
   }
 
-  const ranked: RankedCategory[] = [];
-  for (const businessType of BUSINESS_TYPES) {
-    const result = scoreEvaluated(input, evaluated, confidence, businessType);
-    const status = recommendationStatus(result.score.value, confidence.value);
-    if (status === null) continue;
-    ranked.push({
-      businessType,
-      score: result.score,
-      status,
-      dominantSegment: result.dominantSegment,
-      components: result.components,
-      saturationRatio: result.competition.saturationRatio,
-      saturationReading: result.competition.reading,
-    });
-  }
-  // Array.prototype.sort is stable, so equal scores keep BUSINESS_TYPES order.
-  ranked.sort((a, b) => b.score.value - a.score.value);
+  const ranked = categories.flatMap((result) => {
+    const entry = rankCategory(result, base.confidence.value);
+    return entry === null ? [] : [entry];
+  });
 
   const recommendations = ranked
     .filter((entry) => entry.status !== 'not_recommended')
@@ -93,4 +114,20 @@ export function recommendBusinessTypes(input: LocationInput): RecommendationResu
     notRecommended: ranked.filter((entry) => entry.status === 'not_recommended'),
     equivalent: groupEquivalent(recommendations),
   };
+}
+
+/**
+ * Compares every category for one location, for a visitor who has not chosen a
+ * business type yet. Nothing is dropped and nothing is scored differently: this
+ * is the same per-category result `scoreLocation` produces, for all categories
+ * at once, from a single pass over the facilities.
+ */
+export function compareBusinessTypes(input: LocationInput): ComparisonResult {
+  const { categories, ...base } = scoreEveryCategory(input);
+  const result = { ...base, segmentRoles: segmentRoles(base.segments), categories };
+
+  if (base.confidence.value < CONFIDENCE_FLOOR) {
+    return { ...result, insufficientData: true, equivalent: [] };
+  }
+  return { ...result, insufficientData: false, equivalent: groupEquivalent(categories) };
 }

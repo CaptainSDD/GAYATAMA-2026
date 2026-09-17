@@ -1,6 +1,14 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAnalysis, fetchLocationDetails, fetchPois, fetchRecommendation, shouldRetry } from './api';
+import {
+  fetchAnalysis,
+  fetchComparison,
+  fetchLocationComparison,
+  fetchLocationDetails,
+  fetchPois,
+  fetchRecommendation,
+  shouldRetry,
+} from './api';
 import { USE_GOOGLE_MAP } from './map-config';
 
 /** Results for a location change only when its map data does, so they stay fresh for a while. */
@@ -26,6 +34,29 @@ export function useRecommendation(point: LatLng | null) {
     queryKey: ['recommend', point, USE_GOOGLE_MAP],
     queryFn: ({ signal }) => fetchRecommendation(requirePoint(point), USE_GOOGLE_MAP, signal),
     enabled: point !== null,
+    staleTime: STALE_TIME_MS,
+    retry: shouldRetry,
+  });
+}
+
+/** Not keyed by business type: comparing every category is what answers which one to pick. */
+export function useComparison(point: LatLng | null) {
+  return useQuery({
+    queryKey: ['compare', point, USE_GOOGLE_MAP],
+    queryFn: ({ signal }) => fetchComparison(requirePoint(point), USE_GOOGLE_MAP, signal),
+    enabled: point !== null,
+    staleTime: STALE_TIME_MS,
+    retry: shouldRetry,
+  });
+}
+
+/** Both points and the category are part of the key: changing any of them is a different comparison. */
+export function useLocationComparison(a: LatLng | null, b: LatLng | null, businessType: BusinessType) {
+  return useQuery({
+    queryKey: ['compare-locations', a, b, businessType, USE_GOOGLE_MAP],
+    queryFn: ({ signal }) =>
+      fetchLocationComparison(requirePoint(a), requirePoint(b), businessType, USE_GOOGLE_MAP, signal),
+    enabled: a !== null && b !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });

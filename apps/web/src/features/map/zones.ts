@@ -18,6 +18,10 @@ export interface MapPickerProps {
   point: LatLng | null;
   /** Present only after explicit confirmation; enables radii and POI loading. */
   analysisPoint: LatLng | null;
+  /** Two locations are being compared, so the pins are lettered A and B. */
+  comparing?: boolean;
+  /** The second candidate, once picked. Only meaningful while comparing. */
+  secondPoint?: LatLng | null;
   onPick: (point: LatLng) => void;
   onCenterChange: (center: LatLng) => void;
 }

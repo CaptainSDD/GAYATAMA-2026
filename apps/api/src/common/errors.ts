@@ -30,12 +30,13 @@ export class ApiError extends HttpException {
   }
 }
 
-export function insufficientData(facilitiesFound: number, confidence: number): ApiError {
+/** `location` names the side that failed, so a two-location comparison can say which one. */
+export function insufficientData(facilitiesFound: number, confidence: number, location?: 'a' | 'b'): ApiError {
   return new ApiError(
     HttpStatus.UNPROCESSABLE_ENTITY,
     'INSUFFICIENT_DATA',
     'Not enough mapped facilities within 1500 m to produce a reliable score.',
-    { facilitiesFound, confidence: Math.round(confidence) },
+    { facilitiesFound, confidence: Math.round(confidence), ...(location !== undefined && { location }) },
   );
 }
 

@@ -314,3 +314,21 @@ export interface RecommendationResult {
   equivalent: BusinessType[][];
   warnings: HardWarning[];
 }
+
+/**
+ * Every category scored for one location, for a visitor who has not chosen a
+ * business type yet. `RecommendationResult` answers "which few should I read
+ * first" and drops the rest; this answers "how do they all compare" and drops
+ * nothing, so categories can be placed side by side.
+ */
+export interface ComparisonResult {
+  modelVersion: string;
+  insufficientData: boolean;
+  confidence: ConfidenceResult;
+  segments: SegmentScores;
+  segmentRoles: Record<Segment, SegmentRole>;
+  /** Every category, highest score first. Empty when confidence is below the floor. */
+  categories: LocationScoreResult[];
+  equivalent: BusinessType[][];
+  warnings: HardWarning[];
+}

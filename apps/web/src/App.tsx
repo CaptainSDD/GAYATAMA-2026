@@ -5,6 +5,7 @@ import { FloatingPanel } from './components/FloatingPanel';
 import { HelpIcon, LogOutIcon, MapPinIcon } from './components/Icons';
 import { ShareButton } from './components/ShareButton';
 import { ThemeToggle } from './components/ThemeToggle';
+import { LocationComparisonView } from './features/compare/LocationComparisonView';
 import { LocationView } from './features/location/LocationView';
 import { LocationPreview } from './features/location/LocationPreview';
 import { BusinessTypePicker, LocationSummary } from './features/map/LocationControls';
@@ -48,6 +49,13 @@ export function App({
   const [locationCollapsed, setLocationCollapsed] = useState(false);
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const [outsideCoverage, setOutsideCoverage] = useState(false);
+  // Which route opened the result: a chosen category, or "compare them all".
+  const [entryMode, setEntryMode] = useState<'score' | 'compare'>('score');
+  // Comparing two sites for one category. `pointB` is filled by the next map click.
+  const [siteCompare, setSiteCompare] = useState<{ active: boolean; pointB: LatLng | null }>({
+    active: false,
+    pointB: null,
+  });
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   // Bumping this remounts the tour, which is how "replay" starts it over.
   const [tourRun, setTourRun] = useState(0);
@@ -66,6 +74,12 @@ export function App({
       return;
     }
     setOutsideCoverage(false);
+    // While comparing, the map is choosing the second site rather than replacing the first.
+    if (siteCompare.active) {
+      setSiteCompare({ active: true, pointB: roundPoint(point) });
+      setSheetCollapsed(false);
+      return;
+    }
     setSelection((current) => ({ ...current, point: roundPoint(point) }));
     setAnalysisSelection(null);
     setSheetCollapsed(false);
@@ -73,6 +87,14 @@ export function App({
   const clearPoint = () => {
     setSelection((current) => ({ ...current, point: null }));
     setAnalysisSelection(null);
+    setSiteCompare({ active: false, pointB: null });
+    setOutsideCoverage(false);
+    setSheetCollapsed(false);
+  };
+
+  const toggleSiteCompare = () => {
+    if (selection.point === null) return;
+    setSiteCompare((current) => ({ active: !current.active, pointB: null }));
     setOutsideCoverage(false);
     setSheetCollapsed(false);
   };
@@ -83,7 +105,22 @@ export function App({
   };
 
   const analyseLocation = () => {
-    if (selection.point !== null) setAnalysisSelection(selection);
+    if (selection.point !== null) {
+      setEntryMode('score');
+      setAnalysisSelection(selection);
+    }
+  };
+
+  /**
+   * The location-first route. It analyses the same point as the button beside
+   * it; only the tab it opens on differs, so the chosen category still applies
+   * once a comparison sends the visitor to a full score.
+   */
+  const compareLocation = () => {
+    if (selection.point !== null) {
+      setEntryMode('compare');
+      setAnalysisSelection(selection);
+    }
   };
 
   const analyseBusinessType = (businessType: BusinessType) => {
@@ -162,7 +199,11 @@ export function App({
           <MapPicker
             initialCenter={initialCenter}
             point={selection.point}
-            analysisPoint={analysisSelection?.point ?? null}
+            // Zone rings and facility dots belong to one analysed point, so they
+            // stay off while two sites are being compared.
+            analysisPoint={siteCompare.active ? null : analysisSelection?.point ?? null}
+            comparing={siteCompare.active}
+            secondPoint={siteCompare.pointB}
             onPick={pick}
             onCenterChange={setMapCenter}
           />
@@ -184,6 +225,8 @@ export function App({
               point={selection.point}
               onUseMapCenter={() => pick(mapCenter)}
               onClearPoint={clearPoint}
+              comparingSites={siteCompare.active}
+              onToggleCompareSites={toggleSiteCompare}
             />
             <BusinessTypePicker businessType={selection.businessType} onBusinessTypeChange={chooseBusinessType} />
           </FloatingPanel>
@@ -204,17 +247,27 @@ export function App({
           >
             {selection.point === null ? (
               <Intro />
+            ) : siteCompare.active ? (
+              <LocationComparisonView
+                pointA={selection.point}
+                pointB={siteCompare.pointB}
+                businessType={selection.businessType}
+                onChangeSecondPoint={() => setSiteCompare({ active: true, pointB: null })}
+                onExit={() => setSiteCompare({ active: false, pointB: null })}
+              />
             ) : analysisSelection === null ? (
               <LocationPreview
                 point={selection.point}
                 businessType={selection.businessType}
                 onAnalyse={analyseLocation}
+                onCompare={compareLocation}
               />
             ) : (
               <LocationView
                 point={analysisSelection.point!}
                 businessType={analysisSelection.businessType}
                 onBusinessTypeChange={analyseBusinessType}
+                entryMode={entryMode}
               />
             )}
           </FloatingPanel>

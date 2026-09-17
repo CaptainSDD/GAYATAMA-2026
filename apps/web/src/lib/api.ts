@@ -1,5 +1,13 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
-import type { AnalysisResponse, ApiErrorBody, LocationDetailsResponse, PoisResponse, RecommendResponse } from './api-types';
+import type {
+  AnalysisResponse,
+  ApiErrorBody,
+  ComparisonResponse,
+  LocationComparisonResponse,
+  LocationDetailsResponse,
+  PoisResponse,
+  RecommendResponse,
+} from './api-types';
 
 /** A username reserved and a profile document created. Nothing more — the account itself lives in Firebase Auth. */
 export interface RegisterProfileResponse {
@@ -72,6 +80,22 @@ export function fetchAnalysis(point: LatLng, businessType: BusinessType, googleM
 
 export function fetchRecommendation(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
   return postJson<RecommendResponse>('/recommend', { lat: point.lat, lng: point.lng, googleMap }, signal);
+}
+
+/** Compares every category for one point. No business type is sent: choosing one is what this answers. */
+export function fetchComparison(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
+  return postJson<ComparisonResponse>('/compare', { lat: point.lat, lng: point.lng, googleMap }, signal);
+}
+
+/** Compares exactly two points for one chosen category. */
+export function fetchLocationComparison(
+  a: LatLng,
+  b: LatLng,
+  businessType: BusinessType,
+  googleMap: boolean,
+  signal?: AbortSignal,
+) {
+  return postJson<LocationComparisonResponse>('/compare-locations', { a, b, businessType, googleMap }, signal);
 }
 
 export function fetchPois(point: LatLng, googleMap: boolean, signal?: AbortSignal) {

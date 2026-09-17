@@ -89,19 +89,33 @@ function facilityColor(kind: FacilityKind): string {
  * and its tip marks the exact coordinate. Leaflet only: the Google map path
  * still draws its own simple marker (see GoogleMapPicker.tsx).
  */
-const PICKED_PIN = divIcon({
-  className: 'picked-pin',
-  // The pulse sits behind the pin at the anchor point, so it rings the exact
-  // coordinate rather than the middle of the teardrop.
-  html: `<span class="picked-pin-pulse" aria-hidden="true"></span>
+function pickedPin(label?: 'A' | 'B') {
+  // Comparing two sites needs them told apart. A letter does that without
+  // introducing a second colour: the pin itself stays exactly as it was.
+  const face =
+    label === undefined
+      ? '<circle cx="14" cy="13" r="4.2" fill="#ffffff"/>'
+      : `<circle cx="14" cy="13" r="6.6" fill="#ffffff"/>
+         <text x="14" y="13.4" text-anchor="middle" dominant-baseline="central"
+               font-size="9" font-weight="700" fill="${PICK_COLOR}">${label}</text>`;
+  return divIcon({
+    className: 'picked-pin',
+    // The pulse sits behind the pin at the anchor point, so it rings the exact
+    // coordinate rather than the middle of the teardrop.
+    html: `<span class="picked-pin-pulse" aria-hidden="true"></span>
   <svg width="36" height="46" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
     <path d="M14 34.5S25.5 20.5 25.5 13a11.5 11.5 0 1 0-23 0C2.5 20.5 14 34.5 14 34.5Z"
           fill="${PICK_COLOR}" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
-    <circle cx="14" cy="13" r="4.2" fill="#ffffff"/>
+    ${face}
   </svg>`,
-  iconSize: [36, 46],
-  iconAnchor: [18, 46],
-});
+    iconSize: [36, 46],
+    iconAnchor: [18, 46],
+  });
+}
+
+const PICKED_PIN = pickedPin();
+const PIN_A = pickedPin('A');
+const PIN_B = pickedPin('B');
 
 /**
  * A Google map when a Maps JavaScript API key is configured, otherwise an
@@ -140,6 +154,8 @@ function OpenStreetMapPicker({
   initialCenter,
   point,
   analysisPoint,
+  comparing = false,
+  secondPoint = null,
   onPick,
   onCenterChange,
   facilities,
@@ -181,8 +197,11 @@ function OpenStreetMapPicker({
               <FacilityMarkers facilities={facilities} />
             </>
           )}
-          <Marker position={[point.lat, point.lng]} icon={PICKED_PIN} interactive={false} />
+          <Marker position={[point.lat, point.lng]} icon={comparing ? PIN_A : PICKED_PIN} interactive={false} />
         </>
+      )}
+      {comparing && secondPoint !== null && (
+        <Marker position={[secondPoint.lat, secondPoint.lng]} icon={PIN_B} interactive={false} />
       )}
     </MapContainer>
   );

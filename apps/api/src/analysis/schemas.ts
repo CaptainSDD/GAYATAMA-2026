@@ -24,8 +24,23 @@ export const recommendRequestSchema = z
   .object({ lat: latitude(z.number()), lng: longitude(z.number()), googleMap })
   .strict();
 
+/** Same input as a ranking: the point is all that is needed, because no category is chosen yet. */
+export const compareRequestSchema = z
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), googleMap })
+  .strict();
+
 export const analysisRequestSchema = z
   .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap })
+  .strict();
+
+const coordinate = z.object({ lat: latitude(z.number()), lng: longitude(z.number()) }).strict();
+
+/**
+ * Exactly two locations, by shape rather than by an array with a length rule:
+ * a third candidate cannot be expressed, so the limit cannot be bypassed.
+ */
+export const compareLocationsRequestSchema = z
+  .object({ a: coordinate, b: coordinate, businessType, googleMap })
   .strict();
 
 export const poisQuerySchema = z.object({
@@ -39,5 +54,7 @@ export const poisQuerySchema = z.object({
 });
 
 export type RecommendRequest = z.infer<typeof recommendRequestSchema>;
+export type CompareRequest = z.infer<typeof compareRequestSchema>;
+export type CompareLocationsRequest = z.infer<typeof compareLocationsRequestSchema>;
 export type AnalysisRequest = z.infer<typeof analysisRequestSchema>;
 export type PoisQuery = z.infer<typeof poisQuerySchema>;

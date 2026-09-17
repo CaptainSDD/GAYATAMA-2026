@@ -17,8 +17,30 @@ const PICK_MARKER_STYLE: CSSProperties = {
   boxShadow: '0 1px 4px rgba(15, 23, 42, 0.45)',
 };
 
+// Only used while comparing two sites: the letter needs room and centring that
+// the plain dot does not. Same colours, one size larger.
+const PICK_MARKER_LABEL_STYLE: CSSProperties = {
+  ...PICK_MARKER_STYLE,
+  display: 'grid',
+  placeItems: 'center',
+  width: 26,
+  height: 26,
+  color: '#ffffff',
+  fontSize: '0.75rem',
+  fontWeight: 700,
+  lineHeight: 1,
+};
+
 /** The Google map, drawn when a Maps JavaScript API key is configured. */
-export function GoogleMapPicker({ initialCenter, point, analysisPoint, onPick, onCenterChange }: MapPickerProps) {
+export function GoogleMapPicker({
+  initialCenter,
+  point,
+  analysisPoint,
+  comparing = false,
+  secondPoint = null,
+  onPick,
+  onCenterChange,
+}: MapPickerProps) {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <Map
@@ -69,13 +91,27 @@ export function GoogleMapPicker({ initialCenter, point, analysisPoint, onPick, o
                   clickable={false}
                 />
               ))}
-            <AdvancedMarker position={point} clickable={false} anchorLeft="-50%" anchorTop="-50%" title="Lokasi terpilih">
+            <AdvancedMarker
+              position={point}
+              clickable={false}
+              anchorLeft="-50%"
+              anchorTop="-50%"
+              title={comparing ? 'Lokasi A' : 'Lokasi terpilih'}
+            >
               <span className="picked-dot">
                 <span className="picked-pin-pulse" aria-hidden="true" />
-                <span style={PICK_MARKER_STYLE} />
+                {comparing ? <span style={PICK_MARKER_LABEL_STYLE}>A</span> : <span style={PICK_MARKER_STYLE} />}
               </span>
             </AdvancedMarker>
           </>
+        )}
+        {comparing && secondPoint !== null && (
+          <AdvancedMarker position={secondPoint} clickable={false} anchorLeft="-50%" anchorTop="-50%" title="Lokasi B">
+            <span className="picked-dot">
+              <span className="picked-pin-pulse" aria-hidden="true" />
+              <span style={PICK_MARKER_LABEL_STYLE}>B</span>
+            </span>
+          </AdvancedMarker>
         )}
       </Map>
     </APIProvider>

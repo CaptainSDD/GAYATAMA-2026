@@ -8,9 +8,11 @@ interface LocationPreviewProps {
   point: LatLng;
   businessType: BusinessType;
   onAnalyse: () => void;
+  /** Starts the location-first route, for visitors who have not chosen a category. */
+  onCompare: () => void;
 }
 
-export function LocationPreview({ point, businessType, onAnalyse }: LocationPreviewProps) {
+export function LocationPreview({ point, businessType, onAnalyse, onCompare }: LocationPreviewProps) {
   const details = useLocationDetails(point);
   const address = details.data?.address ?? null;
   const heading = address?.village ?? address?.district ?? address?.city ?? 'Titik di Kota Semarang';
@@ -61,6 +63,9 @@ export function LocationPreview({ point, businessType, onAnalyse }: LocationPrev
         </p>
         <button type="button" className="button-primary" onClick={onAnalyse}>
           <GaugeIcon size={18} /> Analisis lokasi
+        </button>
+        <button type="button" className="button-link" onClick={onCompare}>
+          Belum tahu mau usaha apa? Bandingkan semuanya
         </button>
       </div>
     </section>

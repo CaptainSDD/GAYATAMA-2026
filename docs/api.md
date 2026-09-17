@@ -455,6 +455,197 @@ never as a recommendation.
 
 ---
 
+## `POST /api/v1/compare`
+
+Compare every category for one location, side by side. `/recommend` answers
+"which few should I read first" and lists at most three; this answers "how do
+they all compare" and drops nothing, for a visitor who has not chosen a category
+yet.
+
+### Request
+
+Identical to [`/recommend`](#post-apiv1recommend): `lat`, `lng`, and the optional
+`googleMap` flag. No `businessType` is sent, because choosing one is what this
+endpoint answers.
+
+### Response `200`
+
+```json
+{
+  "modelVersion": "0.1.0",
+  "location": { "lat": -7.301234, "lng": 112.717890 },
+  "confidence": { "value": 81, "reading": "high" },
+  "topChoice": "laundry",
+  "highlight": "Usaha laundry cocok untuk lokasi ini karena kelompok penghuni sekitar di sekitarnya terlihat kuat, dan jumlah pesaingnya masih seimbang dengan potensi permintaan.",
+
+  "shared": {
+    "accessibility": { "value": 67.0, "level": "moderate", "siteInputsAvailable": true },
+    "segments": { "resident": { "score": 82, "role": "primary" } },
+    "evidence": { "facilityCount": 47, "zones": { "a": 12, "b": 21, "c": 14 } }
+  },
+
+  "categories": [
+    {
+      "rank": 1,
+      "businessType": "laundry",
+      "score": { "value": 75.52, "band": "suitable", "confidence": 81, "margin": 8, "range": [68, 84] },
+      "status": "primary",
+      "recommended": true,
+      "components": {
+        "demandFit":         { "value": 74.75, "weight": 0.35 },
+        "accessibility":     { "value": 67.0,  "weight": 0.20 },
+        "competition":       { "value": 77.54, "weight": 0.20 },
+        "supportingFacility":{ "value": 73.0,  "weight": 0.15 },
+        "risk":              { "value": 95.0,  "weight": 0.10 }
+      },
+      "targetMarket": { "segment": "resident", "level": "high" },
+      "supportingFacility": { "value": 73.0, "level": "high" },
+      "competition": {
+        "rawCount": 5,
+        "equivalentCount": 2.06,
+        "density": "low",
+        "saturationRatio": 0.55,
+        "reading": "healthy",
+        "radiusMeters": 1500
+      },
+      "opportunityLevel": "high",
+      "trafficLevel": "moderate",
+      "riskLevel": "low",
+      "reason": "Kelompok penghuni sekitar terlihat kuat. Jumlah pesaing masih seimbang dengan potensi permintaan.",
+      "differentiator": "Lebih mengandalkan penghuni sekitar daripada orang yang hanya lewat."
+    }
+  ],
+
+  "equivalent": [],
+  "warnings": [],
+  "dataSource": { "…": "as in /analysis" }
+}
+```
+
+- `categories` holds **every** category, highest score first, each with its
+  `rank`. Scores, components and competition figures are the same numbers
+  `/analysis` returns for that category and location: this endpoint runs the
+  same engine over one data load, so the two can never disagree.
+- `shared` carries the inputs that do not depend on the business type.
+  Accessibility and risk are scored from the point itself, so they would
+  otherwise be repeated identically on all seven entries.
+- `opportunityLevel`, `trafficLevel` and `riskLevel` are **rule-based readings**
+  of components the engine scored, added so a card can be scanned without
+  reading five numbers. Opportunity is `0.5 × score + 0.5 × competition`;
+  traffic potential is `0.6 × demandFit + 0.4 × transit`, a map-data proxy and
+  not counted footfall; risk inverts the risk component, is `unknown` when site
+  conditions could not be loaded, and is never reported as `low` while a hard
+  warning stands. `high` is 70 or more, `moderate` is 50 or more.
+- `status`, `equivalent` and `warnings` follow the same rules as
+  [`/recommend`](#status-values).
+- `422 INSUFFICIENT_DATA` is returned below the confidence floor of 40, as in
+  `/recommend`: no ranking may be given there at all.
+
+---
+
+## `POST /api/v1/compare-locations`
+
+Compare **exactly two** candidate sites for one chosen category. Answers "which
+of these two places should I take?".
+
+### Request
+
+```json
+{
+  "a": { "lat": -7.301234, "lng": 112.717890 },
+  "b": { "lat": -7.295010, "lng": 112.722400 },
+  "businessType": "beverages",
+  "googleMap": false
+}
+```
+
+Two locations is a property of the shape, not a length rule: there is no field a
+third candidate could go in, so the limit cannot be bypassed. `businessType` is
+required — both sites are scored for the same category, which is what makes the
+comparison fair. `googleMap` means the same as in [`/analysis`](#request) and is
+applied to both sides.
+
+### Response `200`
+
+```json
+{
+  "modelVersion": "0.1.0",
+  "businessType": "beverages",
+
+  "locations": {
+    "a": {
+      "label": "A",
+      "location": { "lat": -7.301234, "lng": 112.717890 },
+      "score": { "value": 75.52, "band": "suitable", "confidence": 81, "margin": 8, "range": [68, 84] },
+      "status": "primary",
+      "confidence": { "value": 81, "reading": "high" },
+      "components": { "demandFit": { "value": 74.75, "weight": 0.35 }, "…": {} },
+      "targetMarket": { "segment": "student", "level": "high" },
+      "segments": { "student": { "score": 77, "role": "primary" } },
+      "supportingFacility": { "value": 73.0, "level": "high" },
+      "landmarks": [
+        { "id": "education", "label": "Sekolah & kampus", "count": 3, "nearestMeters": 250 }
+      ],
+      "mainRoad": "secondary",
+      "competition": {
+        "rawCount": 5, "equivalentCount": 2.06, "density": "low",
+        "saturationRatio": 0.55, "reading": "healthy", "radiusMeters": 800
+      },
+      "accessibility": {
+        "value": 67.0, "road": 80, "transit": 60, "walkability": 70, "parking": 50,
+        "level": "moderate", "siteInputsAvailable": true
+      },
+      "opportunityLevel": "high",
+      "trafficLevel": "moderate",
+      "riskLevel": "low",
+      "strengths": [{ "component": "risk", "value": 95.0 }],
+      "weaknesses": [],
+      "reason": "Kelompok pelajar dan mahasiswa terlihat kuat. Jumlah pesaing masih seimbang dengan potensi permintaan.",
+      "evidence": { "facilityCount": 47, "zones": { "a": 12, "b": 21, "c": 14 } },
+      "warnings": [],
+      "dataSource": { "…": "as in /analysis" }
+    },
+    "b": { "…": "same shape, label B" }
+  },
+
+  "verdict": {
+    "winner": "a",
+    "tied": false,
+    "difference": 7.31,
+    "equivalenceGap": 3,
+    "decidingFactors": [
+      { "component": "demandFit", "a": 74.75, "b": 58.2, "delta": 16.55, "weightedDelta": 5.79, "favours": "a" },
+      { "component": "competition", "a": 77.54, "b": 71.0, "delta": 6.54, "weightedDelta": 1.31, "favours": "a" }
+    ],
+    "summary": "Lokasi A lebih disarankan untuk usaha minuman atau kedai kopi karena kelompok pelajar dan mahasiswa di sekitarnya lebih kuat, dan ruang persaingannya lebih longgar. Selisihnya 7.3 poin dari Lokasi B.",
+    "alternative": "Lokasi B masih bisa dipakai dengan strategi berbeda: hambatan operasionalnya lebih sedikit. Biaya sewa tidak ikut dinilai di sini, jadi bandingkan angka itu juga sebelum memutuskan."
+  }
+}
+```
+
+- Each side is the same result [`/analysis`](#post-apiv1analysis) returns for
+  that point and category. Both are loaded and scored identically, so the only
+  difference between them is the place.
+- `decidingFactors` decomposes the gap. `weightedDelta` is `delta × weight`, and
+  the five values **sum exactly to `score(a) − score(b)`**: nothing about the
+  difference is unexplained. It is sorted by `|weightedDelta|`, so the factor
+  that moved the result most comes first.
+- `verdict.winner` is `null` when `difference` is at or inside `equivalenceGap`
+  (3 points, the same threshold `/recommend` uses for equivalent groups).
+  Declaring a favourite inside that band would imply a precision the model does
+  not have, so the summary reports a tie instead.
+- `verdict.alternative` is built only from components where the lower-scoring
+  site actually beats the winner. When it beats it in none, that is said plainly.
+  Rent, floor area and permits are not measured by GAYATAMA and are never
+  asserted here.
+- `landmarks` counts recognisable neighbours per group within 1,500 m.
+  `nearestMeters` is `null` when only Google-counted zones contributed, because a
+  count has no single position.
+- `422 INSUFFICIENT_DATA` is returned when **either** point lacks data;
+  `details.location` is `"a"` or `"b"`, naming the side that failed.
+
+---
+
 ## `GET /api/v1/pois`
 
 Normalised mapped facilities, Google small-business counts when requested, and

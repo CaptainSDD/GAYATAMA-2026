@@ -5,7 +5,8 @@ import { Loading, QueryError } from '../../components/QueryState';
 import { Tabs, type TabItem } from '../../components/Tabs';
 import type { AnalysisResponse } from '../../lib/api-types';
 import { isInSemarangCoverage } from '../../lib/location';
-import { useAnalysis, useRecommendation } from '../../lib/queries';
+import { useAnalysis, useComparison, useRecommendation } from '../../lib/queries';
+import { ComparisonView } from '../compare/ComparisonView';
 import { CompetitionView } from '../competition/CompetitionView';
 import { RecommendView } from '../recommend/RecommendView';
 import { ScorePanel } from '../score/ScorePanel';
@@ -24,14 +25,20 @@ interface LocationViewProps {
   point: LatLng;
   businessType: BusinessType;
   onBusinessTypeChange: (businessType: BusinessType) => void;
+  /** `compare` opens on the category comparison, for visitors who have not chosen one. */
+  entryMode?: 'score' | 'compare';
 }
 
-export function LocationView({ point, businessType, onBusinessTypeChange }: LocationViewProps) {
-  const [tab, setTab] = useState<TabKey>('score');
+export function LocationView({ point, businessType, onBusinessTypeChange, entryMode = 'score' }: LocationViewProps) {
+  const comparing = entryMode === 'compare';
+  const [tab, setTab] = useState<TabKey>(comparing ? 'recommend' : 'score');
+  const [compareOpen, setCompareOpen] = useState(comparing);
   const inCoverage = isInSemarangCoverage(point);
   const analysis = useAnalysis(inCoverage ? point : null, businessType);
   // Scoring all seven business types is requested only once someone opens that tab.
   const recommendation = useRecommendation(inCoverage && tab === 'recommend' ? point : null);
+  // The comparison carries more per category, so it waits until its section is opened.
+  const comparison = useComparison(inCoverage && tab === 'recommend' && compareOpen ? point : null);
 
   if (!inCoverage) {
     return (
@@ -44,13 +51,24 @@ export function LocationView({ point, businessType, onBusinessTypeChange }: Loca
   return (
     <Tabs label="Analisis lokasi" tabs={TABS} active={tab} onChange={setTab}>
       {tab === 'recommend' ? (
-        <RecommendView
-          query={recommendation}
-          onAnalyse={(type) => {
-            onBusinessTypeChange(type);
-            setTab('score');
-          }}
-        />
+        <>
+          <RecommendView
+            query={recommendation}
+            onAnalyse={(type) => {
+              onBusinessTypeChange(type);
+              setTab('score');
+            }}
+          />
+          <ComparisonView
+            query={comparison}
+            open={compareOpen}
+            onOpenChange={setCompareOpen}
+            onAnalyse={(type) => {
+              onBusinessTypeChange(type);
+              setTab('score');
+            }}
+          />
+        </>
       ) : (
         <AnalysisTab tab={tab} query={analysis} point={point} />
       )}

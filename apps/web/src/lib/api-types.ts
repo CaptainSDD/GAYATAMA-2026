@@ -1,12 +1,14 @@
 import type {
   BusinessType,
   ComponentKey,
+  ConfidenceReading,
   Density,
   Facility,
   FacilityKind,
   FacilityScale,
   LatLng,
   RecommendationStatus,
+  RoadClass,
   SaturationReading,
   ScoreSummary,
   Segment,
@@ -144,6 +146,143 @@ export interface Recommendation {
   dominantSegment: Segment;
   rationale: string;
   differentiator: string;
+}
+
+/** A rule-based reading of scores the engine produced, not a score of its own. */
+export type IndicatorLevel = 'high' | 'moderate' | 'low';
+
+/** `unknown` when site conditions could not be loaded, so risk is only a neutral placeholder. */
+export type RiskLevel = IndicatorLevel | 'unknown';
+
+export interface ComparedCategory {
+  /** 1 for the best match at this location. */
+  rank: number;
+  businessType: BusinessType;
+  score: ScoreSummary;
+  status: RecommendationStatus;
+  recommended: boolean;
+  components: Record<ComponentKey, { value: number; weight: number }>;
+  targetMarket: { segment: Segment; level: IndicatorLevel };
+  supportingFacility: { value: number; level: IndicatorLevel };
+  competition: {
+    rawCount: number;
+    equivalentCount: number;
+    density: Density;
+    saturationRatio: number;
+    reading: SaturationReading;
+    radiusMeters: number;
+  };
+  opportunityLevel: IndicatorLevel;
+  /** Estimated from nearby customer groups and the nearest transit stop, not counted footfall. */
+  trafficLevel: IndicatorLevel;
+  riskLevel: RiskLevel;
+  reason: string;
+  differentiator: string;
+}
+
+/** A recognisable landmark group near a candidate site. */
+export interface Landmark {
+  id: string;
+  label: string;
+  count: number;
+  /** `null` when only counted zones contributed, which have no single position. */
+  nearestMeters: number | null;
+}
+
+export interface ComparedLocationSide {
+  label: 'A' | 'B';
+  location: LatLng;
+  score: ScoreSummary;
+  status: RecommendationStatus;
+  confidence: { value: number; reading: ConfidenceReading };
+  components: Record<ComponentKey, { value: number; weight: number }>;
+  targetMarket: { segment: Segment; level: IndicatorLevel };
+  segments: Record<Segment, { score: number; role: SegmentRole }>;
+  supportingFacility: { value: number; level: IndicatorLevel };
+  landmarks: Landmark[];
+  /** Class of the nearest road; `null` when site conditions could not be loaded. */
+  mainRoad: RoadClass | null;
+  competition: {
+    rawCount: number;
+    equivalentCount: number;
+    density: Density;
+    saturationRatio: number;
+    reading: SaturationReading;
+    radiusMeters: number;
+  };
+  accessibility: {
+    value: number;
+    road: number;
+    transit: number;
+    walkability: number;
+    parking: number;
+    level: IndicatorLevel;
+    siteInputsAvailable: boolean;
+  };
+  opportunityLevel: IndicatorLevel;
+  trafficLevel: IndicatorLevel;
+  riskLevel: RiskLevel;
+  strengths: { component: ComponentKey; value: number }[];
+  weaknesses: { component: ComponentKey; value: number }[];
+  reason: string;
+  evidence: { facilityCount: number; zones: Record<Zone, number> };
+  warnings: Warning[];
+  dataSource: DataSource;
+}
+
+/** How much of the gap between the two sites each component accounts for. */
+export interface DecidingFactor {
+  component: ComponentKey;
+  a: number;
+  b: number;
+  delta: number;
+  /** `delta × weight`. These sum to the difference in score, with nothing left over. */
+  weightedDelta: number;
+  favours: 'a' | 'b' | null;
+  /**
+   * `false` when the gap reflects missing data rather than the places: operating
+   * risk falls back to a neutral value when site conditions cannot be loaded.
+   * Such a factor still counts towards the score, but is never given as a reason.
+   */
+  comparable: boolean;
+}
+
+/** Exactly two candidate sites compared for one business type. */
+export interface LocationComparisonResponse {
+  modelVersion: string;
+  businessType: BusinessType;
+  locations: { a: ComparedLocationSide; b: ComparedLocationSide };
+  verdict: {
+    /** `null` when the gap falls inside the model's equivalence threshold. */
+    winner: 'a' | 'b' | null;
+    tied: boolean;
+    difference: number;
+    equivalenceGap: number;
+    decidingFactors: DecidingFactor[];
+    summary: string;
+    alternative: string;
+  };
+}
+
+/** Every category compared for one location, for a visitor who has not chosen a business type. */
+export interface ComparisonResponse {
+  modelVersion: string;
+  location: LatLng;
+  confidence: { value: number; reading: ConfidenceReading };
+  topChoice: BusinessType | null;
+  /** One sentence naming the leading category and why it leads. */
+  highlight: string;
+  /** Inputs that do not depend on the business type, so they are reported once. */
+  shared: {
+    accessibility: { value: number; level: IndicatorLevel; siteInputsAvailable: boolean };
+    segments: Record<Segment, { score: number; role: SegmentRole }>;
+    evidence: { facilityCount: number; zones: Record<Zone, number> };
+  };
+  /** All categories, best first. */
+  categories: ComparedCategory[];
+  equivalent: BusinessType[][];
+  warnings: Warning[];
+  dataSource: DataSource;
 }
 
 export interface NotRecommended {
