@@ -1,9 +1,20 @@
+import type { LatLng } from '@gayatama/scoring';
 import { AdvancedMarker, APIProvider, Circle, ControlPosition, Map, Polygon, Polyline } from '@vis.gl/react-google-maps';
-import type { CSSProperties } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { SEMARANG_MAP_LIMITS } from '../../lib/location';
 import { GOOGLE_MAP_ID, GOOGLE_MAPS_API_KEY } from '../../lib/map-config';
 import { SEMARANG_BOUNDARY } from '../../lib/semarang-boundary';
-import { DEFAULT_MAP_ZOOM, PICK_COLOR, ZONE_RINGS, type MapPickerProps } from './zones';
+import { ZoneLabel } from './ZoneLabel';
+import {
+  DEFAULT_MAP_ZOOM,
+  PICK_COLOR,
+  ZONE_RINGS,
+  zoneBandRings,
+  zoneFillOpacity,
+  zoneLabelPoint,
+  type MapPickerProps,
+  type ZoneHoverProps,
+} from './zones';
 
 // Sized to read at the same distance as the Leaflet teardrop, which is much
 // larger than a plain dot; the shared .picked-pin-pulse ring is layered behind.
@@ -40,7 +51,9 @@ export function GoogleMapPicker({
   secondPoint = null,
   onPick,
   onCenterChange,
-}: MapPickerProps) {
+  hoveredZone,
+  onZoneHover,
+}: MapPickerProps & ZoneHoverProps) {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <Map
@@ -78,19 +91,29 @@ export function GoogleMapPicker({
         <CoverageOverlay />
         {point !== null && (
           <>
-            {analysisPoint !== null &&
-              ZONE_RINGS.map((ring) => (
-                <Circle
-                  key={ring.zone}
+            {analysisPoint !== null && (
+              <>
+                <ZoneBands
                   center={analysisPoint}
-                  radius={ring.to}
-                  strokeColor={ring.color}
-                  strokeWeight={1.5}
-                  fillColor={ring.color}
-                  fillOpacity={0.05}
-                  clickable={false}
+                  hoveredZone={hoveredZone}
+                  onZoneHover={onZoneHover}
+                  onPick={onPick}
                 />
-              ))}
+                {/* Outline only — the bands underneath carry the fill, so a disc
+                    here would tint the inner zones a second time. */}
+                {ZONE_RINGS.map((ring) => (
+                  <Circle
+                    key={ring.zone}
+                    center={analysisPoint}
+                    radius={ring.to}
+                    strokeColor={ring.color}
+                    strokeWeight={1.5}
+                    fillOpacity={0}
+                    clickable={false}
+                  />
+                ))}
+              </>
+            )}
             <AdvancedMarker
               position={point}
               clickable={false}
@@ -115,6 +138,60 @@ export function GoogleMapPicker({
         )}
       </Map>
     </APIProvider>
+  );
+}
+
+/**
+ * The distance zones as shapes that answer back. Each band is filled in its own
+ * colour at the weight the engine gives it, and deepens while the pointer is
+ * inside it, so the ranges the legend used to list are read off the map itself.
+ */
+function ZoneBands({
+  center,
+  hoveredZone,
+  onZoneHover,
+  onPick,
+}: { center: LatLng } & ZoneHoverProps & Pick<MapPickerProps, 'onPick'>) {
+  // 128 points a ring is cheap, but not worth redoing on every hover — only when
+  // the analysed point moves.
+  const bands = useMemo(() => ZONE_RINGS.map((ring) => ({ ring, paths: zoneBandRings(center, ring) })), [center]);
+  const hovered = ZONE_RINGS.find((ring) => ring.zone === hoveredZone);
+
+  return (
+    <>
+      {bands.map(({ ring, paths }) => (
+        <Polygon
+          key={ring.zone}
+          paths={paths}
+          strokeOpacity={0}
+          fillColor={ring.color}
+          fillOpacity={zoneFillOpacity(ring, hoveredZone === ring.zone)}
+          // Hover needs the shape clickable, and a clickable shape swallows the
+          // map's own click — so the pick is forwarded on from here, otherwise
+          // clicking inside the rings would stop choosing a point.
+          clickable
+          onMouseOver={() => onZoneHover(ring.zone)}
+          onMouseOut={() => onZoneHover(null)}
+          onClick={(event) => {
+            const { latLng } = event;
+            if (latLng !== null) onPick({ lat: latLng.lat(), lng: latLng.lng() });
+          }}
+        />
+      ))}
+      {hovered !== undefined && (
+        // Centred on the label point, the same way the pins are, so the label
+        // sits in the middle of its band rather than hanging above it.
+        <AdvancedMarker
+          position={zoneLabelPoint(center, hovered)}
+          className="zone-label-marker"
+          clickable={false}
+          anchorLeft="-50%"
+          anchorTop="-50%"
+        >
+          <ZoneLabel ring={hovered} />
+        </AdvancedMarker>
+      )}
+    </>
   );
 }
 

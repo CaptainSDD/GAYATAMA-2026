@@ -1,5 +1,6 @@
-import { ZONE_WEIGHTS, type FacilityKind } from '@gayatama/scoring';
+import { type FacilityKind, type LatLng } from '@gayatama/scoring';
 import { divIcon } from 'leaflet';
+import { useMemo, useState } from 'react';
 import {
   Circle,
   CircleMarker,
@@ -20,7 +21,18 @@ import { USE_GOOGLE_MAP } from '../../lib/map-config';
 import { usePois } from '../../lib/queries';
 import { SEMARANG_BOUNDARY } from '../../lib/semarang-boundary';
 import { GoogleMapPicker } from './GoogleMapPicker';
-import { DEFAULT_MAP_ZOOM, PICK_COLOR, ZONE_RINGS, type MapPickerProps } from './zones';
+import { ZoneLabel } from './ZoneLabel';
+import {
+  DEFAULT_MAP_ZOOM,
+  PICK_COLOR,
+  ZONE_RINGS,
+  zoneBandRings,
+  zoneFillOpacity,
+  zoneLabelPoint,
+  type MapPickerProps,
+  type ZoneHover,
+  type ZoneHoverProps,
+} from './zones';
 
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -28,6 +40,8 @@ const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyrigh
 /**
  * Facility groups, coloured so the evidence behind a score is legible at a
  * glance: what creates demand, what competes, and what supports a transaction.
+ * The colours are read off the dot tooltips now that the legend is gone — each
+ * marker names its own kind, so nothing depends on a colour key.
  */
 const FACILITY_GROUPS = [
   {
@@ -117,34 +131,40 @@ const PICKED_PIN = pickedPin();
 const PIN_A = pickedPin('A');
 const PIN_B = pickedPin('B');
 
+/** Nothing to see: it exists only to hang a zone's label at a point on the map. */
+const LABEL_ANCHOR = divIcon({ className: 'zone-label-anchor', iconSize: [0, 0] });
+
 /**
  * A Google map when a Maps JavaScript API key is configured, otherwise an
  * OpenStreetMap map. Google data may only be shown on a Google map, so the
  * choice also decides whether the API is asked for Google counts.
  *
- * The legend, scale bar and north mark are plain DOM overlays rather than
- * map-library controls, so they render the same way over either provider.
+ * The coverage label is a plain DOM overlay rather than a map-library control,
+ * so it renders the same way over either provider.
  */
 export function MapPicker(props: MapPickerProps) {
   // React Query keys by point, and SegmentsView asks for the same data, so this
   // shares that cache entry rather than making a second request.
   const pois = usePois(props.analysisPoint);
   const facilities = pois.data?.facilities ?? [];
+  // Which band the pointer is inside. Held here so both providers take it as the
+  // same prop and label their zones through the same shared component.
+  const [hoveredZone, setHoveredZone] = useState<ZoneHover>(null);
 
   return (
     <>
       {USE_GOOGLE_MAP ? (
-        <GoogleMapPicker {...props} />
+        <GoogleMapPicker {...props} hoveredZone={hoveredZone} onZoneHover={setHoveredZone} />
       ) : (
-        <OpenStreetMapPicker {...props} facilities={facilities} />
+        <OpenStreetMapPicker
+          {...props}
+          facilities={facilities}
+          hoveredZone={hoveredZone}
+          onZoneHover={setHoveredZone}
+        />
       )}
       <div className="coverage-label" aria-hidden="true">
         <span /> Area cakupan Semarang
-      </div>
-      {/* A rail rather than a bare legend: the scale bar lands under it, and the
-          legend itself grows and shrinks with the facilities found. */}
-      <div className="map-rail">
-        <MapLegend facilityCount={facilities.length} />
       </div>
     </>
   );
@@ -159,7 +179,9 @@ function OpenStreetMapPicker({
   onPick,
   onCenterChange,
   facilities,
-}: MapPickerProps & { facilities: readonly PoiFacility[] }) {
+  hoveredZone,
+  onZoneHover,
+}: MapPickerProps & ZoneHoverProps & { facilities: readonly PoiFacility[] }) {
   return (
     <MapContainer
       className="map"
@@ -186,12 +208,15 @@ function OpenStreetMapPicker({
         <>
           {analysisPoint !== null && (
             <>
+              <ZoneBands center={analysisPoint} hoveredZone={hoveredZone} onZoneHover={onZoneHover} />
+              {/* Outline only — the bands underneath carry the fill, so a disc
+                  here would tint the inner zones a second time. */}
               {ZONE_RINGS.map((ring) => (
                 <Circle
                   key={ring.zone}
                   center={[analysisPoint.lat, analysisPoint.lng]}
                   radius={ring.to}
-                  pathOptions={{ color: ring.color, weight: 2, fillOpacity: 0.04, interactive: false }}
+                  pathOptions={{ color: ring.color, weight: 2, fill: false, interactive: false }}
                 />
               ))}
               <FacilityMarkers facilities={facilities} />
@@ -204,6 +229,48 @@ function OpenStreetMapPicker({
         <Marker position={[secondPoint.lat, secondPoint.lng]} icon={PIN_B} interactive={false} />
       )}
     </MapContainer>
+  );
+}
+
+/**
+ * The distance zones as shapes that answer back. Each band is filled in its own
+ * colour at the weight the engine gives it, and deepens while the pointer is
+ * inside it, so the ranges the legend used to list are read off the map itself.
+ */
+function ZoneBands({ center, hoveredZone, onZoneHover }: { center: LatLng } & ZoneHoverProps) {
+  // 128 points a ring is cheap, but not worth redoing on every hover — only when
+  // the analysed point moves.
+  const bands = useMemo(() => ZONE_RINGS.map((ring) => ({ ring, paths: zoneBandRings(center, ring) })), [center]);
+  const hovered = ZONE_RINGS.find((ring) => ring.zone === hoveredZone);
+
+  return (
+    <>
+      {bands.map(({ ring, paths }) => (
+        <Polygon
+          key={ring.zone}
+          positions={paths}
+          // Deliberately no click handler: Leaflet hands a click to the map only
+          // when nothing under the pointer listens for one, and clicking inside
+          // the rings has to keep picking a point.
+          eventHandlers={{ mouseover: () => onZoneHover(ring.zone), mouseout: () => onZoneHover(null) }}
+          pathOptions={{
+            stroke: false,
+            fillColor: ring.color,
+            fillOpacity: zoneFillOpacity(ring, hoveredZone === ring.zone),
+          }}
+        />
+      ))}
+      {hovered !== undefined && (
+        // A marker with no icon of its own, carrying a centred tooltip: Leaflet
+        // then does the projecting and keeps the label glued to the band as the
+        // map moves. Tooltips ignore the pointer, so the hover underneath holds.
+        <Marker position={zoneLabelPoint(center, hovered)} icon={LABEL_ANCHOR} interactive={false}>
+          <Tooltip permanent direction="center" className="zone-label-tooltip" opacity={1}>
+            <ZoneLabel ring={hovered} />
+          </Tooltip>
+        </Marker>
+      )}
+    </>
   );
 }
 
@@ -269,45 +336,6 @@ function FacilityMarkers({ facilities }: { facilities: readonly PoiFacility[] })
           </CircleMarker>
         ))}
     </>
-  );
-}
-
-function MapLegend({ facilityCount }: { facilityCount: number }) {
-  return (
-    <div className="zone-legend" aria-label="Keterangan peta">
-      {/* Each swatch is inked to its own distance weight, so the legend shows
-          that nearer counts for more instead of explaining it in a sentence. */}
-      {[...ZONE_RINGS].reverse().map((ring) => (
-        <span key={ring.zone} className="zone-legend-item">
-          <span
-            className="zone-swatch"
-            style={{
-              borderColor: ring.color,
-              // Only the fill thins out. A faded outline too would leave the
-              // outermost swatch almost invisible against the panel.
-              background: `color-mix(in srgb, ${ring.color} ${
-                ZONE_WEIGHTS[ring.zone.toLowerCase() as 'a' | 'b' | 'c'] * 100
-              }%, transparent)`,
-            }}
-            aria-hidden="true"
-          />
-          {ring.from.toLocaleString('id-ID')}–{ring.to.toLocaleString('id-ID')} m
-        </span>
-      ))}
-
-      {/* Always shown: the colours mean the same thing whether or not any dots
-          are on screen yet, and the legend is how anyone learns to read them. */}
-      <div className="legend-section legend-facilities">
-        {FACILITY_GROUPS.map((group) => (
-          <span key={group.id} className="zone-legend-item">
-            <span className="facility-dot" style={{ background: group.color }} aria-hidden="true" />
-            {group.label}
-          </span>
-        ))}
-        {/* An absence cannot be drawn, so this one fact needs saying. */}
-        {facilityCount > 0 && <span className="legend-footnote">Usaha yang sudah tutup tidak digambar</span>}
-      </div>
-    </div>
   );
 }
 

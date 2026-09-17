@@ -506,9 +506,21 @@ input {
   padding: 0 var(--space-4) var(--space-4);
 }
 
+/* The `hidden` attribute alone loses to the `display: flex` above, which is why
+   the chevron appeared to do nothing. Restated here so folding actually folds. */
+.floating-panel-body[hidden] {
+  display: none;
+}
+
 /* Only the results column stretches; the controls stay as tall as they need. */
 .results-panel {
   flex: 1;
+}
+
+/* Folded, it is just a title bar — stretching it would keep the map hidden,
+   which is the whole point of folding. */
+.floating-panel[data-collapsed='true'] {
+  flex: 0 0 auto;
 }
 
 .floating-panel-heading {
@@ -553,6 +565,14 @@ input {
 .picked-coordinate[data-empty='true'] {
   font-size: var(--text-md);
   font-weight: 600;
+  color: var(--muted);
+}
+
+/* Sits directly under the coordinate as its caption, so the grid gap above it
+   is closed back up. */
+.location-hint {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  font-size: var(--text-sm);
   color: var(--muted);
 }
 
@@ -618,24 +638,6 @@ input {
 /* Stacked up the left edge, reading downwards: legend, scale, zoom buttons. */
 .map .leaflet-bottom.leaflet-left {
   bottom: 4.5rem;
-}
-
-/* The legend shares one anchored column so it can grow with the facilities
-   found without pushing anything out of place. The only measured value is the
-   height of the controls stacked below it. */
-/* Clears the whole stack Google puts in this corner — zoom buttons plus the
-   fullscreen button — so the legend never sits on top of them. */
-.map-rail {
-  position: absolute;
-  left: var(--space-3);
-  bottom: 12.5rem;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  width: max-content;
-  pointer-events: none;
 }
 
 /* Icon buttons ------------------------------------------------------------ */
@@ -949,57 +951,6 @@ select:hover {
 
 /* Map overlays ------------------------------------------------------------ */
 
-/* Positioned by .map-rail, not by itself: giving it coordinates of its own made
-   it escape the rail, collapse the rail to zero width, and land on top of the
-   zoom buttons. */
-.zone-legend {
-  width: max-content;
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--text);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(6px);
-  pointer-events: none;
-}
-
-.zone-legend-title {
-  font-size: var(--text-xs);
-  font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-.legend-section {
-  display: grid;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border);
-}
-
-
-.zone-legend-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  /* "0–300 m" is one label; without this it breaks after every character when
-     the rail is narrow. */
-  white-space: nowrap;
-}
-
-.zone-swatch {
-  width: 0.75rem;
-  height: 0.75rem;
-  border: 2px solid;
-  border-radius: 50%;
-}
-
 .coverage-label {
   position: absolute;
   top: var(--space-3);
@@ -1026,6 +977,56 @@ select:hover {
   border-top: 3px solid #dc2626;
 }
 
+/* Zone labels -------------------------------------------------------------
+   Drawn on the map, inside the band being hovered. Filled with that band's own
+   colour rather than the panel surface, so the label and the shape read as one
+   object instead of a caption that happens to be nearby. */
+
+.zone-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  background: var(--zone-color);
+  /* A white keyline, so the label holds its edge over dark tiles and over the
+     ring outline it sits next to. */
+  border: 1px solid rgb(255 255 255 / 0.9);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.4);
+  /* The band underneath owns the hover; a label that took the pointer would
+     end its own hover the moment it appeared. */
+  pointer-events: none;
+}
+
+.zone-label small {
+  font-size: 0.85em;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* Leaflet dresses its tooltips as white callouts. Stripped back to nothing, the
+   label inside is the only thing drawn. */
+.leaflet-tooltip.zone-label-tooltip {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+/* Google's marker wraps the label in an element of its own, which would take the
+   pointer off the band and blink the label it is holding open. */
+.zone-label-marker {
+  pointer-events: none;
+}
+
 .coverage-warning {
   position: absolute;
   top: calc(var(--space-3) + 2.75rem);
@@ -1045,14 +1046,7 @@ select:hover {
   transform: translateX(-50%);
 }
 
-.legend-footnote {
-  margin-top: var(--space-1);
-  font-size: 0.8em;
-  font-style: italic;
-  color: var(--muted);
-}
-
-/* Leaflet's own scale bar, enlarged and restyled to match the legend. Leaflet
+/* Leaflet's own scale bar, enlarged and restyled to match the other overlays. Leaflet
    sizes the bar itself (data-driven, via maxWidth on ScaleControl); this only
    controls how prominent that bar reads. */
 .map .leaflet-control-scale {
@@ -1076,6 +1070,10 @@ select:hover {
 
 .picked-pin {
   filter: drop-shadow(0 3px 5px rgb(15 23 42 / 0.45));
+  /* The pin marks a spot rather than being one to interact with. Left alone it
+     would sit over Zone A, taking the hover off the band and swallowing clicks
+     meant for the map. */
+  pointer-events: none;
 }
 
 /* A ring at the pin's tip, so the exact coordinate stays findable even on busy
@@ -1096,6 +1094,9 @@ select:hover {
   position: relative;
   display: grid;
   place-items: center;
+  /* Same reasoning as .picked-pin: a mark, not a control, so it keeps its hands
+     off the hover and the click underneath it. */
+  pointer-events: none;
 }
 
 .picked-dot .picked-pin-pulse {
@@ -1120,13 +1121,6 @@ select:hover {
     animation: none;
     opacity: 0.35;
   }
-}
-
-.facility-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--muted);
 }
 
 /* Score gauge ------------------------------------------------------------- */
@@ -2164,31 +2158,6 @@ select:hover {
     overflow: hidden;
   }
 
-  /* The sheet leaves little map, so the legend shrinks to the zone rows only.
-     It also has to clear Leaflet's zoom buttons, which share this corner. */
-  .zone-legend {
-    bottom: auto;
-    top: 4.75rem;
-    left: var(--space-2);
-    gap: 0.1rem;
-    font-size: 0.6875rem;
-    padding: var(--space-2);
-  }
-
-  /* Only the three rings survive on a phone. */
-  .legend-facilities {
-    display: none;
-  }
-
-  .zone-legend .legend-section {
-    margin-top: var(--space-1);
-    padding-top: var(--space-1);
-  }
-
-  .zone-legend .zone-swatch {
-    width: 0.6rem;
-    height: 0.6rem;
-  }
 }
 
 @media (min-width: 821px) {

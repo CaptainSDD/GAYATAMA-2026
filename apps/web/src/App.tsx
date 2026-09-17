@@ -142,7 +142,7 @@ export function App({
   /**
    * The tour blocks the page, so its later steps cannot wait for the visitor to
    * pick a point and press Analisis. It runs both stages here instead, on the
-   * map centre, which is the same path the "Pakai titik tengah" button takes.
+   * map centre — the one place left that still needs the tracked centre.
    */
   const prepareTourResult = () => {
     const point = selection.point ?? (isInSemarangCoverage(mapCenter) ? roundPoint(mapCenter) : null);
@@ -232,7 +232,6 @@ export function App({
           >
             <LocationSummary
               point={selection.point}
-              onUseMapCenter={() => pick(mapCenter)}
               onClearPoint={clearPoint}
               comparingSites={siteCompare.active}
               onToggleCompareSites={toggleSiteCompare}

@@ -23,7 +23,13 @@ export function FloatingPanel({ title, badge, collapsed, onToggle, tourId, class
   const bodyId = useId();
 
   return (
-    <section className={`floating-panel${className === undefined ? '' : ` ${className}`}`} data-tour={tourId}>
+    <section
+      className={`floating-panel${className === undefined ? '' : ` ${className}`}`}
+      // Collapsing has to stop the results card from stretching as well as hide
+      // its body, otherwise the folded bar keeps the map covered.
+      data-collapsed={collapsed}
+      data-tour={tourId}
+    >
       <h2 className="floating-panel-bar">
         <button type="button" className="floating-panel-toggle" aria-expanded={!collapsed} aria-controls={bodyId} onClick={onToggle}>
           <span className="floating-panel-heading">
