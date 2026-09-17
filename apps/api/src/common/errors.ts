@@ -9,7 +9,8 @@ export type ErrorCode =
   | 'REQUEST_FAILED'
   | 'INTERNAL_ERROR'
   | 'UNAUTHORIZED'
-  | 'USERNAME_TAKEN';
+  | 'USERNAME_TAKEN'
+  | 'LOCATION_NOT_ELIGIBLE';
 
 export interface ErrorBody {
   statusCode: number;
@@ -54,4 +55,14 @@ export function unauthorized(message = 'Missing or invalid ID token.'): ApiError
 
 export function usernameTaken(username: string): ApiError {
   return new ApiError(HttpStatus.CONFLICT, 'USERNAME_TAKEN', 'This username is already taken.', { username });
+}
+
+export function unsuitableLocation(reason: 'water' | 'wetland' | 'aquaculture'): ApiError {
+  const labels = { water: 'perairan', wetland: 'lahan basah', aquaculture: 'area akuakultur' } as const;
+  return new ApiError(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    'LOCATION_NOT_ELIGIBLE',
+    `Titik ini berada di ${labels[reason]} yang tidak cocok untuk lokasi usaha.`,
+    { reason },
+  );
 }

@@ -1,12 +1,14 @@
-import type { BusinessType, LatLng } from '@gayatama/scoring';
+import type { BusinessType, LatLng, OperatorOptions } from '@gayatama/scoring';
 import type {
   AnalysisResponse,
   ApiErrorBody,
   ComparisonResponse,
   LocationComparisonResponse,
   LocationDetailsResponse,
+  OpportunitiesResponse,
   PoisResponse,
   RecommendResponse,
+  SimulationResponse,
 } from './api-types';
 
 /** A username reserved and a profile document created. Nothing more — the account itself lives in Firebase Auth. */
@@ -96,6 +98,14 @@ export function fetchLocationComparison(
   signal?: AbortSignal,
 ) {
   return postJson<LocationComparisonResponse>('/compare-locations', { a, b, businessType, googleMap }, signal);
+}
+
+export function fetchSimulation(point: LatLng, businessType: BusinessType, options: OperatorOptions, googleMap: boolean, signal?: AbortSignal) {
+  return postJson<SimulationResponse>('/simulate', { lat: point.lat, lng: point.lng, businessType, options, googleMap }, signal);
+}
+
+export function fetchOpportunities(point: LatLng, businessType: BusinessType, signal?: AbortSignal) {
+  return postJson<OpportunitiesResponse>('/opportunities', { lat: point.lat, lng: point.lng, businessType }, signal);
 }
 
 export function fetchPois(point: LatLng, googleMap: boolean, signal?: AbortSignal) {

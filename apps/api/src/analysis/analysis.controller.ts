@@ -6,13 +6,17 @@ import {
   type AnalysisRequest,
   type CompareLocationsRequest,
   type CompareRequest,
+  type OpportunitiesRequest,
   type PoisQuery,
   type RecommendRequest,
+  type SimulationRequest,
   analysisRequestSchema,
   compareLocationsRequestSchema,
   compareRequestSchema,
+  opportunitiesRequestSchema,
   poisQuerySchema,
   recommendRequestSchema,
+  simulationRequestSchema,
 } from './schemas';
 
 const SCORING_LIMIT = { default: { limit: 30, ttl: 60_000 } };
@@ -33,6 +37,20 @@ export class AnalysisController {
   @Throttle(SCORING_LIMIT)
   recommend(@Body(new ZodValidationPipe(recommendRequestSchema)) body: RecommendRequest) {
     return this.analysis.recommend(body);
+  }
+
+  @Post('simulate')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(SCORING_LIMIT)
+  simulate(@Body(new ZodValidationPipe(simulationRequestSchema)) body: SimulationRequest) {
+    return this.analysis.simulate(body);
+  }
+
+  @Post('opportunities')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 4, ttl: 60_000 } })
+  opportunities(@Body(new ZodValidationPipe(opportunitiesRequestSchema)) body: OpportunitiesRequest) {
+    return this.analysis.opportunities(body);
   }
 
   @Post('compare')

@@ -6,7 +6,7 @@ export interface GeoapifyPlace {
     lon?: number;
     place_id?: string;
     /** Every category the place belongs to, e.g. `['catering', 'catering.cafe']`. */
-    categories?: string[];
+    categories?: readonly string[];
     /**
      * Geoapify keeps the original OpenStreetMap object under `datasource.raw`,
      * which lets the API reuse its OSM tag normaliser instead of a second,
@@ -38,7 +38,11 @@ export interface GeoapifyReverseResult {
     sourcename?: string;
     attribution?: string;
     license?: string;
+    raw?: Record<string, unknown>;
   };
+  category?: string;
+  categories?: readonly string[];
+  result_type?: string;
 }
 
 export interface GeoapifyReverseResponse {

@@ -7,6 +7,7 @@ import { toneColor } from '../../lib/band-color';
 import { BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/copy';
 import { formatPercent } from '../../lib/format';
 import { ScoreGauge } from './ScoreGauge';
+import { ReportExportButton } from './ReportExportButton';
 
 interface ScorePanelProps {
   analysis: AnalysisResponse;
@@ -98,6 +99,7 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
         </div>
       </details>
 
+      <ReportExportButton analysis={analysis} />
       <Attribution dataSource={dataSource} modelVersion={analysis.modelVersion} />
     </article>
   );

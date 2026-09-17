@@ -58,3 +58,27 @@ export type CompareRequest = z.infer<typeof compareRequestSchema>;
 export type CompareLocationsRequest = z.infer<typeof compareLocationsRequestSchema>;
 export type AnalysisRequest = z.infer<typeof analysisRequestSchema>;
 export type PoisQuery = z.infer<typeof poisQuerySchema>;
+
+const openingInterval = z
+  .object({ day: z.number().int().min(0).max(6), from: z.number().int().min(0).max(1439), to: z.number().int().min(1).max(1440) })
+  .strict()
+  .refine((value) => value.to > value.from, 'Opening time must be before closing time');
+
+const operatorOptions = z
+  .object({
+    onSiteParkingSpaces: z.number().int().min(0).max(500).optional(),
+    openingHours: z.array(openingInterval).max(7).optional(),
+  })
+  .strict();
+
+export const simulationRequestSchema = z
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap, options: operatorOptions })
+  .strict();
+
+/** OSM-only 3×3 opportunity grid; Google aggregates cannot be reused truthfully per cell. */
+export const opportunitiesRequestSchema = z
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType })
+  .strict();
+
+export type SimulationRequest = z.infer<typeof simulationRequestSchema>;
+export type OpportunitiesRequest = z.infer<typeof opportunitiesRequestSchema>;

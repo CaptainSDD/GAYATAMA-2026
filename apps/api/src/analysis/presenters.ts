@@ -17,8 +17,10 @@ import {
   type LatLng,
   type LocationInput,
   type LocationScoreResult,
+  type OperatorOptions,
   type RankedCategory,
   type RecommendationResult,
+  type SimulationResult,
   type WarningCode,
 } from '@gayatama/scoring';
 import { OVERTURE_ID_PREFIX, OVERTURE_KINDS, OVERTURE_SOURCE } from '../overture/overture-place';
@@ -572,4 +574,14 @@ export function presentPois(evaluated: readonly EvaluatedFacility[], input: Loca
       .sort((a, b) => ZONE_ORDER.indexOf(a.zone) - ZONE_ORDER.indexOf(b.zone)),
     dataSource: presentDataSource(source),
   };
+}
+
+/** Compact what-if response; deterministic scoring remains in the package. */
+export function presentSimulation(result: SimulationResult, options: OperatorOptions) {
+  const present = (value: LocationScoreResult) => ({
+    score: value.score,
+    accessibility: value.accessibility,
+    competition: { value: value.components.competition, saturationRatio: value.competition.saturationRatio },
+  });
+  return { options, baseline: present(result.baseline), simulated: present(result.simulated), scoreChange: result.scoreChange };
 }

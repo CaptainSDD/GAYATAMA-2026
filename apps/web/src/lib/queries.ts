@@ -5,6 +5,7 @@ import {
   fetchComparison,
   fetchLocationComparison,
   fetchLocationDetails,
+  fetchOpportunities,
   fetchPois,
   fetchRecommendation,
   shouldRetry,
@@ -78,6 +79,16 @@ export function useLocationDetails(point: LatLng | null) {
     queryFn: ({ signal }) => fetchLocationDetails(requirePoint(point), signal),
     enabled: point !== null,
     staleTime: 24 * 60 * 60_000,
+    retry: shouldRetry,
+  });
+}
+
+export function useOpportunities(point: LatLng | null, businessType: BusinessType) {
+  return useQuery({
+    queryKey: ['opportunities', point, businessType],
+    queryFn: ({ signal }) => fetchOpportunities(requirePoint(point), businessType, signal),
+    enabled: point !== null,
+    staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
 }

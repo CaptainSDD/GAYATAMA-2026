@@ -177,6 +177,8 @@ export function errorTitle(error: unknown): string {
   switch (error.code) {
     case 'INSUFFICIENT_DATA':
       return 'Data peta di sini terlalu sedikit';
+    case 'LOCATION_NOT_ELIGIBLE':
+      return 'Titik ini bukan lokasi usaha';
     case 'VALIDATION_FAILED':
       return 'Lokasi ini di luar cakupan';
     case 'RATE_LIMITED':
@@ -204,6 +206,8 @@ export function errorMessage(error: unknown): string {
     }
     case 'VALIDATION_FAILED':
       return 'Titik ini tidak bisa dianalisis. LOKABIS hanya mencakup lokasi di Indonesia.';
+    case 'LOCATION_NOT_ELIGIBLE':
+      return 'Titik ini berada di air, lahan basah, atau tambak. Pilih titik di daratan atau bangunan usaha.';
     case 'RATE_LIMITED':
       return 'Terlalu banyak permintaan dalam satu menit terakhir. Tunggu sebentar, lalu coba lagi.';
     case 'UPSTREAM_TIMEOUT':
@@ -223,8 +227,10 @@ export function errorMessage(error: unknown): string {
 
 /** Errors a retry cannot fix: the request itself is invalid, or the area lacks data. */
 export function isRetryable(error: unknown): boolean {
-  return !(error instanceof ApiError && (error.code === 'VALIDATION_FAILED' || error.code === 'INSUFFICIENT_DATA'));
-}
+  return !(
+    error instanceof ApiError &&
+    (error.code === 'VALIDATION_FAILED' || error.code === 'INSUFFICIENT_DATA' || error.code === 'LOCATION_NOT_ELIGIBLE')
+  );}
 
 /** Translate stable Firebase Auth error codes rather than exposing raw provider messages. */
 export function firebaseAuthErrorMessage(error: unknown): string {
