@@ -63,7 +63,7 @@ mapped waterways and industrial land use. Indonesia's authoritative source is
 integration.
 
 Reports label the Risk component as proxy-based, and the flood hard-warning
-remains conservative. See [data-sources.md](data-sources.md#data-gayatama-does-not-have).
+remains conservative. See [data-sources.md](data-sources.md#data-lokabis-does-not-have).
 
 ### Zoning / RTRW compatibility
 
@@ -98,7 +98,7 @@ Ordered by expected value, not by ease.
 
 ### 1. Calibration against real outcomes
 
-The most valuable thing that could happen to GAYATAMA, and the largest current
+The most valuable thing that could happen to LOKABIS, and the largest current
 weakness. Every weight in [methodology.md](methodology.md) is documented
 judgement, not a fitted parameter. With a dataset of businesses, locations, and
 survival outcomes, the component weights and `T` values become estimable rather
@@ -114,7 +114,7 @@ file.
 The largest identified systematic error. *Kos* have no dedicated OSM tag and
 are under-mapped, while both Resident and Student scores depend on them. Options
 include a contribution workflow that feeds corrections back to OSM — which would
-improve the commons for everyone, not just GAYATAMA.
+improve the commons for everyone, not just LOKABIS.
 
 ### 3. Street-network routing
 

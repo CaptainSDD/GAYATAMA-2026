@@ -1,6 +1,6 @@
 # Scoring Methodology
 
-This document specifies exactly how GAYATAMA turns a map coordinate into a
+This document specifies exactly how LOKABIS turns a map coordinate into a
 score. Every formula, weight, and threshold used by the system is here.
 
 The numbers below are **MVP baselines**: values chosen from domain reasoning and
@@ -29,13 +29,13 @@ These values are intentionally documented as calibratable assumptions. Future ve
 
 ### What the structure rests on
 
-The numbers are GAYATAMA's own judgement. The structure they sit in is not: each
+The numbers are LOKABIS's own judgement. The structure they sit in is not: each
 part follows an established idea from retail location analysis, GIS decision
 analysis, or research on open map data quality. The table separates the
 borrowed idea from the chosen numbers, so each can be challenged on its own
 terms. Full citations are in [References](#references).
 
-| Part of the model | Established idea it follows | Source | GAYATAMA's own choice |
+| Part of the model | Established idea it follows | Source | LOKABIS's own choice |
 |-------------------|-----------------------------|--------|-----------------------|
 | Location Score as a weighted sum of components | Weighted linear combination, a standard method in GIS-based multicriteria suitability analysis | Malczewski (1999, 2006) | The five components and the 35 / 20 / 20 / 15 / 10 weights |
 | Facilities count less the farther away they are | Distance decay: the likelihood that a customer uses a store falls with distance, which is how trade areas are modelled | Huff (1964) | Three stepped zone weights (1.00 / 0.60 / 0.25) in place of a continuous decay curve |
@@ -55,7 +55,7 @@ Three limits on these sources, stated so they are not over-read:
   here measures how completely OpenStreetMap records shops and services in
   Indonesia.
 - **The saturation formula has no published source.** `Capacity = Demand Fit / T`
-  and the `T` values are GAYATAMA's own construction.
+  and the `T` values are LOKABIS's own construction.
 
 ### Testing the weights
 
@@ -64,7 +64,7 @@ tested rather than assumed. The standard check for a weighted suitability model
 is sensitivity analysis: change one weight at a time, rescale the others so they
 still sum to 100%, and observe whether the verdict or the ranking changes
 (Chen, Yu & Khan, 2010). A recommendation that flips under a small change in
-weights is uncertain whatever its score. GAYATAMA has not yet run this analysis.
+weights is uncertain whatever its score. LOKABIS has not yet run this analysis.
 
 ## Table of contents
 
@@ -143,7 +143,7 @@ tested.
 ### Data Quality
 
 Freshness and reliability discount a facility's contribution rather than
-excluding it. This is what allows GAYATAMA to use open data honestly: stale
+excluding it. This is what allows LOKABIS to use open data honestly: stale
 records still inform the result, but they inform it less, and they lower the
 Confidence Score.
 
@@ -638,7 +638,7 @@ to talk them into a location the underlying data does not support.
 ## Confidence Score and warnings
 
 Every feature carries a Confidence Score alongside its result. This is the
-mechanism that lets GAYATAMA use imperfect open data without misleading anyone.
+mechanism that lets LOKABIS use imperfect open data without misleading anyone.
 
 ```
 Confidence = 0.40 × Data Completeness

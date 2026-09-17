@@ -631,7 +631,7 @@ produced.
 ## Rate limiting
 
 Enforced per client IP by `@nestjs/throttler`. Overpass is a volunteer-funded
-shared service and the cache is what keeps GAYATAMA a well-behaved client of it.
+shared service and the cache is what keeps LOKABIS a well-behaved client of it.
 
 | Endpoint | Limit |
 |----------|-------|

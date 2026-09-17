@@ -31,11 +31,11 @@ is priced and packaged for retail chains with analytics teams, not for one
 person opening a single laundry. The result is a gap: the businesses with the
 least margin for error have the least access to evidence.
 
-GAYATAMA closes that gap using data that is free for anyone to use.
+LOKABIS closes that gap using data that is free for anyone to use.
 
 ## What it does
 
-Pick a point on the map, choose a business type, and GAYATAMA returns a
+Pick a point on the map, choose a business type, and LOKABIS returns a
 **0–100 suitability score** with the reasoning fully unpacked: which nearby
 facilities create demand, how saturated the competition already is, who the
 likely customers are, and how confident the system is in its own answer.
@@ -44,7 +44,7 @@ shareable analysis URLs, light/dark themes, and a replayable guided tour.
 
 ### What makes it different
 
-Three deliberate choices separate GAYATAMA from a generic "heatmap of busy
+Three deliberate choices separate LOKABIS from a generic "heatmap of busy
 places":
 
 **1. The score is per business type, not per location.**
@@ -57,11 +57,11 @@ in the abstract hides exactly the information that matters.
 Every result carries a Confidence Score and an uncertainty range. A location
 scores `75 ± 8`, not `75`. Where the underlying data is thin, stale, or
 internally inconsistent, the interval widens and the interface says so — and
-below a confidence floor, GAYATAMA declines to give a definitive recommendation
+below a confidence floor, LOKABIS declines to give a definitive recommendation
 at all. A number that looks certain when it is not is worse than no number.
 
 **3. It never invents demographics.**
-GAYATAMA does not claim population counts, age distributions, or income levels
+LOKABIS does not claim population counts, age distributions, or income levels
 that it cannot source. Nearby facilities are treated as *indicators of segment
 strength*, never as head counts. A campus 250 m away raises the Student signal;
 it does not license a claim about how many students there are. This constraint
@@ -85,14 +85,14 @@ Full formulas, weights, and worked examples: **[docs/methodology.md](docs/method
 
 ## SDG alignment
 
-GAYATAMA targets one goal directly and two in support.
+LOKABIS targets one goal directly and two in support.
 
 **SDG 8.3 (primary)** — *"Promote development-oriented policies that support
 productive activities, decent job creation, entrepreneurship, creativity and
 innovation, and encourage the formalization and growth of micro-, small- and
 medium-sized enterprises."*
 
-This is the project's thesis, not a retrofitted label. GAYATAMA takes an
+This is the project's thesis, not a retrofitted label. LOKABIS takes an
 analytical capability currently reserved for well-capitalised firms and makes it
 free at the point of use for the micro-enterprises the target explicitly names.
 Better location decisions can improve a small business owner's odds of survival, and 
@@ -183,7 +183,7 @@ worth stating explicitly:
 ```
 ### Data Normalization Layer
 
-GAYATAMA does not score raw OpenStreetMap tags directly. The normalization layer converts messy OSM tags into stable internal categories, removes duplicates, calculates distance zones, and assigns data quality signals before the scoring engine runs.
+LOKABIS does not score raw OpenStreetMap tags directly. The normalization layer converts messy OSM tags into stable internal categories, removes duplicates, calculates distance zones, and assigns data quality signals before the scoring engine runs.
 
 For accessibility, the API also tests the straight line from the selected point
 to each facility against mapped major roads, motorway/toll roads, railways, and
@@ -312,7 +312,7 @@ Attribution, with the date of the data, is displayed under every result and on
 the OpenStreetMap map, as the licence requires.
 
 OpenStreetMap stays the base by design: the app runs fully without any key or
-paid quota. Its coverage varies by region, and GAYATAMA's Data Quality factor
+paid quota. Its coverage varies by region, and LOKABIS's Data Quality factor
 exists precisely to model that variation rather than paper over it. Where
 available, OSM's `check_date` and related freshness tags feed the freshness
 weighting. The reasoning, and the Google terms that shape the design, are
@@ -325,7 +325,7 @@ than none:
 
 - **A score is not a guarantee of profit.** It is one input into a decision that
   also involves rent, capital, supply chains, licensing, and the operator's own
-  skill — none of which GAYATAMA models.
+  skill — none of which LOKABIS models.
 - **Coverage depends on map data density.** Without Google counts, results rest
   on OpenStreetMap, which misses many small Indonesian businesses, and are
   strongest in well-mapped urban areas. Where data is sparse, the Confidence Score falls and the

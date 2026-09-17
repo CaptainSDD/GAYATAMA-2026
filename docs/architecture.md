@@ -2,7 +2,7 @@
 
 ## Overview
 
-GAYATAMA is an npm-workspaces monorepo with a React frontend, a NestJS API and a
+GAYATAMA is an npm-workspaces monorepo containing the LOKABIS product: a React frontend, a NestJS API and a
 shared pure-TypeScript scoring package.
 
 ```
