@@ -455,6 +455,108 @@ never as a recommendation.
 
 ---
 
+## `POST /api/v1/simulate`
+
+Rescores one location twice — once as mapped, once with the operator's own
+changes applied — so the difference attributable to a decision the owner
+controls can be read directly. Only parking and opening hours are accepted;
+delivery and rent are specified in
+[methodology.md](methodology.md#what-if-simulation) but not exposed.
+
+### Request
+
+```json
+{
+  "lat": -7.301234,
+  "lng": 112.717890,
+  "businessType": "laundry",
+  "googleMap": false,
+  "options": {
+    "onSiteParkingSpaces": 4,
+    "openingHours": [{ "day": 1, "from": 480, "to": 1200 }]
+  }
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `lat`, `lng`, `businessType` | — | As in [`/analysis`](#post-apiv1analysis) |
+| `googleMap` | boolean | Optional, as elsewhere |
+| `options` | object | Required. At least one of the two fields below; unknown fields are rejected |
+| `options.onSiteParkingSpaces` | integer | `0`–`500` |
+| `options.openingHours` | array | At most 7 intervals. `day` is `0`–`6`, **Monday first**; `from` and `to` are minutes after midnight, `to` strictly greater than `from`. Overnight hours must be split across two days |
+
+### Response `200`
+
+```json
+{
+  "options": { "onSiteParkingSpaces": 4 },
+  "baseline": {
+    "score": { "value": 71.20, "band": "suitable", "confidence": 78, "margin": 8, "range": [63, 79] },
+    "accessibility": { "value": 64.00, "road": 70, "transit": 55, "walkability": 72, "parking": 50 },
+    "competition": { "value": 68.40, "saturationRatio": 0.72 }
+  },
+  "simulated": {
+    "score": { "value": 74.15, "band": "suitable", "confidence": 78, "margin": 8, "range": [66, 82] },
+    "accessibility": { "value": 76.00, "road": 70, "transit": 55, "walkability": 72, "parking": 90 },
+    "competition": { "value": 68.40, "saturationRatio": 0.72 }
+  },
+  "scoreChange": 2.95
+}
+```
+
+- `baseline` is the location as mapped; `simulated` applies `options` on top.
+- `scoreChange` is `simulated − baseline`, unrounded, and may be negative.
+- Only the fields that a what-if change can move are returned. Segments,
+  evidence and warnings are unchanged by definition and are not repeated — take
+  them from `/analysis`.
+- Confidence does not move: the operator's own parking does not make the
+  surrounding map data any more complete.
+
+---
+
+## `POST /api/v1/opportunities`
+
+Scores a 3 × 3 grid of points centred on the given coordinate, 350 m apart, for
+one business category. It answers "am I on the best corner of this
+neighbourhood?" rather than "is this exact point good?".
+
+OpenStreetMap only: no `googleMap` flag is accepted. Google's aggregate counts
+cannot be attributed truthfully to nine separate cells, so the endpoint does not
+offer the choice.
+
+### Request
+
+```json
+{ "lat": -7.301234, "lng": 112.717890, "businessType": "laundry" }
+```
+
+### Response `200`
+
+```json
+{
+  "center": { "lat": -7.301234, "lng": 112.717890 },
+  "businessType": "laundry",
+  "source": "OpenStreetMap",
+  "spacingMeters": 350,
+  "cells": [
+    { "id": "-1:-1", "lat": -7.304383, "lng": 112.714714, "status": "scored", "score": 64.80, "confidence": 71 },
+    { "id": "0:0", "lat": -7.301234, "lng": 112.717890, "status": "scored", "score": 71.20, "confidence": 78 },
+    { "id": "1:1", "lat": -7.298085, "lng": 112.721066, "status": "insufficient_data", "score": null, "confidence": 22 }
+  ]
+}
+```
+
+- `cells` always holds nine entries. `id` is `"row:column"`, each from `-1` to
+  `1`; `"0:0"` is the requested point itself.
+- `status` is `scored`, `insufficient_data` (confidence below 40 — `score` is
+  `null`), or `unavailable` (that cell's data could not be fetched; `score` and
+  `confidence` are both `null`). One failing cell does not fail the request.
+- Nine analyses run per call, so this endpoint is throttled far harder than the
+  others — see [Rate limiting](#rate-limiting).
+
+---
+
 ## `POST /api/v1/compare`
 
 Compare every category for one location, side by side. `/recommend` answers
@@ -636,7 +738,7 @@ applied to both sides.
   not have, so the summary reports a tie instead.
 - `verdict.alternative` is built only from components where the lower-scoring
   site actually beats the winner. When it beats it in none, that is said plainly.
-  Rent, floor area and permits are not measured by GAYATAMA and are never
+  Rent, floor area and permits are not measured by LOKABIS and are never
   asserted here.
 - `landmarks` counts recognisable neighbours per group within 1,500 m.
   `nearestMeters` is `null` when only Google-counted zones contributed, because a
@@ -748,7 +850,7 @@ Firebase Auth or Firestore returns `503`.
 Persist an analysis or a recommendation so it can be shared or compared later.
 Returns an ID. The report stores the complete engine input alongside the
 response, so its scores can be recomputed later — see the
-[data model](architecture.md#data-model-firestore).
+[data model](architecture.md#data-model-firebase-auth-and-firestore).
 
 ## `GET /api/v1/reports/:id` _(planned)_
 
@@ -768,11 +870,12 @@ produced.
 ## Rate limiting
 
 Enforced per client IP by `@nestjs/throttler`. Overpass is a volunteer-funded
-shared service and the cache is what keeps GAYATAMA a well-behaved client of it.
+shared service and the cache is what keeps LOKABIS a well-behaved client of it.
 
 | Endpoint | Limit |
 |----------|-------|
-| `/analysis`, `/recommend` | 30 requests / minute |
+| `/analysis`, `/recommend`, `/simulate`, `/compare`, `/compare-locations` | 30 requests / minute |
+| `/opportunities` | 4 requests / minute — one call runs nine analyses |
 | `/pois`, `/location`, `/auth/register-profile` | 60 requests / minute (global default) |
 | `/health` | unlimited |
 

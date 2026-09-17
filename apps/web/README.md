@@ -3,7 +3,8 @@
 React 19 + Vite frontend for **LOKABIS**, the product interface in this
 GAYATAMA repository. It includes Firebase email/password authentication, a
 guided first-run tour, map selection, score breakdowns, business rankings,
-target-market evidence, and competitor analysis.
+target-market evidence, competitor analysis, side-by-side comparisons, a what-if
+simulator, an area opportunity grid, and print-ready report export.
 
 The interface is in **Indonesian**, because the people it is for are Indonesian
 micro-entrepreneurs. The documentation in `docs/` stays English.
@@ -30,9 +31,9 @@ without Firebase, but account creation cannot be completed in that mode.
 Every analysis has its own URL (`?lat=…&lng=…&type=…`), so a result can be
 shared as a link.
 
-The current UI implements analysis, recommendations, shareable URLs, auth,
-theme selection, and the guided tour. The what-if simulator and report/PDF
-export are not built yet.
+The current UI implements analysis, recommendations, comparisons, the what-if
+simulator, the area opportunity grid, report export, shareable URLs, auth, theme
+selection, and the guided tour.
 
 ## Structure
 
@@ -48,9 +49,12 @@ src/
 │   ├── score/         Score gauge with its interval, component breakdown, warnings
 │   ├── recommend/     All seven business types ranked, with statuses
 │   ├── segments/      Customer segments and the facilities behind them
-│   └── competition/   Saturation meter, competitor equivalents, strongest competitors
+│   ├── competition/   Saturation meter, competitor equivalents, strongest competitors
+│   ├── compare/       All seven types at one point; two locations for one type
+│   ├── simulate/      What-if controls, and the rescored result beside the baseline
+│   └── opportunity/   Nine nearby points scored, best one named and reachable
 └── lib/               API client and types, query hooks, formatting, labels,
-                       theme preference, engine-derived colours
+                       theme preference, engine-derived colours, report export
 ```
 
 Light and dark are both supported. The theme follows the operating system until

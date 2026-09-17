@@ -60,12 +60,18 @@ of ports (for example `PORT=3001` and
 ## HTTP surface
 
 - `GET /api/v1/health`
+- `GET /api/v1/location`
 - `POST /api/v1/analysis`
 - `POST /api/v1/recommend`
+- `POST /api/v1/compare`
+- `POST /api/v1/compare-locations`
+- `POST /api/v1/simulate`
+- `POST /api/v1/opportunities` — nine analyses per call, throttled to 4/minute
 - `GET /api/v1/pois`
 - `POST /api/v1/auth/register-profile` (Firebase bearer token required)
 
-Report endpoints are planned, not part of the current API.
+Report endpoints are planned, not part of the current API: the web app builds
+its print-ready report in the browser from an analysis it already holds.
 
 ### Slow or unavailable map providers
 

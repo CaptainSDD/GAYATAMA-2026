@@ -19,8 +19,9 @@ library. If a function needs data, it takes it as an argument.
 
 Three properties depend on that rule holding:
 
-- The browser can run the engine, so the planned what-if interface can
-  recompute locally with no network round trip.
+- The browser can run the engine, so the what-if simulator could recompute
+  locally with no network round trip. It asks the API today; moving it is a
+  change of caller, not of model.
 - The frontend and backend import the same functions, so they cannot disagree
   about what a location scores.
 - Every branch is unit-testable without mocks, fixtures, or a network.

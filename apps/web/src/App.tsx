@@ -130,6 +130,15 @@ export function App({
     setAnalysisSelection(nextSelection);
   };
 
+  /** Moves the analysis to a nearby point the opportunity grid suggested, keeping the category. */
+  const analysePoint = (point: LatLng) => {
+    if (!isInSemarangCoverage(point)) return;
+    const nextSelection = { point: roundPoint(point), businessType: selection.businessType };
+    setEntryMode('score');
+    setSelection(nextSelection);
+    setAnalysisSelection(nextSelection);
+  };
+
   /**
    * The tour blocks the page, so its later steps cannot wait for the visitor to
    * pick a point and press Analisis. It runs both stages here instead, on the
@@ -267,6 +276,7 @@ export function App({
                 point={analysisSelection.point!}
                 businessType={analysisSelection.businessType}
                 onBusinessTypeChange={analyseBusinessType}
+                onAnalysePoint={analysePoint}
                 entryMode={entryMode}
               />
             )}

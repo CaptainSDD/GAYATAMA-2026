@@ -16,16 +16,25 @@ that quietly implies everything works.
 | Target Market Insight — six segments with facility evidence | Core |
 | Consolidated report with PDF export | Core |
 | Confidence Score and uncertainty intervals | Core |
-| What-if simulation — parking and opening hours | Core |
+| Business-type comparison at one point, and two-location comparison | Core |
 | Map picker with 300 / 800 / 1,500 m zone rings | Core |
+| What-if simulation — parking and opening hours | Core |
+| Area Opportunity Map — 3 × 3 grid, OpenStreetMap-only | Core |
+
+The what-if simulator sits in the **Skor** tab: the visitor sets on-site parking
+or their own opening hours, and the panel reports the baseline and the rescored
+result side by side, with the components that moved. The Area Opportunity Map is
+the **Peluang** tab: nine points 350 m apart, scored for the chosen category,
+with the best one named by direction and distance and a control to move the
+whole analysis there.
 
 ---
 
 ## Deliberately deferred
 
 Each of these was specified in the internal design and cut on purpose. Shipping
-five features that work beats nine that half-work — and a demo that fails in
-front of judges costs more than an absent feature honestly labelled.
+a shorter list that works beats a longer one that half-works — and a demo that
+fails in front of judges costs more than an absent feature honestly labelled.
 
 ### Street-network distance routing
 
@@ -62,7 +71,7 @@ mapped waterways and industrial land use. Indonesia's authoritative source is
 integration.
 
 Reports label the Risk component as proxy-based, and the flood hard-warning
-remains conservative. See [data-sources.md](data-sources.md#data-gayatama-does-not-have).
+remains conservative. See [data-sources.md](data-sources.md#data-lokabis-does-not-have).
 
 ### Zoning / RTRW compatibility
 
@@ -72,11 +81,16 @@ labelled as such. The zoning hard-warning fires only on clear conflicts.
 
 ### Deferred what-if parameters
 
-Delivery / pickup and rent adjustment are specified in
-[methodology.md](methodology.md#what-if-simulation) but not exposed in the MVP
-interface. The delivery model's Zone C reweighting is implemented and tested in
-the engine; only its control is hidden. Rent belongs to a financial feasibility
-module that does not exist yet.
+Parking and opening hours ship with a control. Delivery / pickup and rent
+adjustment are specified in [methodology.md](methodology.md#what-if-simulation)
+but are not exposed. The delivery model's Zone C reweighting is implemented and
+tested in the engine; only its control is missing. Rent belongs to a financial
+feasibility module that does not exist yet.
+
+The opening-hours control applies one pair of times to all seven days, and
+rejects hours that run past midnight rather than guessing how to split them
+across two days. Per-day hours and overnight trading are both engine
+capabilities that the interface does not yet reach.
 
 ### User accounts, saved projects, team sharing
 
@@ -97,7 +111,7 @@ Ordered by expected value, not by ease.
 
 ### 1. Calibration against real outcomes
 
-The most valuable thing that could happen to GAYATAMA, and the largest current
+The most valuable thing that could happen to LOKABIS, and the largest current
 weakness. Every weight in [methodology.md](methodology.md) is documented
 judgement, not a fitted parameter. With a dataset of businesses, locations, and
 survival outcomes, the component weights and `T` values become estimable rather
@@ -113,23 +127,32 @@ file.
 The largest identified systematic error. *Kos* have no dedicated OSM tag and
 are under-mapped, while both Resident and Student scores depend on them. Options
 include a contribution workflow that feeds corrections back to OSM — which would
-improve the commons for everyone, not just GAYATAMA.
+improve the commons for everyone, not just LOKABIS.
 
 ### 3. Street-network routing
 
 Item one from the deferred list, once infrastructure allows.
 
-### 4. Multi-location comparison
+### 4. Comparison beyond two candidates
 
-Score several candidate sites side by side. A natural extension once reports
-persist, and closer to how the decision is actually made — the real question is
-rarely "is this spot good?" but "which of these three is best?".
+The submission compares exactly two locations at a time: the request shape has
+no room for a third. Ranking a whole shortlist is the natural extension, and
+closer to how the decision is actually made — the real question is rarely "is
+this spot good?" but "which of these five is best?". Worth doing once reports
+persist, so a shortlist survives a page reload.
 
-### 5. Area opportunity mapping
+### 5. District-scale opportunity mapping
 
 Inverting the query: instead of scoring a point the user picks, highlight
 underserved areas across a district. This is where the SDG 11.3 case becomes
 concrete, since the same computation serves local economic planning.
+
+The submission ships the first step — a 3 × 3 OpenStreetMap-only grid around a
+chosen centre, one analysis per cell, in the **Peluang** tab. Widening it to a
+district needs infrastructure this does not have: background jobs, cache
+warming, and a rule for drawing uncertain cells without implying precision the
+data does not carry. The current grid sidesteps all three by staying small and
+saying plainly which cells it could not score.
 
 ### 6. Additional business categories
 

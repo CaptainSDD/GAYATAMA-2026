@@ -49,7 +49,7 @@ OpenStreetMap data is **© OpenStreetMap contributors**, licensed under the
 [Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/odbl/1-0/).
 
 The licence obliges us to attribute, and to keep derived databases open under
-the same terms. GAYATAMA complies as follows:
+the same terms. LOKABIS complies as follows:
 
 - Attribution appears under every result, together with the date of the data,
   and on the OpenStreetMap map (the Leaflet attribution control).
@@ -69,7 +69,7 @@ would move to a dedicated tile provider.
 
 Commercial providers cover small businesses far more densely, and in Indonesian
 neighbourhoods the gap is large: near Universitas PGRI Semarang, OpenStreetMap
-had no café mapped, while Overture Maps listed nine. GAYATAMA therefore adds
+had no café mapped, while Overture Maps listed nine. LOKABIS therefore adds
 Google business counts where their terms allow it, but it is built never to
 depend on them:
 
@@ -81,16 +81,16 @@ depend on them:
    Overpass rate-limits but does not bill; it can be unavailable altogether,
    which is why the demo areas are served from snapshots.
 3. **Only data whose terms permit this use.** ODbL permits exactly what
-   GAYATAMA does. Of Google's place data, the Places Aggregate API's counts may
+   LOKABIS does. Of Google's place data, the Places Aggregate API's counts may
    feed derived metrics such as these scores; place details from the Places API
-   may not be used with a non-Google map or stored, so GAYATAMA does not use
+   may not be used with a non-Google map or stored, so LOKABIS does not use
    them — see [Terms that shape the design](#terms-that-shape-the-design).
 4. **It matches the mission.** A tool meant to give micro-enterprises analysis
    they could not otherwise afford should keep working without a paid
    subscription. Under SDG 8.3, a free tool built only on paid data stops
    working the moment funding does.
 
-What OpenStreetMap lacks in coverage, GAYATAMA models explicitly rather than
+What OpenStreetMap lacks in coverage, LOKABIS models explicitly rather than
 hiding — see [Coverage and confidence](#coverage-and-confidence).
 
 ---
@@ -179,12 +179,12 @@ than relying on a hard-coded estimate here.
 
 ### Terms that shape the design
 
-| Rule | Source | What GAYATAMA does |
+| Rule | Source | What LOKABIS does |
 |------|--------|--------------------|
 | Google Maps Core Services may not be used with or near a non-Google map | [Google Maps Platform Terms of Service](https://cloud.google.com/maps-platform/terms), 3.2.3(e) | The API uses Google counts only for requests with `googleMap: true`. The web app sets it only when it draws a Google map; without a browser key it draws an OpenStreetMap map and never asks for them |
 | Place counts may be used to create derived metrics that cannot substitute for the counts or be reverse-engineered into them | [Service Specific Terms](https://cloud.google.com/maps-platform/terms/maps-service-terms), 13.1 | Counts feed small-business competition and the resulting score/evidence |
 | Place counts may be cached for at most 30 days, solely to calculate those metrics | Service Specific Terms, 13.2 | The bounded memory-only cache lifetime cannot be configured above 30 days; counts are never written to Firestore |
-| Counts may not be used to make decisions about individuals' housing, employment, credit or insurance | Service Specific Terms, 13.3 | GAYATAMA scores locations for businesses, not people |
+| Counts may not be used to make decisions about individuals' housing, employment, credit or insurance | Service Specific Terms, 13.3 | LOKABIS scores locations for businesses, not people |
 | "Google Maps" attribution wherever counts are shown or feed a result | [Places Aggregate API policies](https://developers.google.com/maps/documentation/places-aggregate/policies) | Every result that uses counts says "Business counts: Google Maps"; the map shows Google's own logo |
 
 > **To confirm before production.** The interface also shows some counts
@@ -197,7 +197,7 @@ than relying on a hard-coded estimate here.
 The Places API (New and Legacy), which returns names and positions, is not used:
 its terms forbid storing business names, using its coordinates for spatial
 analysis such as point-in-polygon tests, and using it with a non-Google map.
-Named competitors shown by GAYATAMA come from mapped OpenStreetMap/Overture
+Named competitors shown by LOKABIS come from mapped OpenStreetMap/Overture
 records, not Google counts.
 
 ---
@@ -222,7 +222,7 @@ and source are `null`.
 
 Photocopy, printing and stationery shops are where OpenStreetMap is thinnest,
 and Google has no place type for them. For the areas in
-`apps/api/scripts/overture-areas.json`, GAYATAMA adds them from
+`apps/api/scripts/overture-areas.json`, LOKABIS adds them from
 [Overture Maps](https://overturemaps.org/) Places, which merges business
 listings from Meta, Microsoft and other providers. Release 2026-08-19.0 gives 72
 such shops within 3 km of UNESA Ketintang, and 84 within 3 km of Universitas
@@ -271,7 +271,7 @@ These thresholds are proposed baselines, like those in
 
 ### Licence and attribution
 
-Overture Places combines sources under different licences. GAYATAMA keeps a
+Overture Places combines sources under different licences. LOKABIS keeps a
 place only when every one of its sources is available under the
 [Community Data License Agreement – Permissive 2.0](https://cdla.dev/permissive-2-0/)
 (Meta, Microsoft, PinMeTo and others) or CC0 1.0 (AllThePlaces). Places drawing
@@ -390,7 +390,7 @@ counted, and this is an acknowledged source of over-estimated competition.
 OSM coverage varies enormously — dense in central Surabaya, Jakarta, Bandung and
 Yogyakarta; thin in smaller towns and rural areas.
 
-GAYATAMA does not pretend otherwise. Coverage variance flows into the
+LOKABIS does not pretend otherwise. Coverage variance flows into the
 [Confidence Score](methodology.md#confidence-score-and-warnings) through two of
 its four terms:
 
@@ -410,7 +410,7 @@ a count cannot be matched against OpenStreetMap place by place.
 
 ---
 
-## Data GAYATAMA does not have
+## Data LOKABIS does not have
 
 Stated so that no one assumes otherwise:
 

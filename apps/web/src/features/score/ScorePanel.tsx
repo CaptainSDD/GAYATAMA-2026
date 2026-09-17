@@ -6,6 +6,7 @@ import type { AnalysisResponse, DataSource } from '../../lib/api-types';
 import { toneColor } from '../../lib/band-color';
 import { BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/copy';
 import { formatPercent } from '../../lib/format';
+import { SimulationPanel } from '../simulate/SimulationPanel';
 import { ScoreGauge } from './ScoreGauge';
 import { ReportExportButton } from './ReportExportButton';
 
@@ -80,6 +81,8 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
           </div>
         </details>
       </Card>
+
+      <SimulationPanel analysis={analysis} />
 
       <details className="panel-disclosure data-disclosure">
         <summary>Data & cara penilaian</summary>

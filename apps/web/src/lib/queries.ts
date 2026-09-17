@@ -1,4 +1,4 @@
-import type { BusinessType, LatLng } from '@gayatama/scoring';
+import type { BusinessType, LatLng, OperatorOptions } from '@gayatama/scoring';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchAnalysis,
@@ -8,6 +8,7 @@ import {
   fetchOpportunities,
   fetchPois,
   fetchRecommendation,
+  fetchSimulation,
   shouldRetry,
 } from './api';
 import { USE_GOOGLE_MAP } from './map-config';
@@ -88,6 +89,24 @@ export function useOpportunities(point: LatLng | null, businessType: BusinessTyp
     queryKey: ['opportunities', point, businessType],
     queryFn: ({ signal }) => fetchOpportunities(requirePoint(point), businessType, signal),
     enabled: point !== null,
+    staleTime: STALE_TIME_MS,
+    retry: shouldRetry,
+  });
+}
+
+/**
+ * The options are part of the key, so each what-if set is cached on its own and
+ * returning to an earlier one costs no request. `null` means nothing has been
+ * applied yet and no request should run.
+ */
+export function useSimulation(point: LatLng | null, businessType: BusinessType, options: OperatorOptions | null) {
+  return useQuery({
+    queryKey: ['simulate', point, businessType, options, USE_GOOGLE_MAP],
+    queryFn: ({ signal }) => {
+      if (options === null) throw new Error('No what-if options applied');
+      return fetchSimulation(requirePoint(point), businessType, options, USE_GOOGLE_MAP, signal);
+    },
+    enabled: point !== null && options !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });

@@ -2,8 +2,8 @@
 
 ## Overview
 
-GAYATAMA is an npm-workspaces monorepo with a React frontend, a NestJS API and a
-shared pure-TypeScript scoring package.
+GAYATAMA is an npm-workspaces monorepo containing the LOKABIS product: a React
+frontend, a NestJS API and a shared pure-TypeScript scoring package.
 
 ```
 ┌─────────────────────────────────┐      ┌─────────────────────────────────┐
@@ -45,9 +45,9 @@ framework. It is a set of pure functions: facility data in, scores out.
 
 This keeps the methodology deterministic and testable. Every worked example in
 [methodology.md](methodology.md) is an assertion in the engine test suite, so
-documentation drift turns the build red. It also leaves room for a future
-client-side what-if simulator without duplicating formulas; that simulator is
-not implemented in the current web app.
+documentation drift turns the build red. It also leaves room to move the what-if
+simulator into the browser without duplicating formulas: today it asks the API,
+but the same pure function is available to the web app.
 
 The constraint that keeps this true: **`packages/scoring` must never gain a
 runtime dependency.** No HTTP client, no Firebase, no date library. If a
@@ -134,8 +134,14 @@ A location analysis, end to end:
 ```
 
 The all-seven `/recommend` request is loaded lazily when **Pilihan usaha** first
-opens. The current web app does not run the engine locally and has no report/PDF
-flow; `simulate.ts` remains an engine capability for a planned what-if feature.
+opens. The web app does not run the engine locally: every score it shows comes
+from the API. The report flow is client-side, though —
+`apps/web/src/lib/report-export.ts` builds a print-ready document from an
+analysis already in hand, and the browser's own print dialog writes the PDF, so
+no report endpoint is involved. The **Skor** tab's what-if panel and the
+**Peluang** tab both go back to the API: `/simulate` rescores this point with
+the operator's changes, and `/opportunities` runs nine analyses for the
+surrounding grid, which is why it is throttled hardest.
 
 The explanation and calculation deliberately stay separate.
 `apps/api/src/analysis/narrative.service.ts` starts from the fixed scoring
@@ -224,13 +230,19 @@ src/
 │   ├── score/            Score interval, availability and warnings
 │   ├── recommend/        Lazy all-seven ranking and statuses
 │   ├── segments/         Target-market evidence
-│   └── competition/      Named/aggregate competitors and saturation
-├── lib/                  API/auth clients, hooks, formatting and labels
+│   ├── competition/      Named/aggregate competitors and saturation
+│   ├── compare/          All-category and two-location comparisons
+│   ├── simulate/         What-if controls and the rescored result
+│   ├── opportunity/      The 3 x 3 grid of nearby points
+│   └── tour/             Replayable guided first-run tour
+├── lib/                  API/auth clients, hooks, formatting, report export
 └── components/           Shared loading, error, notice and navigation UI
 ```
 
-A future UI may expose the pure engine's simulation API and persisted reports,
-but neither simulator controls nor report/PDF export are implemented today.
+`simulate/` and `opportunity/` each keep their pure logic in a plain module
+beside the component — time parsing and weekly hours in one, grid direction,
+distance and best-cell selection in the other — so the parts worth testing are
+testable without rendering anything.
 
 ---
 

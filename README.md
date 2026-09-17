@@ -31,11 +31,11 @@ is priced and packaged for retail chains with analytics teams, not for one
 person opening a single laundry. The result is a gap: the businesses with the
 least margin for error have the least access to evidence.
 
-GAYATAMA closes that gap using data that is free for anyone to use.
+LOKABIS closes that gap using data that is free for anyone to use.
 
 ## What it does
 
-Pick a point on the map, choose a business type, and GAYATAMA returns a
+Pick a point on the map, choose a business type, and LOKABIS returns a
 **0–100 suitability score** with the reasoning fully unpacked: which nearby
 facilities create demand, how saturated the competition already is, who the
 likely customers are, and how confident the system is in its own answer.
@@ -44,7 +44,7 @@ shareable analysis URLs, light/dark themes, and a replayable guided tour.
 
 ### What makes it different
 
-Three deliberate choices separate GAYATAMA from a generic "heatmap of busy
+Three deliberate choices separate LOKABIS from a generic "heatmap of busy
 places":
 
 **1. The score is per business type, not per location.**
@@ -57,11 +57,11 @@ in the abstract hides exactly the information that matters.
 Every result carries a Confidence Score and an uncertainty range. A location
 scores `75 ± 8`, not `75`. Where the underlying data is thin, stale, or
 internally inconsistent, the interval widens and the interface says so — and
-below a confidence floor, GAYATAMA declines to give a definitive recommendation
+below a confidence floor, LOKABIS declines to give a definitive recommendation
 at all. A number that looks certain when it is not is worse than no number.
 
 **3. It never invents demographics.**
-GAYATAMA does not claim population counts, age distributions, or income levels
+LOKABIS does not claim population counts, age distributions, or income levels
 that it cannot source. Nearby facilities are treated as *indicators of segment
 strength*, never as head counts. A campus 250 m away raises the Student signal;
 it does not license a claim about how many students there are. This constraint
@@ -75,24 +75,29 @@ is enforced in the scoring engine, not left to interface copy.
 | 2 | **Business Type Recommendation** | *I have a location but no fixed plan — what should I open here?* All seven MVP categories scored and ranked, with the reasoning for each. |
 | 3 | **Competitor Analysis** | *How crowded is this market really?* Not a raw shop count — a distance-, access- and similarity-weighted **Competitor Equivalent Count**, compared against estimated demand to produce a saturation ratio. |
 | 4 | **Target Market Insight** | *Which customer segments are most likely to be present around this location?* Six customer segments scored 0–100, each backed by the specific facilities that produced the score, plus what that implies for product, pricing, and opening hours. |
-| 5 | **Authentication & Guided Tour** | *Can I enter securely and understand the workflow?* Firebase email/password accounts, email-verification guidance, protected app routes, and a replayable product tour. |
+| 5 | **Side-by-side Comparison** | *Which of these is the better bet?* Two comparisons: all seven business types ranked against each other at one point, and two candidate locations scored for the same business type, each with the deciding differences named. |
+| 6 | **What-if Simulator** | *What would change if I fixed the parking?* Rescores the location with on-site parking or the operator's own opening hours applied, and reports the baseline, the new score, and exactly which components moved. |
+| 7 | **Area Opportunity Map** | *Am I on the best corner of this neighbourhood?* Nine points 350 m apart, each scored for the chosen category, with the strongest named by direction and distance — and one control to move the whole analysis there. |
+| 8 | **Consolidated Report** | *Can I take this away and show someone?* Any completed analysis opens as a print-ready report the browser saves as PDF, carrying the score, its interval, the evidence, and the data attribution. |
+| 9 | **Authentication & Guided Tour** | *Can I enter securely and understand the workflow?* Firebase email/password accounts, email-verification guidance, protected app routes, and a replayable product tour. |
 
-The scoring package already exposes a pure simulation function. The interactive
-what-if interface and report/PDF export are planned rather than current UI/API
-features; see [docs/roadmap.md](docs/roadmap.md).
+The simulator moves only what an owner actually controls, and the opportunity
+grid is OpenStreetMap-only — a Google aggregate count covers an area, so it
+cannot be split honestly across nine separate points. Both say plainly when a
+point could not be scored rather than filling the gap with a number.
 
 Full formulas, weights, and worked examples: **[docs/methodology.md](docs/methodology.md)**.
 
 ## SDG alignment
 
-GAYATAMA targets one goal directly and two in support.
+LOKABIS targets one goal directly and two in support.
 
 **SDG 8.3 (primary)** — *"Promote development-oriented policies that support
 productive activities, decent job creation, entrepreneurship, creativity and
 innovation, and encourage the formalization and growth of micro-, small- and
 medium-sized enterprises."*
 
-This is the project's thesis, not a retrofitted label. GAYATAMA takes an
+This is the project's thesis, not a retrofitted label. LOKABIS takes an
 analytical capability currently reserved for well-capitalised firms and makes it
 free at the point of use for the micro-enterprises the target explicitly names.
 Better location decisions can improve a small business owner's odds of survival, and 
@@ -125,8 +130,9 @@ more balanced and participatory local economic planning.
 is a set of pure functions from facility data to scores. Three consequences
 worth stating explicitly:
 
-- **A future what-if UI can run in the browser.** The exported pure simulation
-  function can recompute locally with no server round trip.
+- **The what-if simulator could move into the browser.** It currently asks the
+  API, but the same pure `simulate()` the API calls is exported to the web app,
+  so recomputing locally with no round trip is a change of caller, not of model.
 - **The frontend and backend minimize scoring drift.** Both import shared scoring
   types and rules, while the backend is authoritative for current analysis and
   recommendations.
@@ -143,9 +149,11 @@ worth stating explicitly:
 │  • Map: OpenStreetMap/Google │ ──────► │  • Request validation        │
 │  • Score breakdown panel     │ ◄────── │  • POI cache lookup          │
 │  • Business ranking          │         │  • Overpass, Google counts   │
-│  • Auth and guided tour      │         │  • Barrier/access mapping    │
-│  • Target/competition views │         │  • Scoring orchestration     │
-│                              │         │  • Auth and rate limiting    │
+│  • Target/competition views  │         │  • Barrier/access mapping    │
+│  • Comparison views          │         │  • Scoring orchestration     │
+│  • What-if simulator         │         │  • Simulate / opportunities  │
+│  • Area opportunity grid     │         │  • Auth and rate limiting    │
+│  • Report export, auth, tour │         │                              │
 └──────────────┬───────────────┘         └───┬────────────────┬─────────┘
                │                             │                │
                │ imports for local preview   │ reads/writes   │ fetches on miss
@@ -183,7 +191,7 @@ worth stating explicitly:
 ```
 ### Data Normalization Layer
 
-GAYATAMA does not score raw OpenStreetMap tags directly. The normalization layer converts messy OSM tags into stable internal categories, removes duplicates, calculates distance zones, and assigns data quality signals before the scoring engine runs.
+LOKABIS does not score raw OpenStreetMap tags directly. The normalization layer converts messy OSM tags into stable internal categories, removes duplicates, calculates distance zones, and assigns data quality signals before the scoring engine runs.
 
 For accessibility, the API also tests the straight line from the selected point
 to each facility against mapped major roads, motorway/toll roads, railways, and
@@ -312,7 +320,7 @@ Attribution, with the date of the data, is displayed under every result and on
 the OpenStreetMap map, as the licence requires.
 
 OpenStreetMap stays the base by design: the app runs fully without any key or
-paid quota. Its coverage varies by region, and GAYATAMA's Data Quality factor
+paid quota. Its coverage varies by region, and LOKABIS's Data Quality factor
 exists precisely to model that variation rather than paper over it. Where
 available, OSM's `check_date` and related freshness tags feed the freshness
 weighting. The reasoning, and the Google terms that shape the design, are
@@ -325,7 +333,7 @@ than none:
 
 - **A score is not a guarantee of profit.** It is one input into a decision that
   also involves rent, capital, supply chains, licensing, and the operator's own
-  skill — none of which GAYATAMA models.
+  skill — none of which LOKABIS models.
 - **Coverage depends on map data density.** Without Google counts, results rest
   on OpenStreetMap, which misses many small Indonesian businesses, and are
   strongest in well-mapped urban areas. Where data is sparse, the Confidence Score falls and the

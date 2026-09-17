@@ -1,9 +1,9 @@
-# GAYATAMA Documentation
+# LOKABIS Documentation
 
 These documents describe model `0.1.0` as it is implemented today: Firebase
-authentication, open-data ingestion, scoring, recommendations, confidence, and
-mapped access-barrier penalties. The what-if UI and downloadable reports remain
-planned work; the engine already exposes the pure simulation function.
+authentication, open-data ingestion, scoring, recommendations, comparisons,
+what-if simulation, the area opportunity grid, confidence, mapped
+access-barrier penalties, and print-ready report export.
 
 | Document | What it covers |
 |----------|----------------|
@@ -11,7 +11,7 @@ planned work; the engine already exposes the pure simulation function.
 | [architecture.md](architecture.md) | System design, the three decisions that shaped it, request flow, module layout, failure modes |
 | [installation.md](installation.md) | Setup from clone to deployment, including Firebase and Firestore rules |
 | [api.md](api.md) | HTTP endpoint reference with full request and response shapes |
-| [data-sources.md](data-sources.md) | Where the data comes from, its licence, OSM tag mapping, and what GAYATAMA does not know |
+| [data-sources.md](data-sources.md) | Where the data comes from, its licence, OSM tag mapping, and what LOKABIS does not know |
 | [roadmap.md](roadmap.md) | What was deliberately cut from this submission, and why |
 
 When descriptions disagree, use [methodology.md](methodology.md) for scoring

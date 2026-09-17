@@ -47,7 +47,13 @@ export function Tabs<K extends string>({ label, tabs, active, onChange, children
 
   return (
     <div className="tabs">
-      <div role="tablist" aria-label={label} className="tab-list" data-tour="tabs">
+      <div
+        role="tablist"
+        aria-label={label}
+        className="tab-list"
+        data-tour="tabs"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
         {tabs.map((tab, index) => (
           <button
             key={tab.key}
