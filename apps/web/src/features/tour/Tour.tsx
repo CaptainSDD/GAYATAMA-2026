@@ -17,6 +17,13 @@ const MARGIN = 12;
 const PAD = 8;
 const TOOLTIP_WIDTH = 300;
 const TOOLTIP_HEIGHT = 252;
+/** Matches .tour-mascot: 6rem wide at a 3:5 frame ratio, on a 16px root. */
+const MASCOT_WIDTH = 96;
+const MASCOT_HEIGHT = 160;
+/** Sits off-centre along whatever it stands on, so it never covers the middle. */
+const BIAS = 0.72;
+/** How far the owl's feet sink into the highlight, so it perches rather than floats. */
+const PERCH = 6;
 
 function measure(element: Element): Rect {
   const { top, left, width, height } = element.getBoundingClientRect();
@@ -60,6 +67,55 @@ function tooltipPosition(rect: Rect, placement: Placement) {
   return {
     top: clamp(raw.top, MARGIN, Math.max(MARGIN, maxTop)),
     left: clamp(raw.left, MARGIN, Math.max(MARGIN, maxLeft)),
+  };
+}
+
+/**
+ * Stands the owl on the highlight rather than on the tooltip's corner, so it
+ * points at whatever is being explained. Above the box when there is room,
+ * below it when there is not, and always clamped inside the viewport — pinned
+ * to a corner it was getting cropped by the screen edge.
+ */
+function mascotPosition(rect: Rect, tip: { top: number; left: number }) {
+  const maxLeft = Math.max(MARGIN, window.innerWidth - MASCOT_WIDTH - MARGIN);
+  const maxTop = Math.max(MARGIN, window.innerHeight - MASCOT_HEIGHT - MARGIN);
+
+  // Standing somewhere sensible is not enough: the tooltip sits right beside
+  // the highlight, so a perch chosen from the highlight alone lands on top of
+  // the words. Each candidate is tried in order and the first one that clears
+  // both the viewport and the tooltip wins.
+  const candidates = [
+    // On the highlight, above it — right of centre, then left.
+    { top: rect.top - MASCOT_HEIGHT + PERCH, left: rect.left + rect.width * BIAS - MASCOT_WIDTH / 2 },
+    { top: rect.top - MASCOT_HEIGHT + PERCH, left: rect.left + rect.width * (1 - BIAS) - MASCOT_WIDTH / 2 },
+    // On the highlight, below it.
+    { top: rect.top + rect.height - PERCH, left: rect.left + rect.width * BIAS - MASCOT_WIDTH / 2 },
+    { top: rect.top + rect.height - PERCH, left: rect.left + rect.width * (1 - BIAS) - MASCOT_WIDTH / 2 },
+    // Beside the highlight, level with its top.
+    { top: rect.top, left: rect.left + rect.width - PERCH },
+    { top: rect.top, left: rect.left - MASCOT_WIDTH + PERCH },
+    // On the tooltip, above it — clear of the close button in its top corner.
+    { top: tip.top - MASCOT_HEIGHT + PERCH, left: tip.left + TOOLTIP_WIDTH * BIAS - MASCOT_WIDTH / 2 },
+    { top: tip.top - MASCOT_HEIGHT + PERCH, left: tip.left + TOOLTIP_WIDTH * (1 - BIAS) - MASCOT_WIDTH / 2 },
+  ];
+
+  const clearOfTooltip = (top: number, left: number) =>
+    left + MASCOT_WIDTH <= tip.left ||
+    left >= tip.left + TOOLTIP_WIDTH ||
+    top + MASCOT_HEIGHT <= tip.top ||
+    top >= tip.top + TOOLTIP_HEIGHT;
+
+  const onScreen = (top: number, left: number) =>
+    top >= MARGIN && top <= maxTop && left >= MARGIN && left <= maxLeft;
+
+  const fits = candidates.find(({ top, left }) => onScreen(top, left) && clearOfTooltip(top, left));
+  if (fits !== undefined) return fits;
+
+  // Nothing clears it outright. Take the last resort — above the tooltip,
+  // clamped — rather than dropping the owl somewhere arbitrary.
+  return {
+    top: clamp(tip.top - MASCOT_HEIGHT + PERCH, MARGIN, maxTop),
+    left: clamp(tip.left + TOOLTIP_WIDTH * BIAS - MASCOT_WIDTH / 2, MARGIN, maxLeft),
   };
 }
 
@@ -170,11 +226,18 @@ export function Tour({ scope, onNeedLocation }: { scope: string; onNeedLocation:
   return (
     <div className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       {!centred && rect !== null && (
-        <div
-          key={step.id}
-          className="tour-spotlight"
-          style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
-        />
+        <>
+          <div
+            key={step.id}
+            className="tour-spotlight"
+            style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
+          />
+          <div
+            className={`tour-mascot tour-mascot-free tour-mascot-${step.id}`}
+            aria-hidden="true"
+            style={mascotPosition(rect, position ?? { top: MARGIN, left: MARGIN })}
+          />
+        </>
       )}
       <div
         ref={tooltip}
@@ -188,7 +251,7 @@ export function Tour({ scope, onNeedLocation }: { scope: string; onNeedLocation:
         <p className="tour-progress">
           Langkah {progress.step + 1} dari {TOUR_STEPS.length}
         </p>
-        <div className={`tour-mascot tour-mascot-${step.id}`} aria-hidden="true" />
+        {centred && <div className={`tour-mascot tour-mascot-${step.id}`} aria-hidden="true" />}
         <h2 id="tour-title" className="tour-title">
           {step.title}
         </h2>

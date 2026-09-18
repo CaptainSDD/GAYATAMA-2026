@@ -52,7 +52,7 @@ export function Tabs<K extends string>({ label, tabs, active, onChange, children
         aria-label={label}
         className="tab-list"
         data-tour="tabs"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        style={{ ['--tab-count' as string]: tabs.length }}
       >
         {tabs.map((tab, index) => (
           <button

@@ -43,6 +43,8 @@
   --sheet-surface: rgb(255 255 255 / 0.93);
 
   --primer-raised: rgb(255 255 255 / 0.55);
+  /* Opaque, for things that must not let the map through: the tour, dialogs. */
+  --solid-surface: #ffffff;
   --primer-sunken: rgb(255 255 255 / 0.32);
   --primer-ink: #0f172a;
   --primer-ink-soft: #334155;
@@ -133,6 +135,9 @@
 
   /* The map basemap is desaturated so the interface reads on top of it.
      Still OpenStreetMap tiles — see docs/data-sources.md. */
+  /* Reserved for the floating header, so the overlay cards clear it. */
+  --header-h: 4.25rem;
+
   --map-filter: saturate(0.55) brightness(1.02);
 
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -154,6 +159,8 @@
     --glass-blur: blur(18px) saturate(1.4);
     --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.08);
     --primer-raised: #16213a;
+  --solid-surface: #16213a;
+    --solid-surface: #16213a;
     --primer-sunken: #0e1626;
     --primer-ink: #e8eefb;
     --primer-ink-soft: #c3cede;
@@ -340,52 +347,109 @@ input {
 /* Layout ----------------------------------------------------------------- */
 
 .app {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100dvh;
 }
 
+/* The bar floats over the map rather than sitting above it in the flow.
+   Transparency only means anything once the map runs underneath: as a flow
+   sibling the header could only ever reveal the page background. The controls
+   keep their own translucent surface so they stay readable over any tile. */
 .app-header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--space-3);
+  min-height: var(--header-h);
   padding: var(--space-3) var(--space-5);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow-sm), var(--glass-sheen);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  z-index: 2;
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+  z-index: 1250;
+  /* Transparent to the pointer where it is transparent to the eye: the bar
+     runs the full width over the cards, and its empty half was intercepting
+     clicks on the results panel's title bar. Same trick as .overlay. */
+  pointer-events: none;
 }
 
-.brand-block {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  min-width: 0;
-  margin-right: auto;
+.app-header > * {
+  pointer-events: auto;
 }
 
-.brand {
+/* The brand is the disclosure: pressing it unfolds Panduan, Bagikan and the
+   theme toggle inline beside it. Built on <details> so it is keyboard
+   operable without any state. Keluar stays outside the fold — it is the one
+   action that should never need a press to find. */
+.brand-nav {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-lg);
-  letter-spacing: 0.06em;
-  color: var(--sekunder-strong);
 }
 
-.brand-mark {
-  flex-shrink: 0;
-  color: var(--sekunder);
-}
-
-
-.header-actions {
-  display: flex;
-  flex-shrink: 0;
+.brand-summary {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  list-style: none;
+  cursor: pointer;
+  color: var(--text-soft);
+  border-radius: var(--radius);
+}
+
+.brand-summary::-webkit-details-marker {
+  display: none;
+}
+
+.brand-summary:hover {
+  background: var(--surface-sunken);
+}
+
+.brand-summary svg:last-of-type {
+  transition: transform 160ms ease-out;
+}
+
+.brand-nav[open] .brand-summary svg:last-of-type {
+  transform: rotate(180deg);
+}
+
+.brand-logo {
+  display: block;
+  height: 2.25rem;
+  width: auto;
+}
+
+.brand-nav-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* The actions unroll out of the logo, so the motion says "these came from
+   there" rather than fading something in beside it. <details> cannot animate
+   on close without JavaScript, so this runs on open only. */
+@media (prefers-reduced-motion: no-preference) {
+  .brand-nav[open] .brand-nav-actions {
+    animation: brand-nav-wipe 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes brand-nav-wipe {
+  from {
+    opacity: 0.4;
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 /* The map fills everything below the header; the cards float on top of it, so
@@ -419,7 +483,7 @@ input {
 
 .overlay {
   position: absolute;
-  top: var(--space-4);
+  top: calc(var(--header-h) + var(--space-2));
   /* Stops short of the foot of the map so the scale bar and the OpenStreetMap
      attribution stay readable underneath. ODbL requires that credit to be
      visible, so the cards give way to it rather than the other way round. */
@@ -444,6 +508,9 @@ input {
 }
 
 .overlay-right {
+  /* Only the left card sits under the logo, so only it clears the header.
+     Every control moved behind the brand, leaving the top right empty. */
+  top: var(--space-4);
   right: var(--space-4);
   width: min(32rem, calc(100vw - 2 * var(--space-4)));
   align-items: stretch;
@@ -466,25 +533,46 @@ input {
   -webkit-backdrop-filter: var(--glass-blur);
 }
 
+/* A row, not a button: the location card carries tabs up here, and tabs
+   nested inside a button cannot be operated. */
 .floating-panel-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
   font-size: var(--text-sm);
+}
+
+/* The heading carries the real control; the chevron is a second mouse target
+   for the same thing. */
+.floating-panel-heading-button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-1) 0;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
 }
 
 .floating-panel-toggle {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  font: inherit;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
   color: var(--sekunder-strong);
-  background: none;
-  border: 0;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+}
+
+.floating-panel-toggle:hover {
+  background: var(--surface-sunken);
 }
 
 .floating-panel-toggle svg {
@@ -529,7 +617,74 @@ input {
   align-items: baseline;
   gap: var(--space-2);
   min-width: 0;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--sekunder-strong);
   text-align: left;
+}
+
+/* One-point or two-point, chosen in the bar. This replaced the old
+   "Bandingkan 2 lokasi" button: the decision is the same one, made once, in
+   the place that names it. */
+.point-mode {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.point-mode-tab {
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-soft);
+  background: none;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.point-mode-tab:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.point-mode-tab[aria-pressed='true'] {
+  color: var(--sekunder-strong);
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--sekunder);
+}
+
+.point-mode-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Grid rather than a bare block, so the label, the coordinate and the Hapus
+   button all sit on one spacing step instead of touching. */
+.point-row {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.point-row + .point-row {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.point-row-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 /* A tag with a brand-coloured edge rather than a pill: it reads as a label on
@@ -553,10 +708,12 @@ input {
 
 .picked-coordinate {
   margin: 0;
-  font-size: 2rem;
-  font-weight: 750;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  /* Its own label now says what it is, so the number stops being the biggest
+     thing in the card. Decimal degrees were never the headline. */
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -785,29 +942,6 @@ select:hover {
 .location-preview {
   display: grid;
   gap: var(--space-3);
-}
-
-.location-preview-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-.location-preview-heading h2 {
-  margin: 0.1rem 0 0;
-  font-size: var(--text-lg);
-  line-height: 1.2;
-}
-
-.location-preview-icon {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  color: var(--sekunder-strong);
-  background: var(--sekunder-soft);
-  border-radius: var(--radius-pill);
 }
 
 .location-address,
@@ -1704,7 +1838,7 @@ select:hover {
 
 .tab-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--tab-count, 4), minmax(0, 1fr));
   gap: var(--space-1);
   margin-bottom: var(--space-4);
   padding: 0.25rem;
@@ -2292,7 +2426,6 @@ select:hover {
 }
 
 .panel .intro h2,
-.panel .location-preview-heading h2,
 .panel .decision-summary h2 {
   letter-spacing: -0.025em;
 }
@@ -2350,21 +2483,6 @@ select:hover {
   gap: var(--space-4);
 }
 
-.panel .location-preview-heading {
-  align-items: center;
-}
-
-.panel .location-preview-icon {
-  width: 2.75rem;
-  height: 2.75rem;
-  color: var(--tersier-strong);
-  background: var(--tersier-soft);
-}
-
-.panel .location-preview-heading h2 {
-  margin-top: 0.2rem;
-}
-
 .panel .location-address {
   margin-top: calc(-1 * var(--space-2));
   font-size: var(--text-sm);
@@ -2397,11 +2515,6 @@ select:hover {
   border-radius: 0.875rem;
 }
 
-.panel .analysis-target {
-  color: var(--text-soft);
-  font-size: var(--text-sm);
-}
-
 /* Preview card only — a step up in size so it is readable at arm's length.
    Deliberately scoped away from the score and summary, which are left exactly
    as they came from the pull. */
@@ -2410,20 +2523,7 @@ select:hover {
 }
 
 .panel .location-address,
-.panel .analysis-target {
-  font-size: 1.0625rem;
-}
-
-.panel .location-preview-heading h2 {
-  margin-top: 0.2rem;
-  font-size: 1.6rem;
-}
-
 .panel .location-preview .field-label,
-.panel .location-preview .eyebrow {
-  font-size: 0.875rem;
-}
-
 .panel .location-preview .button-primary {
   font-size: 1.0625rem;
 }
@@ -2748,11 +2848,6 @@ select:hover {
   color: var(--muted);
 }
 
-.panel .location-details + .location-source {
-  display: block;
-  margin-top: calc(-1 * var(--space-2));
-}
-
 /* Quieter status language: the chart carries data colour; supporting labels
    stay typographic and neutral instead of repeating it as pills. */
 .panel .factor-reading,
@@ -2785,17 +2880,18 @@ select:hover {
 
 /* Authentication compatibility ------------------------------------------- */
 
+/* Fixed black and white rather than tokens, and deliberately so: this control
+   is meant to read the same in both themes rather than follow the surface. */
 .icon-button-danger {
-  color: var(--error-text);
-  background: var(--error-bg);
-  border-color: var(--error-border);
+  color: #ffffff;
+  background: #000000;
+  border-color: #000000;
 }
 
 .icon-button-danger:hover {
-  color: var(--error-text);
-  background: var(--error-bg);
-  border-color: var(--tone-bad);
-  filter: brightness(0.96);
+  color: #ffffff;
+  background: #1a1a1a;
+  border-color: #1a1a1a;
 }
 
 .button-danger {
@@ -2868,14 +2964,15 @@ select:hover {
 .tour-tooltip {
   position: fixed;
   display: grid;
+  isolation: isolate;
   gap: var(--space-2);
   padding: var(--space-4);
-  background: var(--surface-raised);
+  /* Solid, not glass. The tour sits over a dimmed map and has to be read, not
+     admired; a translucent panel dragged every word down with it. */
+  background: var(--solid-surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .tour-tooltip-centred {
@@ -2903,12 +3000,26 @@ select:hover {
    turns its five panels into a small character window; each step selects the
    pose that reflects what is being introduced. */
 .tour-mascot {
+  /* Decoration only — it must never sit between a pointer and a control. */
+  pointer-events: none;
+  /* Two homes. On the welcome step it perches on the tooltip, which is all
+     there is. On every other step it is a free element standing on the
+     highlight itself — see .tour-mascot-free — because a mascot pinned to the
+     tooltip's corner ends up cropped against the screen edge. */
+  position: absolute;
+  top: -6.6rem;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
   /* Each panel in the source sprite is portrait. Fit its height, rather than
      stretching it to the old landscape-sized window, so no wing gets clipped. */
-  width: 3.2rem;
-  height: 4.8rem;
-  justify-self: center;
-  margin: calc(var(--space-2) * -1) 0;
+  width: 6rem;
+  /* Exactly one panel of the five-frame sheet: 434.4 x 724 is 3:5. Any other
+     ratio and `background-size: auto 100%` scales the sheet so the percentage
+     offsets stop landing on frame boundaries, and the neighbouring owl bleeds
+     in at the edge. */
+  aspect-ratio: 3 / 5;
+  height: auto;
   background-image: url('./assets/tour-owl.png');
   background-repeat: no-repeat;
   background-position: 100% center;
@@ -2932,9 +3043,18 @@ select:hover {
 }
 
 .tour-tooltip-centred .tour-mascot {
-  width: 3.6rem;
-  height: 6rem;
-  margin: calc(var(--space-2) * -1) auto 0;
+  top: -9.6rem;
+  width: 6.8rem;
+  height: auto;
+}
+
+/* Positioned in script against the highlight, so it never leaves the viewport. */
+.tour-mascot-free {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  transform: none;
 }
 
 .tour-close {
@@ -2973,19 +3093,24 @@ select:hover {
 }
 
 /* Pushes Kembali and Lanjut to the right, away from the quieter Lewati. */
+/* Skipping is a real choice, not disabled text. It was set in the muted tone
+   with no affordance at all, which read as unavailable rather than optional. */
 .tour-skip {
   margin-right: auto;
   padding: 0.45rem 0;
   font: inherit;
   font-size: var(--text-sm);
-  color: var(--muted);
+  font-weight: 600;
+  color: var(--text-soft);
   background: none;
   border: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
   cursor: pointer;
 }
 
 .tour-skip:hover {
-  color: var(--text-soft);
+  color: var(--text);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3086,12 +3211,35 @@ select:hover {
   color: var(--muted);
 }
 
+/* Pinned to the foot of the window rather than sitting between the header and
+   the map, where it pushed the whole layout down for the one case that shows
+   it. Raised clear of the 2rem strip the overlays already reserve for the
+   OpenStreetMap credit, which the ODbL requires to stay visible. */
 .auth-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 2.75rem;
+  z-index: 1200;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2) var(--space-3);
+  width: max-content;
+  max-width: min(34rem, calc(100vw - 2rem));
+  margin: 0;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow-lg);
+}
+
+/* The banner asks the visitor to secure their account, so the message outranks
+   the button beside it rather than sitting under it at label size. */
+.auth-banner-message {
+  display: block;
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--warn-text);
 }
 
 /* Two-location comparison -------------------------------------------------- */
@@ -3450,5 +3598,66 @@ button.opportunity-cell:hover {
 
   .opportunity-score {
     font-size: var(--text-sm);
+  }
+}
+
+/* The picked-location preview, distilled to one flat stack ------------------
+   Panel > body > section > heading row > inner div was five levels to show
+   four facts, with the address facts folded into a disclosure. Spacing does
+   the grouping the wrapper divs were doing, and the facts are printed. */
+
+.location-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.location-preview > h2 {
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.location-note {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.location-rule {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Results panel: the chapters read as a rail ---------------------------------
+   Five names squeezed into five columns of a 32rem panel gave "Pilihan usaha"
+   about 65px of width. Beside the content each gets a full line, and the list
+   stays in view while the chapter scrolls. Scoped to the results panel so the
+   location card, which shares this component, is untouched. */
+
+.results-panel .score-card > * + * {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 900px) {
+  .results-panel .tabs {
+    display: grid;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .results-panel .tab-list {
+    grid-template-columns: minmax(0, 1fr);
+    position: sticky;
+    top: 0;
+    gap: 2px;
+    margin-bottom: 0;
+  }
+
+  .results-panel .tab {
+    justify-content: flex-start;
+    text-align: left;
   }
 }

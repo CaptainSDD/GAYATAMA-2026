@@ -1,14 +1,15 @@
+import lokabisLogo from './assets/lokabis-logo.png';
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import { useEffect, useState } from 'react';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { FloatingPanel } from './components/FloatingPanel';
-import { HelpIcon, LogOutIcon, MapPinIcon } from './components/Icons';
+import { ChevronDownIcon, HelpIcon, LogOutIcon } from './components/Icons';
 import { ShareButton } from './components/ShareButton';
 import { ThemeToggle } from './components/ThemeToggle';
 import { LocationComparisonView } from './features/compare/LocationComparisonView';
 import { LocationView } from './features/location/LocationView';
 import { LocationPreview } from './features/location/LocationPreview';
-import { BusinessTypePicker, LocationSummary } from './features/map/LocationControls';
+import { BusinessTypePicker, LocationSummary, PointModeTabs, type PointMode } from './features/map/LocationControls';
 import { MapPicker } from './features/map/MapPicker';
 import { Tour } from './features/tour/Tour';
 import {
@@ -92,11 +93,23 @@ export function App({
     setSheetCollapsed(false);
   };
 
-  const toggleSiteCompare = () => {
-    if (selection.point === null) return;
-    setSiteCompare((current) => ({ active: !current.active, pointB: null }));
+  /**
+   * The mode is derived rather than stored: `siteCompare.active` already says
+   * whether a second point is in play, and two sources of truth for one fact
+   * drift apart.
+   */
+  const pointMode: PointMode = siteCompare.active ? 'dua' : 'satu';
+
+  const choosePointMode = (mode: PointMode) => {
+    if (mode === pointMode) return;
+    setSiteCompare({ active: mode === 'dua', pointB: null });
     setOutsideCoverage(false);
     setSheetCollapsed(false);
+  };
+
+  const clearSecondPoint = () => {
+    setSiteCompare({ active: true, pointB: null });
+    setOutsideCoverage(false);
   };
 
   const chooseBusinessType = (businessType: BusinessType) => {
@@ -156,47 +169,49 @@ export function App({
 
   return (
     <div className="app">
+
+
       <header className="app-header">
-        <div className="brand-block">
-          <h1 className="brand">
-            <MapPinIcon size={20} />
-            LOKABIS
-          </h1>
-        </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => {
-              resetProgress(userId);
-              setTourRun((run) => run + 1);
-            }}
-            aria-label="Lihat panduan lagi"
-            title="Lihat panduan lagi"
-          >
-            <HelpIcon size={20} />
-            <span className="button-text">Panduan</span>
-          </button>
-          <ShareButton disabled={analysisSelection === null} />
-          <ThemeToggle />
-          {onSignOut !== undefined && (
+        <details className="brand-nav">
+          <summary className="brand-summary">
+            <img className="brand-logo" src={lokabisLogo} alt="LOKABIS" width={132} height={44} />
+            <ChevronDownIcon size={16} />
+          </summary>
+          <div className="brand-nav-actions">
             <button
               type="button"
-              className="icon-button icon-button-danger"
-              onClick={() => setConfirmingSignOut(true)}
-              aria-label="Keluar"
-              title={userEmail ?? 'Keluar'}
+              className="icon-button"
+              onClick={() => {
+                resetProgress(userId);
+                setTourRun((run) => run + 1);
+              }}
+              aria-label="Lihat panduan lagi"
+              title="Lihat panduan lagi"
             >
-              <LogOutIcon size={20} />
-              <span className="button-text">Keluar</span>
+              <HelpIcon size={20} />
+              <span className="button-text">Panduan</span>
             </button>
-          )}
-        </div>
+            <ShareButton disabled={analysisSelection === null} />
+            <ThemeToggle />
+            {onSignOut !== undefined && (
+              <button
+                type="button"
+                className="icon-button icon-button-danger"
+                onClick={() => setConfirmingSignOut(true)}
+                aria-label="Keluar"
+                title={userEmail ?? 'Keluar'}
+              >
+                <LogOutIcon size={20} />
+                <span className="button-text">Keluar</span>
+              </button>
+            )}
+          </div>
+        </details>
       </header>
 
       {!emailVerified && onResendVerification !== undefined && (
         <div className="notice auth-banner" role="status">
-          <span>Verifikasi email Anda untuk mengamankan akun ini.</span>
+          <span className="auth-banner-message">Verifikasi email Anda untuk mengamankan akun ini.</span>
           <button type="button" className="button-secondary" onClick={onResendVerification} disabled={verificationResent}>
             {verificationResent ? 'Email terkirim' : 'Kirim ulang'}
           </button>
@@ -227,14 +242,18 @@ export function App({
         <div className="overlay overlay-left">
           <FloatingPanel
             title="Lokasi"
+            barControls={
+              <PointModeTabs mode={pointMode} onModeChange={choosePointMode} disableTwo={selection.point === null} />
+            }
             collapsed={locationCollapsed}
             onToggle={() => setLocationCollapsed((collapsed) => !collapsed)}
           >
             <LocationSummary
+              mode={pointMode}
               point={selection.point}
+              secondPoint={siteCompare.pointB}
               onClearPoint={clearPoint}
-              comparingSites={siteCompare.active}
-              onToggleCompareSites={toggleSiteCompare}
+              onClearSecondPoint={clearSecondPoint}
             />
             <BusinessTypePicker businessType={selection.businessType} onBusinessTypeChange={chooseBusinessType} />
           </FloatingPanel>
