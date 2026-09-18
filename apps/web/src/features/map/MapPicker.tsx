@@ -187,6 +187,7 @@ function OpenStreetMapPicker({
       className="map"
       center={[initialCenter.lat, initialCenter.lng]}
       zoom={DEFAULT_MAP_ZOOM}
+      zoomSnap={0.1}
       minZoom={10}
       maxBounds={[
         [SEMARANG_MAP_LIMITS.south, SEMARANG_MAP_LIMITS.west],

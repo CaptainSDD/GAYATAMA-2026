@@ -1,7 +1,11 @@
 import { ZONE_LIMITS_METERS, ZONE_WEIGHTS, type LatLng } from '@gayatama/scoring';
 
-/** City-level view before the user chooses a point. */
-export const DEFAULT_MAP_ZOOM = 12;
+/**
+ * City-level view before the user chooses a point. This is fractionally wider
+ * than a conventional level-12 camera so the default desktop composition
+ * matches the compact 80%-scale workspace without asking visitors to zoom out.
+ */
+export const DEFAULT_MAP_ZOOM = 11.7;
 
 /** Distance zones, drawn largest first so the smaller rings sit on top. */
 export const ZONE_RINGS = [

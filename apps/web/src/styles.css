@@ -2863,23 +2863,6 @@ select:hover {
     0 0 0 9999px rgb(2 6 23 / 0.62);
   pointer-events: none;
   transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
-  /* Blinks on arrival and then holds. The element is remounted on every step
-     (keyed by step id in Tour.tsx), which is what restarts it. */
-  animation: tour-blink 0.5s ease-in-out 4;
-}
-
-@keyframes tour-blink {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 3px var(--sekunder),
-      0 0 0 9999px rgb(2 6 23 / 0.62);
-  }
-  50% {
-    box-shadow:
-      0 0 0 12px color-mix(in srgb, var(--sekunder) 50%, transparent),
-      0 0 0 9999px rgb(2 6 23 / 0.38);
-  }
 }
 
 .tour-tooltip {
@@ -2905,6 +2888,53 @@ select:hover {
 
 .tour-tooltip-centred .tour-actions {
   justify-content: center;
+}
+
+/* The desktop workspace uses the same compact visual density as an 80% browser
+   zoom, while keeping browser zoom and accessibility preferences available to
+   the visitor. Phones retain the original, more legible scale. */
+@media (min-width: 821px) {
+  :root {
+    font-size: 0.85rem;
+  }
+}
+
+/* One existing five-pose owl sprite accompanies the guide. `background-size`
+   turns its five panels into a small character window; each step selects the
+   pose that reflects what is being introduced. */
+.tour-mascot {
+  /* Each panel in the source sprite is portrait. Fit its height, rather than
+     stretching it to the old landscape-sized window, so no wing gets clipped. */
+  width: 3.2rem;
+  height: 4.8rem;
+  justify-self: center;
+  margin: calc(var(--space-2) * -1) 0;
+  background-image: url('./assets/tour-owl.png');
+  background-repeat: no-repeat;
+  background-position: 100% center;
+  background-size: auto 100%;
+}
+
+.tour-mascot-location {
+  background-position: 0 center;
+}
+
+.tour-mascot-business-type {
+  background-position: 25% center;
+}
+
+.tour-mascot-score {
+  background-position: 50% center;
+}
+
+.tour-mascot-tabs {
+  background-position: 75% center;
+}
+
+.tour-tooltip-centred .tour-mascot {
+  width: 3.6rem;
+  height: 6rem;
+  margin: calc(var(--space-2) * -1) auto 0;
 }
 
 .tour-close {

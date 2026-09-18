@@ -16,7 +16,7 @@ const MARGIN = 12;
 /** How far the lit area extends past the element, so it is framed rather than clipped. */
 const PAD = 8;
 const TOOLTIP_WIDTH = 300;
-const TOOLTIP_HEIGHT = 168;
+const TOOLTIP_HEIGHT = 252;
 
 function measure(element: Element): Rect {
   const { top, left, width, height } = element.getBoundingClientRect();
@@ -171,8 +171,6 @@ export function Tour({ scope, onNeedLocation }: { scope: string; onNeedLocation:
     <div className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       {!centred && rect !== null && (
         <div
-          // Keyed by step, so React remounts it and the blink animation replays
-          // each time the tour moves on.
           key={step.id}
           className="tour-spotlight"
           style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
@@ -190,6 +188,7 @@ export function Tour({ scope, onNeedLocation }: { scope: string; onNeedLocation:
         <p className="tour-progress">
           Langkah {progress.step + 1} dari {TOUR_STEPS.length}
         </p>
+        <div className={`tour-mascot tour-mascot-${step.id}`} aria-hidden="true" />
         <h2 id="tour-title" className="tour-title">
           {step.title}
         </h2>
