@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   compareBusinessTypes,
   evaluateFacilities,
+  normalizeWeights,
   recommendBusinessTypes,
   scoreLocation,
   simulate,
@@ -58,7 +59,12 @@ export class AnalysisService {
 
   async analyze(request: AnalysisRequest) {
     const { input, source } = await this.load(request);
-    const result = scoreLocation(input, request.businessType);
+    const result = scoreLocation(
+      input,
+      request.businessType,
+      {},
+      request.weights === undefined ? undefined : normalizeWeights(request.weights),
+    );
     if (result.insufficientData) throw insufficientData(result.evidence.facilityCount, result.confidence.value);
     const response = presentAnalysis(result, input, source);
     const narrative = await this.narratives.forAnalysis(

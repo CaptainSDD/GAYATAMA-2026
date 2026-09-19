@@ -1,5 +1,5 @@
 import { confidenceReading, type ScoreSummary } from '@gayatama/scoring';
-import { bandTone, confidenceTone, toneChip, toneColor } from '../../lib/band-color';
+import { bandTone, confidenceTone, toneChip, toneColor, toneTextColor } from '../../lib/band-color';
 import { BAND_LABELS, CONFIDENCE_LABELS } from '../../lib/copy';
 import { displayScore, formatRange, formatWhole } from '../../lib/format';
 
@@ -83,7 +83,7 @@ export function ScoreGauge({ score, businessLabel }: { score: ScoreSummary; busi
         <p className="gauge-range">Rentang kemungkinan {formatRange(score)}</p>
         <p className="gauge-confidence">
           Keandalan data{' '}
-          <strong style={{ color: toneColor(confidenceTone(reading)) }}>{CONFIDENCE_LABELS[reading]}</strong>
+          <strong style={{ color: toneTextColor(confidenceTone(reading)) }}>{CONFIDENCE_LABELS[reading]}</strong>
           <span className="visually-hidden"> ({formatWhole(score.confidence)} dari 100)</span>
         </p>
       </div>

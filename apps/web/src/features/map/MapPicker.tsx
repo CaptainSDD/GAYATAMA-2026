@@ -1,5 +1,8 @@
 import { type FacilityKind, type LatLng } from '@gayatama/scoring';
 import { divIcon } from 'leaflet';
+// Ships with the map chunk rather than the entry bundle: a visitor on the
+// landing page should not download Leaflet's stylesheet to read a pitch.
+import 'leaflet/dist/leaflet.css';
 import { useMemo, useState } from 'react';
 import {
   Circle,

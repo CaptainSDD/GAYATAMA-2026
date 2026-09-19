@@ -21,6 +21,7 @@ import type {
   Band,
   BusinessType,
   ComponentFactor,
+  ComponentWeights,
   Components,
   ConfidenceResult,
   EvaluatedFacility,
@@ -30,11 +31,41 @@ import type {
   ScoreSummary,
 } from './types.js';
 
-/** Location Score = 0.35 Demand + 0.20 Accessibility + 0.20 Competition + 0.15 Supporting + 0.10 Risk */
-export function locationScore(components: Components): number {
+/**
+ * Location Score = 0.35 Demand + 0.20 Accessibility + 0.20 Competition
+ * + 0.15 Supporting + 0.10 Risk, unless the caller supplies its own weights.
+ *
+ * The defaults are the documented MVP baseline and every worked example in
+ * docs/methodology.md still asserts against them; passing nothing changes
+ * nothing.
+ */
+export function locationScore(components: Components, weights: ComponentWeights = COMPONENT_WEIGHTS): number {
   let total = 0;
-  for (const key of COMPONENT_KEYS) total += COMPONENT_WEIGHTS[key] * components[key];
+  for (const key of COMPONENT_KEYS) total += weights[key] * components[key];
   return total;
+}
+
+/**
+ * Coerces a partial, arbitrarily scaled weight set into one that sums to 1, so
+ * a score stays on the 0-100 scale its bands are read against. A set that sums
+ * to zero is meaningless rather than merely odd, so it falls back to the
+ * baseline instead of dividing by zero.
+ */
+export function normalizeWeights(input: Partial<ComponentWeights>): ComponentWeights {
+  const raw = COMPONENT_KEYS.map((key) => Math.max(0, input[key] ?? COMPONENT_WEIGHTS[key]));
+  const total = raw.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return { ...COMPONENT_WEIGHTS };
+
+  const weights = {} as ComponentWeights;
+  COMPONENT_KEYS.forEach((key, index) => {
+    weights[key] = raw[index]! / total;
+  });
+  return weights;
+}
+
+/** Whether a weight set differs from the documented baseline. */
+export function isCustomWeights(weights: ComponentWeights): boolean {
+  return COMPONENT_KEYS.some((key) => Math.abs(weights[key] - COMPONENT_WEIGHTS[key]) > 1e-9);
 }
 
 export function band(score: number): Band {
@@ -97,14 +128,15 @@ export function scoreEvaluated(
   confidence: ConfidenceResult,
   businessType: BusinessType,
   options: OperatorOptions = {},
+  weights: ComponentWeights = COMPONENT_WEIGHTS,
 ): LocationScoreResult {
   let computed = computeComponents(input, evaluated, businessType, options);
-  let value = locationScore(computed.components);
+  let value = locationScore(computed.components, weights);
   let delivery: LocationScoreResult['delivery'];
 
   if (options.delivery === true && DELIVERY.businessTypes.includes(businessType)) {
     const withDelivery = computeComponents(input, evaluated, businessType, options, DELIVERY.zoneCWeight);
-    const uncappedScore = locationScore(withDelivery.components);
+    const uncappedScore = locationScore(withDelivery.components, weights);
     const ceiling = value + DELIVERY.maxScoreGain;
     delivery = { uncappedScore, capApplied: uncappedScore > ceiling };
     computed = withDelivery;
@@ -136,6 +168,7 @@ export function scoreEvaluated(
     insufficientData: confidence.value < CONFIDENCE_FLOOR,
     evidence: { facilityCount, zones },
   };
+  if (isCustomWeights(weights)) result.weights = weights;
   if (delivery !== undefined) result.delivery = delivery;
   return result;
 }
@@ -145,7 +178,8 @@ export function scoreLocation(
   input: LocationInput,
   businessType: BusinessType,
   options: OperatorOptions = {},
+  weights: ComponentWeights = COMPONENT_WEIGHTS,
 ): LocationScoreResult {
   const evaluated = evaluateFacilities(input);
-  return scoreEvaluated(input, evaluated, confidenceScore(evaluated, input.site), businessType, options);
+  return scoreEvaluated(input, evaluated, confidenceScore(evaluated, input.site), businessType, options, weights);
 }

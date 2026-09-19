@@ -1,4 +1,4 @@
-import type { BusinessType, LatLng, OperatorOptions } from '@gayatama/scoring';
+import type { BusinessType, ComponentWeights, LatLng, OperatorOptions } from '@gayatama/scoring';
 import type {
   AnalysisResponse,
   ApiErrorBody,
@@ -7,6 +7,7 @@ import type {
   LocationDetailsResponse,
   OpportunitiesResponse,
   PoisResponse,
+  ProfileResponse,
   RecommendResponse,
   SimulationResponse,
 } from './api-types';
@@ -76,8 +77,18 @@ function postJson<T>(path: string, payload: unknown, signal?: AbortSignal, heade
 
 // `googleMap` tells the API the results are shown on a Google map, the only case in which it may use Google data.
 
-export function fetchAnalysis(point: LatLng, businessType: BusinessType, googleMap: boolean, signal?: AbortSignal) {
-  return postJson<AnalysisResponse>('/analysis', { lat: point.lat, lng: point.lng, businessType, googleMap }, signal);
+export function fetchAnalysis(
+  point: LatLng,
+  businessType: BusinessType,
+  googleMap: boolean,
+  weights?: ComponentWeights,
+  signal?: AbortSignal,
+) {
+  return postJson<AnalysisResponse>(
+    '/analysis',
+    { lat: point.lat, lng: point.lng, businessType, googleMap, ...(weights === undefined ? {} : { weights }) },
+    signal,
+  );
 }
 
 export function fetchRecommendation(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
@@ -124,6 +135,25 @@ export function fetchLocationDetails(point: LatLng, signal?: AbortSignal) {
  * proves who the caller is — the API verifies it against Firebase Auth
  * itself before trusting anything in the body.
  */
+/**
+ * The profile the client cannot read from Firestore directly: rules deny every
+ * client path to `users/`, so this endpoint is the only way the app learns its
+ * own username or saved weights.
+ */
+export function fetchProfile(idToken: string, signal?: AbortSignal) {
+  return request<ProfileResponse>('/auth/profile', { signal, headers: { authorization: `Bearer ${idToken}` } });
+}
+
+/** `null` clears the saved set and returns the account to the documented baseline. */
+export function saveWeights(idToken: string, weights: ComponentWeights | null, signal?: AbortSignal) {
+  return request<{ weights: ComponentWeights | null }>('/auth/profile/weights', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ weights }),
+    signal,
+  });
+}
+
 export function registerProfile(idToken: string, username: string, signal?: AbortSignal) {
   return postJson<RegisterProfileResponse>('/auth/register-profile', { username }, signal, {
     authorization: `Bearer ${idToken}`,

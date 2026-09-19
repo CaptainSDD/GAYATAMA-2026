@@ -1,7 +1,9 @@
-import type { BusinessType, LatLng, OperatorOptions } from '@gayatama/scoring';
-import { useQuery } from '@tanstack/react-query';
+import type { BusinessType, ComponentWeights, LatLng, OperatorOptions } from '@gayatama/scoring';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchAnalysis,
+  fetchProfile,
+  saveWeights,
   fetchComparison,
   fetchLocationComparison,
   fetchLocationDetails,
@@ -21,10 +23,12 @@ function requirePoint(point: LatLng | null): LatLng {
   return point;
 }
 
-export function useAnalysis(point: LatLng | null, businessType: BusinessType) {
+export function useAnalysis(point: LatLng | null, businessType: BusinessType, weights?: ComponentWeights) {
   return useQuery({
-    queryKey: ['analysis', point, businessType, USE_GOOGLE_MAP],
-    queryFn: ({ signal }) => fetchAnalysis(requirePoint(point), businessType, USE_GOOGLE_MAP, signal),
+    // The weights are part of the identity of a result, not a detail of how it
+    // was fetched: two weight sets are two different answers for one point.
+    queryKey: ['analysis', point, businessType, USE_GOOGLE_MAP, weights ?? null],
+    queryFn: ({ signal }) => fetchAnalysis(requirePoint(point), businessType, USE_GOOGLE_MAP, weights, signal),
     enabled: point !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
@@ -109,5 +113,30 @@ export function useSimulation(point: LatLng | null, businessType: BusinessType, 
     enabled: point !== null && options !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
+  });
+}
+
+/**
+ * The signed-in account's profile. Kept out of the render path of the map: a
+ * failure here must never stop a location being scored, so consumers read
+ * `data` and ignore the error.
+ */
+export function useProfile(idToken: string | null) {
+  return useQuery({
+    queryKey: ['profile', idToken],
+    queryFn: ({ signal }) => fetchProfile(idToken!, signal),
+    enabled: idToken !== null,
+    staleTime: STALE_TIME_MS,
+    retry: false,
+  });
+}
+
+export function useSaveWeights(idToken: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (weights: ComponentWeights | null) => saveWeights(idToken!, weights),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['profile', idToken] });
+    },
   });
 }

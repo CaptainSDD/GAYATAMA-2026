@@ -50,6 +50,21 @@ export function toneColor(tone: Tone): string {
   return `var(--tone-${tone})`;
 }
 
+/**
+ * The same tone, darkened for use as text.
+ *
+ * The scale colours are chosen to be legible as *fills* — a bar, an arc, a
+ * marker — where only shape has to read. Set as text they fail WCAG AA against
+ * every surface in this app: `--tone-fair` lands at 2.7:1 over a panel on pale
+ * map tiles and 1.6:1 over dark ones, against a 4.5:1 requirement. The
+ * `--tone-*-fg` ramp already exists for exactly this and clears AA on both.
+ *
+ * Fills take `toneColor`; anything the visitor reads takes this.
+ */
+export function toneTextColor(tone: Tone): string {
+  return `var(--tone-${tone}-fg)`;
+}
+
 /** The chip class for a tone, for tinted pills. */
 export function toneChip(tone: Tone): string {
   return `chip chip-${tone}`;

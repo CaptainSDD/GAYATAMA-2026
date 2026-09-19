@@ -50,7 +50,14 @@ describe('AuthService.registerProfile', () => {
     const { service, firestore } = setup();
     const profile = await service.registerProfile('uid-1', 'budi@example.com', { username: 'Budi87' });
 
-    expect(profile).toEqual({ uid: 'uid-1', email: 'budi@example.com', username: 'Budi87', createdAt: profile.createdAt });
+    expect(profile).toEqual({
+      uid: 'uid-1',
+      email: 'budi@example.com',
+      username: 'Budi87',
+      createdAt: profile.createdAt,
+      // A brand new profile has never left the documented baseline.
+      weights: null,
+    });
     expect(firestore.usernames.get('budi87')).toEqual({ uid: 'uid-1' });
     expect(firestore.users.get('uid-1')).toMatchObject({ email: 'budi@example.com', username: 'Budi87' });
   });

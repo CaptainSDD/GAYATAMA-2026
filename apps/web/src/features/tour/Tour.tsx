@@ -133,6 +133,7 @@ export function Tour({ scope, onNeedLocation }: { scope: string; onNeedLocation:
   // pressing Lewati or Selesai.
   const [dismissed, setDismissed] = useState(false);
   const tooltip = useRef<HTMLDivElement>(null);
+  const overlay = useRef<HTMLDivElement>(null);
   /** Which step already asked for a location, so the request fires only once. */
   const asked = useRef<string | null>(null);
 
@@ -210,6 +211,62 @@ export function Tour({ scope, onNeedLocation }: { scope: string; onNeedLocation:
     tooltip.current?.focus();
   }, [progress.step, rect === null]);
 
+  // Focus trap. The dialog already declared `aria-modal="true"`, but that is a
+  // promise made to assistive technology, not an enforcement: Tab walked
+  // straight out of it and into the map behind, where the visitor could pick a
+  // location through an overlay that was still claiming to be modal.
+  useEffect(() => {
+    if (!running) return;
+
+    const focusable = () => {
+      const container = overlay.current;
+      if (container === null) return [];
+      return Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.offsetParent !== null);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (first === undefined || last === undefined) return;
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === tooltip.current)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    // Catches anything the Tab handler cannot see: a programmatic focus, or a
+    // click that lands on the page behind the dim.
+    const onFocusIn = (event: FocusEvent) => {
+      const container = overlay.current;
+      if (container !== null && !container.contains(event.target as Node)) tooltip.current?.focus();
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('focusin', onFocusIn);
+    };
+  }, [running]);
+
+  // Hand focus back where it was, so finishing the tour does not drop the
+  // visitor at the top of the document.
+  useEffect(() => {
+    if (!running) return;
+    const previous = document.activeElement as HTMLElement | null;
+    return () => previous?.focus?.();
+  }, [running]);
+
   if (!running || step === undefined) return null;
 
   // A step with no target is the welcome card: it needs no measuring. One that
@@ -224,7 +281,7 @@ export function Tour({ scope, onNeedLocation }: { scope: string; onNeedLocation:
     centred || rect === null ? undefined : { ...tooltipPosition(rect, step.placement ?? 'bottom'), width: TOOLTIP_WIDTH };
 
   return (
-    <div className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+    <div ref={overlay} className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
       {!centred && rect !== null && (
         <>
           <div

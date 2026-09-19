@@ -149,6 +149,14 @@ export interface LocationInput {
 }
 
 /** Variables an operator can change, used by the what-if simulator. */
+/**
+ * How much each component counts toward the Location Score. Deliberately NOT
+ * part of OperatorOptions: those are things the owner controls about the site,
+ * and the simulator is documented as moving only those. How the analysis is
+ * weighted is a different kind of decision and travels separately.
+ */
+export type ComponentWeights = Record<ComponentKey, number>;
+
 export interface OperatorOptions {
   onSiteParkingSpaces?: number;
   /** The business's own opening hours. */
@@ -269,6 +277,8 @@ export interface DeliveryEffect {
 }
 
 export interface LocationScoreResult {
+  /** Present only when the score was computed with non-default weights. */
+  weights?: ComponentWeights;
   modelVersion: string;
   businessType: BusinessType;
   score: ScoreSummary;

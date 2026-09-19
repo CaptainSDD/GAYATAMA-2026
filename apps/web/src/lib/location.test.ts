@@ -34,6 +34,8 @@ describe('selection in the URL', () => {
     expect(parseSelection('?lat=-6.988253&lng=110.435575&type=salon')).toEqual({
       point: { lat: -6.988253, lng: 110.435575 },
       businessType: 'salon',
+      // No `w`, so the documented baseline.
+      weights: null,
     });
   });
 
@@ -51,8 +53,20 @@ describe('selection in the URL', () => {
   });
 
   it('round-trips', () => {
-    const selection = { point: { lat: -6.987654, lng: 110.423456 }, businessType: 'pharmacy' as const };
+    const selection = { point: { lat: -6.987654, lng: 110.423456 }, businessType: 'pharmacy' as const, weights: null };
     expect(parseSelection(serializeSelection(selection))).toEqual(selection);
-    expect(serializeSelection({ point: null, businessType: 'food' })).toBe('?type=food');
+    expect(serializeSelection({ point: null, businessType: 'food', weights: null })).toBe('?type=food');
+  });
+
+  it('round-trips custom weights, so a shared link shows the score its sender saw', () => {
+    const weights = { demandFit: 50, accessibility: 10, competition: 20, supportingFacility: 10, risk: 10 };
+    const selection = { point: { lat: -6.987654, lng: 110.423456 }, businessType: 'laundry' as const, weights };
+    expect(parseSelection(serializeSelection(selection))).toEqual(selection);
+  });
+
+  it('ignores a malformed or all-zero weight list rather than scoring with it', () => {
+    expect(parseSelection('?type=laundry&w=50,10,20').weights).toBeNull();
+    expect(parseSelection('?type=laundry&w=0,0,0,0,0').weights).toBeNull();
+    expect(parseSelection('?type=laundry&w=50,10,20,10,abc').weights).toBeNull();
   });
 });

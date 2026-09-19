@@ -10,6 +10,6 @@ export function PublicOnly({ children }: { children: ReactNode }) {
   if (state.status === 'loading') return <AuthLoading />;
   // A login/signup form that can never succeed is worse than no form at all.
   if (state.status === 'unavailable') return <AuthUnavailable />;
-  if (state.status === 'signed-in') return <Navigate to="/" replace />;
+  if (state.status === 'signed-in') return <Navigate to="/app" replace />;
   return <>{children}</>;
 }

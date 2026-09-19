@@ -65,16 +65,22 @@ export function FloatingPanel({
           </span>
         </button>
         {barControls}
-        {/* A second target for the same action, so the chevron stays clickable.
-            Hidden from assistive tech: the heading button already exposes it,
-            and two controls for one panel is noise in a screen reader. */}
-        <span
+        {/* A second pointer target for the same action, so the chevron stays
+            clickable. A real <button> rather than a <span> carrying onClick:
+            the click handling belongs on an element that is one. It stays out
+            of the accessibility tree — the heading button beside it already
+            exposes this action with aria-expanded, and two controls for one
+            panel is noise in a screen reader — so `tabIndex={-1}` keeps it
+            unfocusable, which is what makes `aria-hidden` legal here. */}
+        <button
+          type="button"
           className="floating-panel-toggle"
           aria-hidden="true"
+          tabIndex={-1}
           onClick={onToggle}
         >
           <ChevronDownIcon size={18} />
-        </span>
+        </button>
       </h2>
 
       <div id={bodyId} className="floating-panel-body" hidden={collapsed}>

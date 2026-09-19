@@ -1,4 +1,4 @@
-import type { BusinessType, LatLng } from '@gayatama/scoring';
+import type { BusinessType, ComponentWeights, LatLng } from '@gayatama/scoring';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Loading, QueryError } from '../../components/QueryState';
@@ -29,6 +29,9 @@ interface LocationViewProps {
   onBusinessTypeChange: (businessType: BusinessType) => void;
   /** Moves the whole analysis to another point, keeping the chosen category. */
   onAnalysePoint: (point: LatLng) => void;
+  /** null means the documented baseline; the engine is never sent anything. */
+  weights: ComponentWeights | null;
+  onWeightsChange: (weights: ComponentWeights | null) => void;
   /** `compare` opens on the category comparison, for visitors who have not chosen one. */
   entryMode?: 'score' | 'compare';
 }
@@ -38,13 +41,15 @@ export function LocationView({
   businessType,
   onBusinessTypeChange,
   onAnalysePoint,
+  weights,
+  onWeightsChange,
   entryMode = 'score',
 }: LocationViewProps) {
   const comparing = entryMode === 'compare';
   const [tab, setTab] = useState<TabKey>(comparing ? 'recommend' : 'score');
   const [compareOpen, setCompareOpen] = useState(comparing);
   const inCoverage = isInSemarangCoverage(point);
-  const analysis = useAnalysis(inCoverage ? point : null, businessType);
+  const analysis = useAnalysis(inCoverage ? point : null, businessType, weights ?? undefined);
   // Scoring all seven business types is requested only once someone opens that tab.
   const recommendation = useRecommendation(inCoverage && tab === 'recommend' ? point : null);
   // The comparison carries more per category, so it waits until its section is opened.
@@ -91,7 +96,13 @@ export function LocationView({
           }}
         />
       ) : (
-        <AnalysisTab tab={tab} query={analysis} point={point} />
+        <AnalysisTab
+          tab={tab}
+          query={analysis}
+          point={point}
+          weights={weights}
+          onWeightsChange={onWeightsChange}
+        />
       )}
     </Tabs>
   );
@@ -101,15 +112,25 @@ interface AnalysisTabProps {
   tab: Exclude<TabKey, 'recommend' | 'opportunity'>;
   query: UseQueryResult<AnalysisResponse>;
   point: LatLng;
+  weights: ComponentWeights | null;
+  onWeightsChange: (weights: ComponentWeights | null) => void;
 }
 
-function AnalysisTab({ tab, query, point }: AnalysisTabProps) {
+function AnalysisTab({ tab, query, point, weights, onWeightsChange }: AnalysisTabProps) {
   if (query.isPending) return <Loading message="Menganalisis lokasi ini…" />;
   if (query.isError) return <QueryError error={query.error} onRetry={() => void query.refetch()} />;
 
   switch (tab) {
     case 'score':
-      return <ScorePanel analysis={query.data} onRefresh={() => void query.refetch()} refreshing={query.isFetching} />;
+      return (
+        <ScorePanel
+          analysis={query.data}
+          onRefresh={() => void query.refetch()}
+          refreshing={query.isFetching}
+          weights={weights}
+          onWeightsChange={onWeightsChange}
+        />
+      );
     case 'customers':
       return <SegmentsView analysis={query.data} point={point} />;
     case 'competitors':

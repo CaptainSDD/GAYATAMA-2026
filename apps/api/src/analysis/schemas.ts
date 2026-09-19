@@ -29,8 +29,28 @@ export const compareRequestSchema = z
   .object({ lat: latitude(z.number()), lng: longitude(z.number()), googleMap })
   .strict();
 
+/**
+ * Optional, non-negative, and normalised by the engine rather than required to
+ * sum to anything here: the client sends what the visitor typed, and
+ * `normalizeWeights` is the single place that decides what it means.
+ */
+const componentWeights = z
+  .object({
+    demandFit: z.number().min(0).max(100),
+    accessibility: z.number().min(0).max(100),
+    competition: z.number().min(0).max(100),
+    supportingFacility: z.number().min(0).max(100),
+    risk: z.number().min(0).max(100),
+  })
+  .strict()
+  .refine(
+    (weights) => Object.values(weights).reduce((sum, value) => sum + value, 0) > 0,
+    'At least one weight must be above zero',
+  )
+  .optional();
+
 export const analysisRequestSchema = z
-  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap })
+  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap, weights: componentWeights })
   .strict();
 
 const coordinate = z.object({ lat: latitude(z.number()), lng: longitude(z.number()) }).strict();

@@ -27,7 +27,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await signIn(result.data.email, result.data.password);
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     } catch (error) {
       setFormError(firebaseAuthErrorMessage(error));
     } finally {

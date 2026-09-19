@@ -38,9 +38,6 @@
     radial-gradient(46rem 40rem at -4% 100%, rgb(110 231 183 / 0.65), transparent 64%);
   --glass-blur: blur(18px) saturate(1.5);
   --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.65);
-  /* The phone sheet sits over map imagery, not over the wash, so it needs more
-     body than the desktop panel or the tiles show through the text. */
-  --sheet-surface: rgb(255 255 255 / 0.93);
 
   --primer-raised: rgb(255 255 255 / 0.55);
   /* Opaque, for things that must not let the map through: the tour, dialogs. */
@@ -48,7 +45,9 @@
   --primer-sunken: rgb(255 255 255 / 0.32);
   --primer-ink: #0f172a;
   --primer-ink-soft: #334155;
-  --primer-ink-muted: #55637a;
+  /* Darkened from #55637a so the muted tier survives a glassier panel: at
+     0.62 over the darkest map label the old value measured 3.9:1. */
+  --primer-ink-muted: #48566d;
   --primer-line: rgb(15 23 42 / 0.09);
   --primer-line-strong: rgb(15 23 42 / 0.18);
 
@@ -67,6 +66,18 @@
   /* Role aliases, so rules read by purpose rather than by ratio. */
   --bg: var(--primer);
   --surface: rgb(255 255 255 / 0.5);
+  /* The surface sustained prose is read on. Chrome — pills, buttons, tabs —
+     keeps `--surface` at 0.5, because a label is glanced at, not read. Panel
+     body copy is `--muted` at 13px over live map tiles, and at 0.5 that
+     measured 3.22:1 over dark map labels against a 4.5:1 requirement.
+
+     0.78 cleared it, but at that density the backdrop blur was doing about a
+     fifth of its former work for all of its former cost, on the two largest
+     surfaces on screen, over a map that never stops redrawing. Pairing 0.62
+     with a slightly darker `--muted` clears the same bar and leaves 38% of the
+     glass — the blur is worth running again, and the three text tiers stay
+     distinct instead of collapsing into one. */
+  --surface-reading: rgb(255 255 255 / 0.62);
   --surface-sunken: var(--primer-sunken);
   --surface-raised: var(--primer-raised);
   --text: var(--primer-ink);
@@ -88,7 +99,10 @@
   --tone-excellent-bg: #d1fae5;
   --tone-excellent-fg: #064e3b;
   --tone-good-bg: #ccfbf1;
-  --tone-good-fg: #115e59;
+  /* Darkened from #115e59: as text on a translucent panel over dark map tiles
+     that value measured 4.01:1, just under AA. This clears it at 4.96:1 and
+     improves the chip to 8.31:1. */
+  --tone-good-fg: #104f4b;
   --tone-fair-bg: #fef9c3;
   --tone-fair-fg: #713f12;
   --tone-poor-bg: #ffedd5;
@@ -117,6 +131,10 @@
   /* Radius scale */
   --radius-sm: 0.375rem;
   --radius: 0.625rem;
+  /* Containers inside the results panel: card, confirmation, recommendation,
+     segment, stat well. Five components already shared this value as a
+     literal; it is a real step in the scale, so it is named. */
+  --radius-md: 0.875rem;
   --radius-lg: 1rem;
   --radius-pill: 999px;
 
@@ -154,7 +172,6 @@
     --primer: #0b1120;
     /* The cards float over map imagery, so the glass stays on in the dark too —
        only the tint flips. The wash below is hidden by the map either way. */
-    --sheet-surface: rgb(17 26 46 / 0.94);
     --page-wash: none;
     --glass-blur: blur(18px) saturate(1.4);
     --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.08);
@@ -182,6 +199,8 @@
 
     /* Translucent so the blur has something to reveal — the map behind it. */
     --surface: rgb(17 26 46 / 0.74);
+    /* Dark already cleared AA at 0.74; this is headroom, not a rescue. */
+    --surface-reading: rgb(17 26 46 / 0.8);
 
     /* Lightened so they keep contrast against a dark surface. */
     --tone-excellent: #34d399;
@@ -213,7 +232,7 @@
 
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow: 0 2px 6px rgb(0 0 0 / 0.45);
-    --shadow-lg: 0 10px 28px rgb(0 0 0 / 0.55);
+    --shadow-lg: 0 10px 28px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(148 163 184 / 0.16);
 
     /* Full invert plus a 180° hue rotation is the recipe that turns a light
        basemap dark while keeping greens green and water blue. A partial invert
@@ -228,7 +247,6 @@
   /* 60% primer */
   --primer: #0b1120;
   /* Mirrors the media-query block above: glass stays on, tint flips. */
-  --sheet-surface: rgb(17 26 46 / 0.94);
   --page-wash: none;
   --glass-blur: blur(18px) saturate(1.4);
   --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.08);
@@ -254,6 +272,8 @@
 
   /* Translucent so the blur has something to reveal — the map behind it. */
     --surface: rgb(17 26 46 / 0.74);
+    /* Dark already cleared AA at 0.74; this is headroom, not a rescue. */
+    --surface-reading: rgb(17 26 46 / 0.8);
 
   --tone-excellent: #34d399;
   --tone-good: #2dd4bf;
@@ -284,7 +304,7 @@
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow: 0 2px 6px rgb(0 0 0 / 0.45);
-  --shadow-lg: 0 10px 28px rgb(0 0 0 / 0.55);
+  --shadow-lg: 0 10px 28px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(148 163 184 / 0.16);
 
   --map-filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6);
 
@@ -393,15 +413,23 @@ input {
   gap: var(--space-2);
 }
 
+/* The brand sits straight on the map, where a dark building or a busy block
+   can swallow it. It carries the same translucent surface as the cards so the
+   wordmark always has something behind it, whatever tile it lands on. */
 .brand-summary {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-3);
   list-style: none;
   cursor: pointer;
   color: var(--text-soft);
-  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .brand-summary::-webkit-details-marker {
@@ -409,7 +437,8 @@ input {
 }
 
 .brand-summary:hover {
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow), var(--glass-sheen);
 }
 
 .brand-summary svg:last-of-type {
@@ -477,6 +506,85 @@ input {
   filter: var(--map-filter);
 }
 
+/* The keyboard route to the primary action. Hidden from the ordinary view at
+   the user's request — with a pointer the map is already clickable, so the
+   button was clutter over the thing it points at — but kept in the tab order
+   and revealed on focus, the way a skip link is. `opacity: 0` rather than
+   `display: none` is what makes that possible: the element stays focusable, so
+   Tab brings it into view, and without it there is no way to pick a location
+   without a mouse at all. */
+.map-centre-pick {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  bottom: 2.5rem;
+  left: 50%;
+  z-index: 1150;
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--tersier-strong);
+  background: var(--surface-reading);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.map-centre-pick:hover {
+  color: var(--tersier-contrast);
+  background: var(--tersier);
+}
+
+/* The crosshair only earns its place while the map is being driven by
+   keyboard; with a pointer, the cursor already says where the click lands. */
+.map-centre-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1140;
+  width: 1.75rem;
+  height: 1.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.map-pane:focus-within .map-centre-crosshair {
+  opacity: 1;
+}
+
+.map-pane:focus-within .map-centre-pick {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.map-centre-crosshair::before,
+.map-centre-crosshair::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: var(--tersier);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.85);
+  transform: translate(-50%, -50%);
+}
+
+.map-centre-crosshair::before {
+  width: 100%;
+  height: 2px;
+}
+
+.map-centre-crosshair::after {
+  width: 2px;
+  height: 100%;
+}
+
 /* Overlay columns ---------------------------------------------------------
    Transparent to the pointer, so the gaps between cards still pan the map;
    each card switches interaction back on for itself. */
@@ -503,7 +611,11 @@ input {
 
 .overlay-left {
   left: var(--space-4);
-  width: min(22rem, calc(100vw - 2 * var(--space-4)));
+  /* The map is the working surface, and at 1366px — the laptop PRODUCT.md
+     names as the primary scene — the two panels were taking 67% of the width
+     and leaving it 33%. This card holds a coordinate, a button and a select;
+     it does not need 22rem to do that. */
+  width: min(18rem, calc(100vw - 2 * var(--space-4)));
   justify-content: flex-start;
 }
 
@@ -512,7 +624,9 @@ input {
      Every control moved behind the brand, leaving the top right empty. */
   top: var(--space-4);
   right: var(--space-4);
-  width: min(32rem, calc(100vw - 2 * var(--space-4)));
+  /* Trimmed less than the left card, because this one carries the chapter
+     rail, the gauge and the factor table. */
+  width: min(29rem, calc(100vw - 2 * var(--space-4)));
   align-items: stretch;
 }
 
@@ -525,7 +639,7 @@ input {
   min-height: 0;
   overflow: hidden;
   padding: 0;
-  background: var(--surface);
+  background: var(--surface-reading);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow), var(--glass-sheen);
@@ -567,6 +681,9 @@ input {
   min-height: 2.25rem;
   padding: 0;
   color: var(--sekunder-strong);
+  /* It became a real <button>, so the UA's own chrome has to be cleared. */
+  background: none;
+  border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -695,7 +812,7 @@ input {
   font-size: var(--text-sm);
   font-weight: 650;
   color: var(--sekunder-strong);
-  border-left: 3px solid var(--sekunder);
+  border-left: 1px solid var(--border-strong);
 }
 
 /* Location card ------------------------------------------------------------
@@ -1439,39 +1556,19 @@ select:hover {
   font-size: var(--text-md);
 }
 
-.intro-steps {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
-
-.intro-steps li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-3);
-  align-items: start;
-  counter-increment: step;
-}
-
-.intro-steps li::before {
-  content: counter(step);
-  display: grid;
-  place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--sekunder-contrast);
-  background: var(--sekunder);
-  border-radius: 50%;
-}
-
 .loading {
   display: grid;
   gap: var(--space-4);
+}
+
+/* Route chunk fetch. Centred and deliberately without a card silhouette, so it
+   cannot promise a shape the arriving page does not have. */
+.route-fallback {
+  display: grid;
+  place-items: center;
+  gap: var(--space-3);
+  min-height: 100dvh;
+  padding: var(--space-5) var(--space-4);
 }
 
 .loading-head {
@@ -1539,6 +1636,15 @@ select:hover {
   }
 }
 
+/* Grid because the <div> notices carry an icon, a paragraph and a button as
+   block children. A <p> notice carries a sentence, and grid would make every
+   inline child inside it — a <strong> mid-sentence — its own row, stranding
+   the punctuation that follows on the next line. */
+p.notice,
+p.error {
+  display: block;
+}
+
 .notice,
 .error {
   display: grid;
@@ -1546,19 +1652,19 @@ select:hover {
   justify-items: start;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius);
-  border-left: 4px solid;
+  border: 1px solid;
 }
 
 .notice {
   color: var(--warn-text);
   background: var(--warn-bg);
-  border-left-color: var(--warn-border);
+  border-color: var(--warn-border);
 }
 
 .error {
   color: var(--error-text);
   background: var(--error-bg);
-  border-left-color: var(--error-border);
+  border-color: var(--error-border);
 }
 
 .error-title {
@@ -1569,7 +1675,7 @@ select:hover {
   padding: var(--space-3) var(--space-4);
   color: var(--warn-text);
   background: var(--warn-bg);
-  border-left: 4px solid var(--warn-border);
+  border: 1px solid var(--warn-border);
   border-radius: var(--radius);
 }
 
@@ -1598,7 +1704,6 @@ select:hover {
   padding: var(--space-4);
   background: color-mix(in srgb, var(--sekunder) 8%, var(--surface-raised));
   border: 1px solid color-mix(in srgb, var(--sekunder) 35%, var(--border));
-  border-left: 4px solid var(--sekunder);
   border-radius: var(--radius-lg);
 }
 
@@ -1639,7 +1744,6 @@ select:hover {
   padding: var(--space-2) var(--space-3);
   color: var(--text-soft);
   background: color-mix(in srgb, var(--surface) 78%, transparent);
-  border-left: 3px solid color-mix(in srgb, var(--sekunder) 55%, var(--border));
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -1778,12 +1882,25 @@ select:hover {
   border-radius: var(--radius-pill);
 }
 
+/* Five of these animate at once every time a result lands. Animating `width`
+   put five layout passes on every frame of a 0.6s curve; `transform` is
+   composited instead. The span is laid out full-width and scaled down to the
+   value, so the growth still starts from the left edge. */
 .bar > span {
   display: block;
+  width: 100%;
   height: 100%;
   border-radius: var(--radius-pill);
   background: var(--bar-color, var(--sekunder));
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: scaleX(var(--bar-fill, 0));
+  transform-origin: left center;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar > span {
+    transition: none;
+  }
 }
 
 .contribution-total {
@@ -1929,8 +2046,7 @@ select:hover {
   gap: var(--space-2);
   padding: var(--space-4);
   background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent, var(--border));
+  border: 1px solid var(--accent, var(--border));
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm), var(--glass-sheen);
   backdrop-filter: var(--glass-blur);
@@ -1977,7 +2093,6 @@ select:hover {
   font-size: var(--text-sm);
   color: var(--text-soft);
   background: var(--surface-sunken);
-  border-left: 3px solid var(--sekunder);
   border-radius: var(--radius-sm);
 }
 
@@ -2029,7 +2144,7 @@ select:hover {
   display: grid;
   gap: var(--space-2);
   padding-left: var(--space-3);
-  border-left: 4px solid var(--verdict-color, var(--sekunder));
+  border-left: 1px solid var(--verdict-color, var(--sekunder));
 }
 
 .competition-verdict > p:last-child {
@@ -2222,9 +2337,66 @@ select:hover {
 
 /* Mobile: the panel becomes a sheet the map sits behind ------------------- */
 
+/* Phone: the deck lands ----------------------------------------------------
+   Two absolutely positioned columns inset by 1rem resolve to the same
+   rectangle on a 390px screen, and the results card — later in the DOM at
+   equal z-index — painted straight over the location card, taking the
+   category picker with it. Every score depends on that picker, so the whole
+   surface was unusable, not merely cramped.
+
+   The fix is not a narrower float. Floating is what breaks: there is no room
+   on a phone for anything to float over. So the map stops being the page
+   ground and becomes a plate at the head of one scrolling column, and the
+   cards below it are simply cards. The glass survives where glass still means
+   something — the header bar and the card surfaces — and stops pretending to
+   hover over territory it is actually covering. */
 @media (max-width: 820px) {
   .app {
-    height: 100dvh;
+    /* The column grows past the viewport and the page scrolls; a locked
+       100dvh here is what forced the old nested-scroll sheet. */
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  /* The bar can no longer be transparent: with the page scrolling underneath
+     it, panel text would slide through the gaps between the pills. It becomes
+     the glass it was always made of — blur, shadow and sheen together, as any
+     floating surface in this system must carry. */
+  .app-header {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow), var(--glass-sheen);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    pointer-events: auto;
+  }
+
+  /* One glass layer, not two. The bar now carries the blur and the sheen, so
+     the brand pill drops its own rather than frosting frosted glass — the
+     controls beside it keep theirs, because they are real controls and should
+     still read as raised. */
+  .app-header .brand-summary {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* A toast pinned to the bottom of the viewport works on a desktop, where the
+     foot of the map is empty. On a phone the column scrolls underneath it, so
+     a fixed banner sits permanently on top of whatever is being read — and
+     this one never dismisses. It rejoins the flow instead: seen once on the
+     way in, directly under the bar, then scrolled past like anything else. */
+  .auth-banner {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin: var(--space-3) var(--space-4) 0;
+    transform: none;
+    box-shadow: var(--shadow);
   }
 
   .decision-columns {
@@ -2232,71 +2404,45 @@ select:hover {
   }
 
   .layout {
-    position: relative;
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr);
-    gap: 0;
-    padding: 0;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: var(--space-3);
+    /* Clears the home indicator on a notched phone. */
+    padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
   }
 
-  /* Full-bleed behind the sheet on a phone: the card gutter would only waste
-     the little map area left. */
+  /* Full-bleed: a side gutter here would only eat the little map there is,
+     and it keeps the ODbL credit inside the plate clear of every card. */
   .map-pane {
-    grid-area: 1 / 1;
-    padding: 0;
+    position: relative;
+    inset: auto;
+    /* Picking a point is the primary action, so the plate stays big enough to
+       aim at. The floor is for landscape, where 58dvh is a letterbox. */
+    height: 58dvh;
+    min-height: 18rem;
+    /* A flex child in a column would otherwise be shrinkable away. */
+    flex: none;
   }
 
-  .map {
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
+  /* The columns stop being columns. `.overlay-left` and `.overlay-right` are
+     equal-specificity single-class rules, so every positioned property has to
+     be named here rather than left to `.overlay`. */
+  .overlay,
+  .overlay-left,
+  .overlay-right {
+    position: static;
+    inset: auto;
+    width: auto;
+    padding-inline: var(--space-4);
+    /* No gaps to pan the map through any more: the map is its own plate. */
+    pointer-events: auto;
   }
 
-  .panel {
-    grid-area: 1 / 1;
-    align-self: end;
-    z-index: 1000;
-    /* The map is how a location gets picked, so the sheet must not swallow it.
-       Tapping the handle collapses the sheet to reveal the map in full. */
-    max-height: 62dvh;
-    background: var(--sheet-surface);
-    padding: var(--space-2) var(--space-4) var(--space-5);
-    border: 0;
-    border-top: 1px solid var(--border);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    box-shadow: var(--shadow-lg);
-  }
-
-  .sheet-handle {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: grid;
-    justify-items: center;
-    padding: var(--space-2) 0;
-    margin: 0 calc(-1 * var(--space-4));
-    background: var(--surface);
-    cursor: pointer;
-  }
-
-  .sheet-handle::before {
-    content: '';
-    width: 2.5rem;
-    height: 0.25rem;
-    background: var(--border-strong);
-    border-radius: var(--radius-pill);
-  }
-
-  .panel[data-collapsed='true'] {
-    max-height: 3.25rem;
-    overflow: hidden;
-  }
-
-}
-
-@media (min-width: 821px) {
-  .sheet-handle {
-    display: none;
+  /* One scrollbar, the page's. Nested scroll inside a card that is already
+     the length of its content is how a phone loses its scroll position. */
+  .floating-panel-body {
+    overflow-y: visible;
   }
 }
 
@@ -2395,7 +2541,7 @@ select:hover {
   padding: var(--space-4);
   background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
   border-color: var(--border);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-md);
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -2512,7 +2658,7 @@ select:hover {
   padding: var(--space-4);
   background: var(--surface-sunken);
   border-color: var(--border);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-md);
 }
 
 /* Preview card only — a step up in size so it is readable at arm's length.
@@ -2694,7 +2840,7 @@ select:hover {
   padding: var(--space-4);
   background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
   border: 1px solid var(--border);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-md);
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -2740,7 +2886,7 @@ select:hover {
   padding: var(--space-4);
   background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
   border: 1px solid var(--border);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-md);
 }
 
 .panel .segment-position {
@@ -2777,7 +2923,7 @@ select:hover {
 .panel .stats > div {
   background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
   border: 0;
-  border-radius: 0.875rem;
+  border-radius: var(--radius-md);
 }
 
 .panel .competitor-list li {
@@ -2791,13 +2937,17 @@ select:hover {
 }
 
 .panel .attribution {
-  font-size: 0.72rem;
+  /* The ODbL credit is a legal requirement, not fine print to be hidden in.
+     It rides the shared xs step rather than a literal below the ramp. */
+  font-size: var(--text-xs);
   line-height: 1.45;
 }
 
 @media (max-width: 820px) {
+  /* The rail now sticks against the page, not against a scrolling card, so it
+     has to clear the sticky header instead of the old sheet handle. */
   .panel .tab-list {
-    top: 2.75rem;
+    top: var(--header-h);
   }
 
   .panel .location-actions {
@@ -2844,7 +2994,7 @@ select:hover {
 
 .panel .score-inline small {
   margin-top: 0.15rem;
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--muted);
 }
 
@@ -2854,7 +3004,7 @@ select:hover {
 .panel .recommendation-status,
 .panel .segment-signal {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 650;
   line-height: 1.3;
 }
@@ -2883,15 +3033,15 @@ select:hover {
 /* Fixed black and white rather than tokens, and deliberately so: this control
    is meant to read the same in both themes rather than follow the surface. */
 .icon-button-danger {
-  color: #ffffff;
-  background: #000000;
-  border-color: #000000;
+  color: var(--error-text);
+  background: var(--error-bg);
+  border-color: var(--error-border);
 }
 
 .icon-button-danger:hover {
-  color: #ffffff;
-  background: #1a1a1a;
-  border-color: #1a1a1a;
+  color: var(--error-text);
+  background: color-mix(in srgb, var(--error-border) 28%, var(--error-bg));
+  border-color: var(--error-border);
 }
 
 .button-danger {
@@ -2958,6 +3108,12 @@ select:hover {
     0 0 0 3px var(--sekunder),
     0 0 0 9999px rgb(2 6 23 / 0.62);
   pointer-events: none;
+  /* Deliberate layout animation, kept after review. The dim is a 9999px shadow
+     spread around this box, so the hole IS the box: scaling it with `transform`
+     would scale the ring and the dim with it and distort both. The cheap
+     version of this effect is worse than the cost. It runs for 200ms on a
+     user-initiated step change, four or five times in a tour, and never during
+     analysis — so it is not on any hot path. */
   transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
 }
 
@@ -2987,12 +3143,35 @@ select:hover {
   justify-content: center;
 }
 
-/* The desktop workspace uses the same compact visual density as an 80% browser
-   zoom, while keeping browser zoom and accessibility preferences available to
-   the visitor. Phones retain the original, more legible scale. */
+/* The desktop root font-size used to be pulled to 0.85rem here — "the same
+   compact visual density as an 80% browser zoom". Every token in this file is
+   rem-based, so that one line took the whole system down 15% on the primary
+   scene: body prose to 12.75px, labels to 11.05px, the attribution to 9.8px,
+   and every icon button under the comfortable touch size.
+
+   PRODUCT.md calls legibility of sustained text "a product requirement, not a
+   preference", for an audience with no analytics background reading dense
+   quantitative Indonesian on an ordinary laptop. Density bought by shrinking
+   that text is density bought from the wrong account. It is paid for below
+   instead, out of vertical rhythm. */
 @media (min-width: 821px) {
-  :root {
-    font-size: 0.85rem;
+  /* Tighter gaps, same type size: the panel keeps its compactness where
+     compactness costs nothing to read. */
+  .panel .floating-panel-body {
+    gap: var(--space-2);
+  }
+
+  .panel .score-card,
+  .panel .recommend,
+  .panel .segments,
+  .panel .competition {
+    gap: var(--space-3);
+  }
+
+  /* The hairline between chapters keeps its rule; only the air above it
+     closes up. */
+  .results-panel .score-card > * + * {
+    padding-top: var(--space-4);
   }
 }
 
@@ -3217,27 +3396,58 @@ select:hover {
    OpenStreetMap credit, which the ODbL requires to stay visible. */
 .auth-banner {
   position: fixed;
+  /* Back at the foot of the screen, and small. It is an account reminder, not
+     a task message: it earns a strip, not a card. Compact enough that it no
+     longer competes with the map it sits over, and dismissible besides. */
   left: 50%;
-  bottom: 2.75rem;
+  /* As low as it can go. The bottom 2rem belongs to the scale bar and the map
+     credit, and ODbL requires that credit to stay visible — so the strip stops
+     at that line rather than crossing it. */
+  bottom: var(--space-6);
   z-index: 1200;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2);
   width: max-content;
-  max-width: min(34rem, calc(100vw - 2rem));
+  max-width: min(30rem, calc(100vw - 2rem));
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   margin: 0;
+  border-radius: var(--radius-pill);
   transform: translateX(-50%);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow);
 }
 
-/* The banner asks the visitor to secure their account, so the message outranks
-   the button beside it rather than sitting under it at label size. */
+/* The action rides inside the strip at chip scale, not as a full button. */
+.auth-banner .button-secondary {
+  padding: 0.2rem 0.6rem;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-pill);
+}
+
+.auth-banner-dismiss {
+  flex-shrink: 0;
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  margin-left: calc(-1 * var(--space-1));
+  color: var(--warn-text);
+  background: none;
+  border-color: transparent;
+}
+
+.auth-banner-dismiss:hover {
+  color: var(--warn-text);
+  background: color-mix(in srgb, var(--warn-border) 22%, transparent);
+  border-color: transparent;
+}
+
+/* One line, at reading-support size rather than body size: the reminder has to
+   be legible, not loud. */
 .auth-banner-message {
   display: block;
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.35;
   letter-spacing: -0.005em;
   color: var(--warn-text);
 }
@@ -3571,7 +3781,7 @@ button.opportunity-cell:hover {
 }
 
 .opportunity-confidence {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs);
 }
 
 .opportunity-compass {
@@ -3643,7 +3853,7 @@ button.opportunity-cell:hover {
 @media (min-width: 900px) {
   .results-panel .tabs {
     display: grid;
-    grid-template-columns: 9.5rem minmax(0, 1fr);
+    grid-template-columns: 8.5rem minmax(0, 1fr);
     gap: var(--space-4);
     align-items: start;
   }
@@ -3660,4 +3870,644 @@ button.opportunity-cell:hover {
     justify-content: flex-start;
     text-align: left;
   }
+}
+
+/* Membership ---------------------------------------------------------------
+   A Persuade surface inside an Operate product, so it borrows the app's glass
+   and its teal/indigo roles rather than inventing a second look. The one
+   restraint it keeps: the price is the largest thing on a tier, and nothing
+   competes with it. */
+
+.membership-page {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.membership-header {
+  padding: var(--space-4) var(--space-5);
+}
+
+.membership-brand {
+  display: inline-block;
+}
+
+.membership-brand img {
+  display: block;
+  height: 2.25rem;
+  width: auto;
+}
+
+.membership-main {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+.membership-draft {
+  justify-content: flex-start;
+}
+
+.membership-intro {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 44rem;
+}
+
+.membership-intro h1 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.membership-lede {
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+.membership-tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.membership-tier {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  height: 100%;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* The recommended tier is marked by the interactive accent, which is what that
+   colour already means everywhere else in this product. */
+.membership-tier[data-featured='true'] {
+  border-color: var(--tersier);
+  box-shadow: var(--shadow), var(--glass-sheen);
+}
+
+.membership-tier-name {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sekunder-strong);
+}
+
+.membership-price {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.membership-price-value,
+.membership-price-blank {
+  font-size: var(--text-md);
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.membership-price-blank {
+  color: var(--muted);
+}
+
+.membership-period {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.membership-summary {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.membership-features {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.membership-features li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.membership-features svg {
+  margin-top: 0.15em;
+  color: var(--sekunder);
+}
+
+.membership-tier button {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.membership-foot {
+  max-width: 52rem;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* Landing -------------------------------------------------------------------
+   A Persuade surface inside an Operate product. It borrows the app's glass,
+   its teal/indigo roles and its one type stack rather than inventing a second
+   look — the argument is the composition, not a new identity.
+
+   The two readings of the first viewport are deliberately unequal in weight
+   and equal in width: the left one is prose on the bare wash, the right one is
+   the product's own glass. That difference IS the page's thesis, so it must
+   not be flattened into two matching cards. */
+
+.landing {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 100dvh;
+}
+
+.landing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.landing-logo {
+  display: block;
+  height: 2.25rem;
+  width: auto;
+}
+
+.landing-main {
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+.landing-hero {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.landing-title {
+  max-width: 18ch;
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.landing-readings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.landing-reading {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.landing-reading h2 {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sekunder-strong);
+}
+
+.landing-reading p {
+  max-width: 44ch;
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+/* The concession, not a disclaimer: it keeps the left column honest. */
+.landing-aside {
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--border-strong);
+  font-size: var(--text-sm) !important;
+  color: var(--muted) !important;
+}
+
+.landing-reading-scored {
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.landing-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.landing-score-value {
+  font-size: var(--text-display);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-score-margin {
+  font-size: var(--text-md);
+  font-weight: 650;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The band is engine data, so it wears an engine tone rather than a brand one. */
+.landing-score-band {
+  padding: 0.2rem var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--tone-fair-fg);
+  background: var(--tone-fair-bg);
+  border-radius: var(--radius-pill);
+}
+
+.landing-score-where {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm) !important;
+  color: var(--muted) !important;
+}
+
+.landing-evidence {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-evidence li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.landing-evidence svg {
+  margin-top: 0.15em;
+  color: var(--sekunder);
+}
+
+.landing-action {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.landing-cta {
+  /* .button-primary is display:flex, so as a grid item it filled the column.
+     The action is one decision, not a bar across the page. */
+  display: inline-flex;
+  width: auto;
+  min-width: 14rem;
+  text-decoration: none;
+}
+
+.landing-action-note {
+  max-width: 46ch;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.landing-reasons h2,
+.landing-method h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.landing-reason-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-5) var(--space-4);
+}
+
+.landing-reason {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--sekunder);
+}
+
+.landing-reason h3 {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.landing-reason p,
+.landing-method p {
+  max-width: 62ch;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-soft);
+}
+
+.landing-method p + p {
+  margin-top: var(--space-3);
+}
+
+.landing-coverage {
+  font-weight: 650;
+  color: var(--sekunder-strong) !important;
+}
+
+.landing-foot {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Account -------------------------------------------------------------------
+   Operate mode: the visitor came to check or change one thing about their
+   account, so the page is a short stack of labelled facts and the actions that
+   belong to each. Same glass, same roles, no new identity. */
+
+.account-page {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.account-back {
+  display: inline-block;
+}
+
+.account-logo {
+  display: block;
+  height: 2.25rem;
+  width: auto;
+}
+
+.account-main {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+.account-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.account-card {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.account-section-title {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sekunder-strong);
+}
+
+.account-facts {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  margin: 0;
+}
+
+.account-fact {
+  display: grid;
+  grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.account-fact:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.account-fact dt {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.account-fact dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* State reads in words as well as colour: the tone alone would leave a
+   colour-blind reader guessing which of the two this is. */
+.account-state {
+  display: inline-block;
+  padding: 0.1rem var(--space-2);
+  font-weight: 650;
+  border-radius: var(--radius-pill);
+}
+
+.account-state-ok {
+  color: var(--tone-excellent-fg);
+  background: var(--tone-excellent-bg);
+}
+
+.account-state-pending {
+  color: var(--warn-text);
+  background: var(--warn-bg);
+}
+
+.account-verify {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  width: 100%;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.account-verify p,
+.account-plan-body {
+  max-width: 54ch;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+.account-card a.button-secondary {
+  text-decoration: none;
+}
+
+/* The five values are read against each other, so they line up as figures. */
+.account-weights dd {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-weights-hint {
+  max-width: 54ch;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+/* Adjustable weights ------------------------------------------------------- */
+/* All selectors here are new. The editor borrows the simulator's slider idiom
+   on purpose: both are places where the visitor changes an input and watches
+   the engine's own numbers move, so they should not look like two different
+   kinds of control. Nothing here introduces a colour — a customised score is
+   still read against the same band tones. */
+
+/* `.notice` is a grid, which is right for the notices that carry a button but
+   would break this one's sentence across three rows at the <strong>. */
+.custom-weights-notice {
+  display: block;
+  margin-bottom: var(--space-4);
+  text-wrap: pretty;
+}
+
+.weights-editor {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.weights-intro {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-soft);
+  text-wrap: pretty;
+}
+
+.weights-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The label takes its own line at every width. The panel this lives in is
+   about 15rem wide on desktop — narrower than the phone sheet — so a label
+   column would leave the slider too short to aim at, and the five rows would
+   go ragged as the longer labels wrapped. */
+.weights-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.weights-label {
+  grid-column: 1 / -1;
+  font-size: var(--text-sm);
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
+}
+
+.weights-slider {
+  min-width: 0;
+  height: 1.5rem;
+  accent-color: var(--tersier);
+}
+
+.weights-value {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.weights-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Rides on `.notice` for its surface and accent rather than restating them:
+   this says the same kind of thing those notices say, so it should not be a
+   second, slightly different warning treatment. */
+.weights-warning {
+  display: block;
+  font-size: var(--text-sm);
+  text-wrap: pretty;
 }

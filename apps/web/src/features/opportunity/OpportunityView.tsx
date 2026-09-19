@@ -2,7 +2,7 @@ import type { BusinessType, LatLng } from '@gayatama/scoring';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Loading, QueryError } from '../../components/QueryState';
 import type { OpportunitiesResponse } from '../../lib/api-types';
-import { scoreTone, toneColor } from '../../lib/band-color';
+import { scoreTone, toneTextColor } from '../../lib/band-color';
 import { BUSINESS_TYPE_LABELS } from '../../lib/copy';
 import { displayScore, formatDistance } from '../../lib/format';
 import { CENTRE_ID, COLUMNS, DIRECTIONS, ROWS, bestCell, cellDistanceMeters, type Cell, type ScoredCell } from './grid';
@@ -96,7 +96,7 @@ function OpportunityCell({
   const body = (
     <>
       <span className="opportunity-direction">{isCentre ? 'Titik Anda' : direction}</span>
-      <span className="opportunity-score" style={{ color: toneColor(scoreTone(cell.score)) }}>
+      <span className="opportunity-score" style={{ color: toneTextColor(scoreTone(cell.score)) }}>
         {displayScore(cell.score)}
       </span>
       {cell.confidence !== null && <span className="opportunity-confidence muted">yakin {Math.round(cell.confidence)}</span>}

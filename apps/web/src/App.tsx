@@ -1,9 +1,10 @@
 import lokabisLogo from './assets/lokabis-logo.png';
-import type { BusinessType, LatLng } from '@gayatama/scoring';
+import type { BusinessType, ComponentWeights, LatLng } from '@gayatama/scoring';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { FloatingPanel } from './components/FloatingPanel';
-import { ChevronDownIcon, HelpIcon, LogOutIcon } from './components/Icons';
+import { ChevronDownIcon, CloseIcon, HelpIcon, LogOutIcon, UserIcon } from './components/Icons';
 import { ShareButton } from './components/ShareButton';
 import { ThemeToggle } from './components/ThemeToggle';
 import { LocationComparisonView } from './features/compare/LocationComparisonView';
@@ -12,6 +13,8 @@ import { LocationPreview } from './features/location/LocationPreview';
 import { BusinessTypePicker, LocationSummary, PointModeTabs, type PointMode } from './features/map/LocationControls';
 import { MapPicker } from './features/map/MapPicker';
 import { Tour } from './features/tour/Tour';
+import { useIdToken } from './features/auth/useIdToken';
+import { useProfile } from './lib/queries';
 import {
   DEFAULT_CENTER,
   isInSemarangCoverage,
@@ -44,12 +47,17 @@ export function App({
   onResendVerification,
 }: AppProps) {
   const [selection, setSelection] = useState<Selection>(() => parseSelection(window.location.search));
+  /** Whether the link this page opened with already carried a weight set. */
+  const [linkCarriedWeights] = useState(() => parseSelection(window.location.search).weights !== null);
   const [analysisSelection, setAnalysisSelection] = useState<Selection | null>(null);
   const [initialCenter] = useState<LatLng>(() => selection.point ?? DEFAULT_CENTER);
   const [mapCenter, setMapCenter] = useState<LatLng>(initialCenter);
   const [locationCollapsed, setLocationCollapsed] = useState(false);
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const [outsideCoverage, setOutsideCoverage] = useState(false);
+  /* Session-scoped on purpose: the reminder should stop nagging while someone
+     is working, and come back next visit if the email is still unverified. */
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   // Which route opened the result: a chosen category, or "compare them all".
   const [entryMode, setEntryMode] = useState<'score' | 'compare'>('score');
   // Comparing two sites for one category. `pointB` is filled by the next map click.
@@ -60,6 +68,23 @@ export function App({
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   // Bumping this remounts the tour, which is how "replay" starts it over.
   const [tourRun, setTourRun] = useState(0);
+
+  const idToken = useIdToken();
+  const profile = useProfile(idToken);
+  const savedWeights = profile.data?.profile?.weights ?? null;
+
+  /**
+   * Adopts the account's saved weight set once, on sign-in.
+   *
+   * A set named in the link wins: someone opening a shared result must see the
+   * score that was shared, not their own weights applied to someone else's
+   * point. After that the visitor's own edits win, which is why this runs only
+   * while the selection is still on the baseline.
+   */
+  useEffect(() => {
+    if (savedWeights === null || linkCarriedWeights) return;
+    setSelection((current) => (current.weights === null ? { ...current, weights: savedWeights } : current));
+  }, [savedWeights, linkCarriedWeights]);
 
   // Keep the URL in step with the selection, so any result can be shared as a link.
   useEffect(() => {
@@ -112,6 +137,11 @@ export function App({
     setOutsideCoverage(false);
   };
 
+  const chooseWeights = (weights: ComponentWeights | null) => {
+    setSelection((current) => ({ ...current, weights }));
+    setAnalysisSelection((current) => (current === null ? null : { ...current, weights }));
+  };
+
   const chooseBusinessType = (businessType: BusinessType) => {
     setSelection((current) => ({ ...current, businessType }));
     setAnalysisSelection(null);
@@ -138,7 +168,7 @@ export function App({
 
   const analyseBusinessType = (businessType: BusinessType) => {
     if (selection.point === null) return;
-    const nextSelection = { point: selection.point, businessType };
+    const nextSelection = { point: selection.point, businessType, weights: selection.weights };
     setSelection(nextSelection);
     setAnalysisSelection(nextSelection);
   };
@@ -146,7 +176,7 @@ export function App({
   /** Moves the analysis to a nearby point the opportunity grid suggested, keeping the category. */
   const analysePoint = (point: LatLng) => {
     if (!isInSemarangCoverage(point)) return;
-    const nextSelection = { point: roundPoint(point), businessType: selection.businessType };
+    const nextSelection = { point: roundPoint(point), businessType: selection.businessType, weights: selection.weights };
     setEntryMode('score');
     setSelection(nextSelection);
     setAnalysisSelection(nextSelection);
@@ -160,7 +190,7 @@ export function App({
   const prepareTourResult = () => {
     const point = selection.point ?? (isInSemarangCoverage(mapCenter) ? roundPoint(mapCenter) : null);
     if (point === null) return;
-    const next = { point, businessType: selection.businessType };
+    const next = { point, businessType: selection.businessType, weights: selection.weights };
     setOutsideCoverage(false);
     setSelection(next);
     setAnalysisSelection(next);
@@ -169,7 +199,9 @@ export function App({
 
   return (
     <div className="app">
-
+      {/* The screen had no h1 at all: the document outline opened on three peer
+          h2s. Visually hidden because the brand mark is the sighted title. */}
+      <h1 className="visually-hidden">LOKABIS — penilaian kelayakan lokasi usaha mikro</h1>
 
       <header className="app-header">
         <details className="brand-nav">
@@ -193,6 +225,10 @@ export function App({
             </button>
             <ShareButton disabled={analysisSelection === null} />
             <ThemeToggle />
+            <Link className="icon-button" to="/akun" aria-label="Akun" title="Akun">
+              <UserIcon size={20} />
+              <span className="button-text">Akun</span>
+            </Link>
             {onSignOut !== undefined && (
               <button
                 type="button"
@@ -209,17 +245,32 @@ export function App({
         </details>
       </header>
 
-      {!emailVerified && onResendVerification !== undefined && (
+      {/* An account reminder, not a task message: it has no business sitting in
+          the middle of the map, which is the one surface this screen is for. It
+          moves to the top edge beside the brand, and it can be dismissed —
+          nothing here is urgent enough to be permanent. */}
+      {!emailVerified && onResendVerification !== undefined && !verifyBannerDismissed && (
         <div className="notice auth-banner" role="status">
           <span className="auth-banner-message">Verifikasi email Anda untuk mengamankan akun ini.</span>
           <button type="button" className="button-secondary" onClick={onResendVerification} disabled={verificationResent}>
             {verificationResent ? 'Email terkirim' : 'Kirim ulang'}
           </button>
+          <button
+            type="button"
+            className="auth-banner-dismiss icon-button"
+            onClick={() => setVerifyBannerDismissed(true)}
+            aria-label="Tutup pengingat verifikasi"
+          >
+            <CloseIcon size={16} />
+          </button>
         </div>
       )}
 
       <main className="layout">
-        <section className="map-pane" aria-label="Peta. Klik untuk memilih lokasi.">
+        <section
+          className="map-pane"
+          aria-label="Peta. Klik untuk memilih lokasi, atau geser peta dengan tombol panah lalu pilih titik tengahnya."
+        >
           <MapPicker
             initialCenter={initialCenter}
             point={selection.point}
@@ -231,6 +282,20 @@ export function App({
             onPick={pick}
             onCenterChange={setMapCenter}
           />
+          {/* Picking was mouse-only: `MapPicker` binds `click` and nothing
+              else, so the product's one primary action was unreachable by
+              keyboard. Both map engines pan on arrow keys once focused, so the
+              missing half was a way to commit the centre. `prepareTourResult`
+              already did exactly this for the guided tour and kept it from
+              users. */}
+          <span className="map-centre-crosshair" aria-hidden="true" />
+          <button
+            type="button"
+            className="map-centre-pick"
+            onClick={() => pick(mapCenter)}
+          >
+            Pilih titik tengah peta
+          </button>
           {outsideCoverage && (
             <p className="coverage-warning" role="status">
               Lokasi itu berada di luar area cakupan Semarang. Pilih titik di dalam garis merah.
@@ -295,6 +360,8 @@ export function App({
                 businessType={analysisSelection.businessType}
                 onBusinessTypeChange={analyseBusinessType}
                 onAnalysePoint={analysePoint}
+                weights={selection.weights}
+                onWeightsChange={chooseWeights}
                 entryMode={entryMode}
               />
             )}

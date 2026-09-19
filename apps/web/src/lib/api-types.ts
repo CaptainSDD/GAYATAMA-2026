@@ -1,6 +1,7 @@
 import type {
   BusinessType,
   ComponentKey,
+  ComponentWeights,
   ConfidenceReading,
   Density,
   Facility,
@@ -111,6 +112,8 @@ export interface NamedCompetitor {
 }
 
 export interface AnalysisResponse {
+  /** Present only when the score was computed with non-default weights. */
+  weights?: ComponentWeights;
   modelVersion: string;
   location: LatLng;
   businessType: BusinessType;
@@ -373,4 +376,14 @@ export interface ApiErrorBody {
   error: string;
   message?: string;
   details?: Record<string, unknown>;
+}
+
+export interface ProfileResponse {
+  profile: {
+    username: string;
+    email: string | null;
+    createdAt: string;
+    /** null when this account has never left the documented baseline. */
+    weights: ComponentWeights | null;
+  } | null;
 }

@@ -78,7 +78,7 @@ export function SignupPage() {
   if (authState.status === 'loading') return <AuthLoading />;
   // A signup form that can never succeed is worse than no form at all.
   if (authState.status === 'unavailable') return <AuthUnavailable />;
-  if (authState.status === 'signed-in' && !signingUp) return <Navigate to="/" replace />;
+  if (authState.status === 'signed-in' && !signingUp) return <Navigate to="/app" replace />;
 
   if (sent) {
     return (
@@ -96,7 +96,7 @@ export function SignupPage() {
               Akun Anda sudah aktif. Kami mengirim tautan verifikasi ke <strong>{email}</strong> — klik tautan itu untuk
               mengamankan akun Anda.
             </p>
-            <Link className="button-secondary auth-submit auth-submit-link" to="/">
+            <Link className="button-secondary auth-submit auth-submit-link" to="/app">
               Mulai pakai LOKABIS
             </Link>
           </div>

@@ -2,13 +2,15 @@ import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type { Firestore } from 'firebase-admin/firestore';
 import { ApiError, usernameTaken } from '../common/errors';
 import { FIRESTORE } from '../firebase/firebase.module';
-import type { RegisterProfileRequest } from './schemas';
+import type { ComponentWeightsRequest, RegisterProfileRequest } from './schemas';
 
 export interface UserProfile {
   uid: string;
   email: string | null;
   username: string;
   createdAt: string;
+  /** null when the visitor has never left the documented baseline. */
+  weights: ComponentWeightsRequest | null;
 }
 
 /**
@@ -50,6 +52,52 @@ export class AuthService {
       transaction.set(userRef, { email, username: request.username, createdAt });
     });
 
-    return { uid, email, username: request.username, createdAt };
+    return { uid, email, username: request.username, createdAt, weights: null };
+  }
+
+  /**
+   * Reads the profile the client cannot: Firestore rules deny every client
+   * path to `users/`, so this Admin SDK read is the only way the app ever
+   * learns its own username or saved weights.
+   */
+  async getProfile(uid: string, email: string | null): Promise<UserProfile | null> {
+    const firestore = this.requireFirestore();
+    const snapshot = await firestore.collection('users').doc(uid).get();
+    if (!snapshot.exists) return null;
+
+    const data = snapshot.data() ?? {};
+    return {
+      uid,
+      email: (data.email as string | null | undefined) ?? email,
+      username: (data.username as string | undefined) ?? '',
+      createdAt: (data.createdAt as string | undefined) ?? '',
+      weights: (data.weights as ComponentWeightsRequest | undefined) ?? null,
+    };
+  }
+
+  /** Passing null clears the saved set, returning the visitor to the baseline. */
+  async saveWeights(uid: string, weights: ComponentWeightsRequest | null): Promise<void> {
+    const firestore = this.requireFirestore();
+    const userRef = firestore.collection('users').doc(uid);
+    const snapshot = await userRef.get();
+    if (!snapshot.exists) {
+      throw new ApiError(
+        HttpStatus.NOT_FOUND,
+        'REQUEST_FAILED',
+        'No profile exists for this account yet.',
+      );
+    }
+    await userRef.set({ weights }, { merge: true });
+  }
+
+  private requireFirestore(): Firestore {
+    if (this.firestore === null) {
+      throw new ApiError(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'REQUEST_FAILED',
+        'Firestore is not configured on the server, so a profile cannot be read or saved.',
+      );
+    }
+    return this.firestore;
   }
 }

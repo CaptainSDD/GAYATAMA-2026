@@ -3,20 +3,24 @@ import { Card } from '../../components/Card';
 import { AlertIcon, CheckIcon } from '../../components/Icons';
 import { Attribution, DataNotices, WarningList } from '../../components/Notices';
 import type { AnalysisResponse, DataSource } from '../../lib/api-types';
+import type { ComponentWeights } from '@gayatama/scoring';
 import { toneColor } from '../../lib/band-color';
-import { BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/copy';
-import { formatPercent } from '../../lib/format';
+import { BAND_LABELS, BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/copy';
+import { formatPercent, formatRange, formatWhole } from '../../lib/format';
 import { SimulationPanel } from '../simulate/SimulationPanel';
 import { ScoreGauge } from './ScoreGauge';
+import { WeightsEditor } from './WeightsEditor';
 import { ReportExportButton } from './ReportExportButton';
 
 interface ScorePanelProps {
   analysis: AnalysisResponse;
   onRefresh: () => void;
   refreshing: boolean;
+  weights: ComponentWeights | null;
+  onWeightsChange: (weights: ComponentWeights | null) => void;
 }
 
-export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps) {
+export function ScorePanel({ analysis, onRefresh, refreshing, weights, onWeightsChange }: ScorePanelProps) {
   const { score, dataSource } = analysis;
   const contributions = COMPONENT_KEYS.map((key) => {
     const { value, weight } = analysis.components[key];
@@ -24,8 +28,26 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
   });
   const total = contributions.reduce((sum, entry) => sum + entry.contribution, 0);
 
+  const customWeights = analysis.weights !== undefined;
+
   return (
     <article className="score-card">
+      {/* The only announcement of success. `QueryState` politely says the
+          analysis has started and then nothing ever says it finished, so a
+          screen reader user was left in silence at the moment the answer
+          arrived. Visually hidden because the sighted equivalent is the gauge
+          right below it. */}
+      <p className="visually-hidden" role="status">
+        Analisis selesai. Skor {formatWhole(score.value)} dari 100 untuk{' '}
+        {BUSINESS_TYPE_LABELS[analysis.businessType]}, kategori {BAND_LABELS[score.band]}. Rentang kemungkinan{' '}
+        {formatRange(score)}.
+      </p>
+      {customWeights && (
+        <p className="notice custom-weights-notice" role="status">
+          Skor ini dihitung dengan <strong>bobot ubahan</strong>, bukan bobot bawaan LOKABIS. Angkanya tidak setara
+          dengan skor bawaan.
+        </p>
+      )}
       <ScoreGauge score={score} businessLabel={BUSINESS_TYPE_LABELS[analysis.businessType]} />
       <DecisionSummary analysis={analysis} />
 
@@ -47,7 +69,10 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
                   <div className="bar" aria-hidden="true">
                     <span
                       style={{
-                        width: `${Math.max(0, Math.min(100, value))}%`,
+                        // A 0–1 scale factor, not a width: the bar is laid out
+                        // full-width and scaled, so the fill animates on the
+                        // compositor instead of relaying out five bars a frame.
+                        ['--bar-fill' as string]: Math.max(0, Math.min(100, value)) / 100,
                         ['--bar-color' as string]: toneColor(reading.tone),
                       }}
                     />
@@ -81,6 +106,15 @@ export function ScorePanel({ analysis, onRefresh, refreshing }: ScorePanelProps)
           </div>
         </details>
       </Card>
+
+      <details className="panel-disclosure weights-disclosure">
+        <summary>
+          Bobot penilaian <span className="muted">· {customWeights ? 'diubah' : 'bawaan'}</span>
+        </summary>
+        <div className="disclosure-content">
+          <WeightsEditor weights={weights} onChange={onWeightsChange} />
+        </div>
+      </details>
 
       <SimulationPanel analysis={analysis} />
 
