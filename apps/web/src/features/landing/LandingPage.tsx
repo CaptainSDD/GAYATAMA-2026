@@ -15,7 +15,6 @@ import { BAND_LABELS, BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/c
 import { LANDING_EXAMPLE } from './landingExample';
 import { ScoreBreakdown } from './ScoreBreakdown';
 import { SevenAnswers } from './SevenAnswers';
-import { WhenWeDecline } from './WhenWeDecline';
 import { ZonesDiagram } from './ZonesDiagram';
 import { useActiveLandingSection, useHeroExit, useScrollReveal } from './useScrollReveal';
 
@@ -342,11 +341,7 @@ export function LandingPage() {
                 </div>
                 <p>
                   Selalu {EXAMPLE_SCORE} ± {EXAMPLE_MARGIN}, tidak pernah {EXAMPLE_SCORE} saja. Kalau datanya tipis,
-                  rentangnya melebar — dan di bawah batas keyakinan,{' '}
-                  <a className="landing-inline-link" href="#batas">
-                    LOKABIS menolak menjawab
-                  </a>
-                  .
+                  rentangnya melebar — dan di bawah batas keyakinan, LOKABIS menolak menjawab.
                 </p>
               </article>
             </div>
@@ -355,50 +350,56 @@ export function LandingPage() {
 
         <SevenAnswers />
         <ZonesDiagram />
-        <WhenWeDecline />
 
+        {/* The dark band the refusal section used to carry now belongs here: the
+            method is the page's one quiet passage, full-bleed and near-black, so
+            the formula reads as the page stepping back to show its work. */}
         <section className="landing-method" id="metode" aria-labelledby="landing-method-title">
-          <div className="landing-method-lede" data-reveal="rise">
-            <h2 id="landing-method-title">Rumusnya terbuka.</h2>
-            <p>
-              Bobotnya adalah penilaian yang didokumentasikan, bukan parameter hasil pengepasan data — ditulis supaya
-              bisa dibantah, bukan supaya terdengar pasti. Setiap contoh perhitungan di dokumentasi diuji oleh mesin
-              skornya sendiri, jadi dokumentasi tidak bisa menyimpang dari kode tanpa membuat build gagal.
-            </p>
-            <p className="landing-method-link">
-              <a
-                className="landing-textlink"
-                href="https://github.com/CaptainSDD/GAYATAMA-2026/blob/main/docs/methodology.md"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Lihat metodologi lengkapnya, terbuka di tab baru"
-              >
-                Lihat metodologi lengkapnya
-              </a>{' '}
-              <span className="muted">— rumus, ambang, dan rujukan akademiknya. Dokumen teknis, berbahasa Inggris.</span>
-            </p>
-          </div>
-
-          <ol className="landing-weights">
-            {COMPONENT_KEYS.map((key, index) => (
-              <li key={key}>
-                <details
-                  className="landing-weight"
-                  data-reveal="weight"
-                  style={{ ['--w' as string]: COMPONENT_WEIGHTS[key], ['--delay' as string]: `${index * 70}ms` }}
+          <div className="landing-method-inner">
+            <div className="landing-method-lede" data-reveal="rise">
+              <h2 id="landing-method-title">Rumusnya terbuka.</h2>
+              <p>
+                Bobotnya adalah penilaian yang didokumentasikan, bukan parameter hasil pengepasan data — ditulis supaya
+                bisa dibantah, bukan supaya terdengar pasti. Setiap contoh perhitungan di dokumentasi diuji oleh mesin
+                skornya sendiri, jadi dokumentasi tidak bisa menyimpang dari kode tanpa membuat build gagal.
+              </p>
+              <p className="landing-method-link">
+                <a
+                  className="landing-textlink"
+                  href="https://github.com/CaptainSDD/GAYATAMA-2026/blob/main/docs/methodology.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Lihat metodologi lengkapnya, terbuka di tab baru"
                 >
-                  <summary>
-                    <span className="landing-weight-name">{COMPONENT_LABELS[key]}</span>
-                    <span className="landing-weight-value">{Math.round(COMPONENT_WEIGHTS[key] * 100)}%</span>
-                    <span className="landing-weight-track" aria-hidden="true">
-                      <span className="landing-weight-bar" />
-                    </span>
-                  </summary>
-                  <p className="landing-weight-copy">{COMPONENT_EXPLANATIONS[key]}</p>
-                </details>
-              </li>
-            ))}
-          </ol>
+                  Lihat metodologi lengkapnya
+                </a>{' '}
+                <span className="muted">
+                  — rumus, ambang, dan rujukan akademiknya. Dokumen teknis, berbahasa Inggris.
+                </span>
+              </p>
+            </div>
+
+            <ol className="landing-weights">
+              {COMPONENT_KEYS.map((key, index) => (
+                <li key={key}>
+                  <details
+                    className="landing-weight"
+                    data-reveal="weight"
+                    style={{ ['--w' as string]: COMPONENT_WEIGHTS[key], ['--delay' as string]: `${index * 70}ms` }}
+                  >
+                    <summary>
+                      <span className="landing-weight-name">{COMPONENT_LABELS[key]}</span>
+                      <span className="landing-weight-value">{Math.round(COMPONENT_WEIGHTS[key] * 100)}%</span>
+                      <span className="landing-weight-track" aria-hidden="true">
+                        <span className="landing-weight-bar" />
+                      </span>
+                    </summary>
+                    <p className="landing-weight-copy">{COMPONENT_EXPLANATIONS[key]}</p>
+                  </details>
+                </li>
+              ))}
+            </ol>
+          </div>
         </section>
 
         <section className="landing-close" aria-labelledby="landing-close-title" data-reveal="rise">

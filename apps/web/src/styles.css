@@ -4076,6 +4076,16 @@ button.opportunity-cell:hover {
   --lp-dark-ink: #eef2f8;
   --lp-dark-ink-soft: #a9b6c8;
   --lp-dark-line: rgb(255 255 255 / 0.12);
+  /* Tersier on the dark band. The `--tersier-*` steps flip with the scheme, but
+     this band does not, so the accent that sits on it is fixed: the day-mode
+     indigo lands at about 2.5:1 here, and the night-mode soft step is a dark
+     navy that all but disappears. This one clears 9:1 against both band tints. */
+  --lp-dark-link: #a5b4fc;
+  /* Same reasoning for the teal that draws structure on the band: the day-mode
+     `--sekunder` reads at about 2.4:1 against the raised surface, under the 3:1
+     a meaningful graphic needs. */
+  --lp-dark-accent: #2dd4bf;
+  --lp-dark-accent-strong: #5eead4;
 
   /* The scrim the hero's map is read through, as channels so one rule can
      compose several gradient layers from it, and so it can flip. A white scrim
@@ -4265,7 +4275,6 @@ button.opportunity-cell:hover {
 .landing-slab,
 .landing-answers,
 .landing-zones,
-.landing-method,
 .landing-close {
   width: min(100% - (2 * var(--lp-gutter)), var(--lp-col));
   margin-inline: auto;
@@ -5626,11 +5635,11 @@ button.opportunity-cell:hover {
   color: var(--lp-ink-muted);
 }
 
-/* The refusal -----------------------------------------------------------------
-   Full-bleed and dark: the page's one quiet passage, and the sentence it
-   carries is the product going quiet too. Nobody puts their product's limit on
-   a landing page, which is exactly why this may not read as generic. */
-.landing-decline {
+/* Method and weights ----------------------------------------------------------
+   Full-bleed and dark: the page's one quiet passage. The band used to carry the
+   refusal; now it carries the formula, which is the other place the product
+   stops selling and starts showing its working. */
+.landing-method {
   width: 100vw;
   margin-inline: calc(50% - 50vw);
   padding-block: clamp(4rem, 10vw, 7.5rem);
@@ -5638,107 +5647,16 @@ button.opportunity-cell:hover {
   color: var(--lp-dark-ink);
 }
 
-.landing-decline-inner {
+.landing-method-inner {
   display: grid;
   gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
   width: min(100% - (2 * var(--lp-gutter)), var(--lp-col));
   margin-inline: auto;
 }
 
 @media (min-width: 900px) {
-  .landing-decline-inner {
-    grid-template-columns: 1fr 1fr;
-    align-items: center;
-  }
-}
-
-.landing-decline-lede {
-  display: grid;
-  gap: var(--space-4);
-  max-width: 36ch;
-}
-
-.landing-decline h2 {
-  font-size: var(--lp-h2);
-  font-weight: 300;
-  line-height: 1.02;
-  letter-spacing: -0.03em;
-  color: #ffffff;
-}
-
-.landing-decline p {
-  font-size: 0.9375rem;
-  color: var(--lp-dark-ink-soft);
-}
-
-.landing-decline strong {
-  font-weight: 500;
-  color: var(--lp-dark-ink);
-}
-
-.landing-decline-aside {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--lp-dark-line);
-}
-
-.landing-decline-figure {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-}
-
-.landing-decline-caption {
-  font-size: 0.75rem;
-  color: var(--lp-dark-ink-soft);
-}
-
-/* It is a depiction, so it does not offer a pointer it cannot honour. */
-.landing-held-action {
-  cursor: default;
-}
-
-/* The real state, rendered by the real strings the app uses when this happens.
-   It keeps its own surface rather than borrowing the app's `.held-back`: that
-   component belongs to a light glass panel over a map, and dropping it onto a
-   near-black band would be two worlds in one frame. */
-.landing-held {
-  display: grid;
-  gap: var(--space-3);
-  justify-items: start;
-  padding: clamp(1.25rem, 2.5vw, 1.9rem);
-  background: var(--lp-dark-raised);
-  border: 1px solid var(--lp-dark-line);
-  border-radius: var(--lp-r);
-}
-
-.landing-held-title {
-  font-size: var(--lp-h3);
-  font-weight: 400;
-  letter-spacing: -0.015em;
-  color: #ffffff;
-}
-
-.landing-held-body {
-  color: var(--lp-dark-ink-soft);
-}
-
-.landing-held-action {
-  padding: 0.55rem 1.1rem;
-  border: 1px solid var(--lp-dark-line);
-  border-radius: var(--lp-r-sm);
-  font-size: 0.875rem;
-  color: var(--lp-dark-ink);
-}
-
-/* Method and weights ---------------------------------------------------------- */
-.landing-method {
-  display: grid;
-  gap: clamp(2rem, 5vw, 4rem);
-  align-items: start;
-}
-
-@media (min-width: 900px) {
-  .landing-method {
+  .landing-method-inner {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -5754,11 +5672,12 @@ button.opportunity-cell:hover {
   font-weight: 300;
   line-height: 1.02;
   letter-spacing: -0.03em;
+  color: #ffffff;
 }
 
 .landing-method-lede p {
   font-size: 0.9375rem;
-  color: var(--lp-ink-muted);
+  color: var(--lp-dark-ink-soft);
 }
 
 /* Tersier (10%): an action link, not body text. */
@@ -5766,6 +5685,23 @@ button.opportunity-cell:hover {
   color: var(--tersier-strong);
   font-weight: 500;
   text-decoration-color: currentcolor;
+}
+
+/* The band is dark in both schemes, so its accent is the fixed step rather than
+   the scheme-flipping one. */
+.landing-method .landing-textlink {
+  color: var(--lp-dark-link);
+}
+
+.landing-method .muted {
+  color: var(--lp-dark-ink-soft);
+}
+
+/* The page's indigo ring all but vanishes against the band, and the five weight
+   disclosures are keyboard targets, so the ring takes the band's step of the
+   same hue. */
+.landing-method :focus-visible {
+  outline-color: var(--lp-dark-link);
 }
 
 .landing-method-link {
@@ -5781,9 +5717,11 @@ button.opportunity-cell:hover {
   margin: 0;
   padding: clamp(1.25rem, 2.5vw, 1.9rem);
   list-style: none;
-  background: var(--lp-tile);
+  /* The raised step of the dark palette, the same surface the held-back state
+     used to sit on, so the plate still reads as lifted off the band. */
+  background: var(--lp-dark-raised);
+  border: 1px solid var(--lp-dark-line);
   border-radius: var(--lp-r-xl);
-  box-shadow: var(--lp-sheen), var(--lp-shadow);
 }
 
 .landing-weight {
@@ -5795,18 +5733,19 @@ button.opportunity-cell:hover {
 
 .landing-weight-name {
   font-size: 0.9375rem;
-  color: var(--lp-ink-soft);
+  color: var(--lp-dark-ink-soft);
 }
 
 .landing-weight-value {
   font-size: 1.0625rem;
   font-weight: 500;
+  color: #ffffff;
 }
 
 .landing-weight-track {
   grid-column: 1 / -1;
   height: 0.5rem;
-  background: rgb(13 22 38 / 0.07);
+  background: rgb(255 255 255 / 0.1);
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
@@ -5817,7 +5756,7 @@ button.opportunity-cell:hover {
   height: 100%;
   /* Teal: this is structure, not a score. The `--tone-*` scale would claim the
      weights are good or bad, which they are not — they are a documented split. */
-  background: var(--sekunder);
+  background: var(--lp-dark-accent);
   border-radius: inherit;
   transform: scaleX(0);
   transform-origin: left;
@@ -6285,7 +6224,7 @@ button.opportunity-cell:hover {
   }
 }
 
-.landing :where(#bukti, #jawaban, #zona, #batas, #metode) {
+.landing :where(#bukti, #jawaban, #zona, #metode) {
   scroll-margin-top: 6.5rem;
 }
 
@@ -6482,33 +6421,10 @@ button.opportunity-cell:hover {
   display: block;
 }
 
-/* The dark pause now includes a genuine recovery disclosure. The depicted app
-   control remains inert; this summary is the clearly interactive element. */
-.landing-decline-help {
-  border-top: 1px solid var(--lp-dark-line);
-}
-
-.landing-decline-help summary {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: 2.75rem;
-  padding-block: var(--space-3);
-  color: var(--lp-dark-ink);
-  font-size: 0.875rem;
-  font-weight: 500;
-  list-style: none;
-  cursor: pointer;
-}
-
-.landing-decline-help summary::-webkit-details-marker,
 .landing-weight summary::-webkit-details-marker {
   display: none;
 }
 
-.landing-decline-help summary::after,
 .landing-weight summary::after {
   content: '';
   flex: none;
@@ -6521,20 +6437,9 @@ button.opportunity-cell:hover {
   transition: transform 0.25s var(--lp-ease), opacity 0.25s var(--lp-ease);
 }
 
-.landing-decline-help[open] summary::after,
 .landing-weight[open] summary::after {
   transform: rotate(90deg);
   background-size: 100% 1px, 0 100%;
-}
-
-.landing-decline-help p {
-  padding-bottom: var(--space-4);
-}
-
-.landing-decline-help a {
-  color: var(--tersier-soft);
-  font-weight: 500;
-  text-decoration-color: currentcolor;
 }
 
 /* Each weight is now a native disclosure. The resting state still reads as the
@@ -6557,7 +6462,7 @@ button.opportunity-cell:hover {
 .landing-weight summary::after {
   grid-column: 3;
   grid-row: 1;
-  color: var(--tersier-strong);
+  color: var(--lp-dark-link);
 }
 
 .landing-weight-name {
@@ -6574,19 +6479,19 @@ button.opportunity-cell:hover {
 
 .landing-weight summary:hover .landing-weight-name,
 .landing-weight[open] .landing-weight-name {
-  color: var(--lp-ink);
+  color: #ffffff;
 }
 
 .landing-weight summary:hover .landing-weight-bar,
 .landing-weight[open] .landing-weight-bar {
-  background: var(--sekunder-strong);
+  background: var(--lp-dark-accent-strong);
 }
 
 .landing-weight-copy {
   margin-top: var(--space-3) !important;
   padding: var(--space-3);
-  color: var(--lp-ink-muted);
-  background: var(--lp-tile-sunken);
+  color: var(--lp-dark-ink-soft);
+  background: rgb(255 255 255 / 0.05);
   border-radius: var(--lp-r-sm);
   font-size: 0.8125rem;
   line-height: 1.5;
@@ -6931,7 +6836,6 @@ button.opportunity-cell:hover {
 .landing-ruler-axis .landing-ruler-track,
 .landing-zones-caption,
 .landing-zone-competitor-count,
-.landing-decline-caption,
 .landing-result-source,
 .landing-breakdown-legend-value {
   font-size: var(--lp-meta) !important;
