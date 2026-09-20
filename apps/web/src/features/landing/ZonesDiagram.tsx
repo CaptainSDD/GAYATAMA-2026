@@ -15,20 +15,23 @@ const MAX_R = 124;
 const COMPETITOR_MARKER_PATH = 'M0 8C-1.8 5.1-6 1.9-6-2.2A6 6 0 1 1 6-2.2C6 1.9 1.8 5.1 0 8Z';
 
 /**
- * Deliberately illustrative positions: two markers in the 0–300 m disc,
- * four in the 300–800 m annulus, and six in the 800–1,500 m annulus.
- * They explain spatial weighting and must never be presented as fetched POIs.
+ * Deliberately illustrative positions: one marker in the 0–300 m disc, three in
+ * the 300–800 m annulus, and six in the 800–1,500 m annulus. They explain
+ * spatial weighting and must never be presented as fetched POIs.
+ *
+ * The 1 / 3 / 6 progression is the point of the picture. Each ring covers far
+ * more ground than the one inside it, so the count rising outward is what a real
+ * reading looks like — and the single near marker is what the section's sentence
+ * is about: one neighbour at 250 m outweighs six shops at the edge. Two markers
+ * in Zone A also collided with the centre point, which put the clutter in the
+ * one disc that had to read as "right here".
  */
 const COMPETITOR_MARKERS: Record<Zone, readonly CompetitorMarker[]> = {
-  a: [
-    { x: 118, y: 124 },
-    { x: 143, y: 137 },
-  ],
+  a: [{ x: 119, y: 124 }],
   b: [
-    { x: 90, y: 110 },
-    { x: 165, y: 100 },
-    { x: 158, y: 170 },
-    { x: 112, y: 77 },
+    { x: 101, y: 106 },
+    { x: 171, y: 127 },
+    { x: 127, y: 176 },
   ],
   c: [
     { x: 55, y: 82 },
@@ -128,7 +131,7 @@ export function ZonesDiagram() {
             <circle cx={CENTRE} cy={CENTRE} r={4} className="landing-zone-point" />
           </svg>
           <figcaption className="landing-zones-caption" id="landing-zones-caption">
-            Ilustrasi, bukan data lokasi nyata: Zona A 2 penanda pesaing, Zona B 4, Zona C 6.
+            Ilustrasi, bukan data lokasi nyata: Zona A 1 penanda pesaing, Zona B 3, Zona C 6.
           </figcaption>
         </figure>
 
