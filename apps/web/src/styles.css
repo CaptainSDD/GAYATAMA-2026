@@ -3995,169 +3995,6 @@ button.opportunity-cell:hover {
   }
 }
 
-/* Membership ---------------------------------------------------------------
-   A Persuade surface inside an Operate product, so it borrows the app's glass
-   and its teal/indigo roles rather than inventing a second look. The one
-   restraint it keeps: the price is the largest thing on a tier, and nothing
-   competes with it. */
-
-.membership-page {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 100dvh;
-}
-
-.membership-header {
-  padding: var(--space-4) var(--space-5);
-}
-
-.membership-brand {
-  display: inline-block;
-}
-
-.membership-brand img {
-  display: block;
-  height: 2.25rem;
-  width: auto;
-}
-
-.membership-main {
-  display: grid;
-  align-content: start;
-  gap: var(--space-5);
-  width: 100%;
-  max-width: 68rem;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-5) var(--space-6);
-}
-
-.membership-draft {
-  justify-content: flex-start;
-}
-
-.membership-intro {
-  display: grid;
-  gap: var(--space-3);
-  max-width: 44rem;
-}
-
-.membership-intro h1 {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
-.membership-lede {
-  font-size: var(--text-base);
-  line-height: 1.55;
-  color: var(--text-soft);
-}
-
-.membership-tiers {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.membership-tier {
-  display: grid;
-  align-content: start;
-  gap: var(--space-3);
-  height: 100%;
-  padding: var(--space-5);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm), var(--glass-sheen);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-}
-
-/* The recommended tier is marked by the interactive accent, which is what that
-   colour already means everywhere else in this product. */
-.membership-tier[data-featured='true'] {
-  border-color: var(--tersier);
-  box-shadow: var(--shadow), var(--glass-sheen);
-}
-
-.membership-tier-name {
-  margin: 0;
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sekunder-strong);
-}
-
-.membership-price {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.membership-price-value,
-.membership-price-blank {
-  font-size: var(--text-md);
-  font-weight: 750;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-
-.membership-price-blank {
-  color: var(--muted);
-}
-
-.membership-period {
-  font-size: var(--text-xs);
-  color: var(--muted);
-}
-
-.membership-summary {
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--text-soft);
-}
-
-.membership-features {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.membership-features li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text);
-}
-
-.membership-features svg {
-  margin-top: 0.15em;
-  color: var(--sekunder);
-}
-
-.membership-tier button {
-  width: 100%;
-  margin-top: var(--space-2);
-}
-
-.membership-foot {
-  max-width: 52rem;
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  color: var(--muted);
-}
-
 /* Landing ====================================================================
    A Persuade surface with its own world, sitting inside an Operate product.
 
@@ -7784,6 +7621,461 @@ button.opportunity-cell:hover {
 
   to {
     transform: translateX(250%);
+  }
+}
+
+/* The plans page =============================================================
+   `/membership`. A Persuade surface, reached from the front door or from either
+   auth door and never from inside the analysis deck — so it belongs to the
+   public world, not to the app's Glass Instrument Deck. It reuses the doorway's
+   shell wholesale (`.landing-sheet`: the static bar, the teal breath, the
+   centred main, the ring field, the foot) because it is the same building one
+   room further along, and adds only the plate's own contents.
+
+   What it refuses is the pricing page's own default: a rack of interchangeable
+   cards of equal weight. Only one of the four tiers can be started today, so the
+   free core takes a full row, the raised tile, a two-column interior and the
+   page's single indigo action, while the three tiers whose price and plumbing do
+   not exist yet take the sunken tile in a narrower column and say so. The dark
+   anchor under them is the doorway's aside, carrying the promise no tier
+   changes. */
+
+/* One step this world did not have: a figure large enough to lead a cell without
+   reaching the landing's own score figure, which belongs to a real measurement.
+   Recorded in DESIGN.md as `lp-price`; its ceiling is set by the longest price
+   this page can carry (`Rp 149.000` in a three-column cell), not by taste. */
+.landing-plans {
+  --lp-price: clamp(2.1rem, 3.2vw, 2.85rem);
+}
+
+/* Three tiers plus an anchor need more room than two form columns do. */
+.landing-plans .landing-nav,
+.landing-plans .sheet-main {
+  width: min(100% - (2 * var(--lp-gutter)), 74rem);
+}
+
+/* The doorway centres one plate in the viewport; this page is taller than the
+   viewport at every width, so it starts at the top and scrolls. */
+.landing-plans .sheet-main {
+  align-content: start;
+  padding-block: clamp(1.5rem, 5vh, 3rem) clamp(2rem, 6vh, 4rem);
+}
+
+/* The ring field moves to the lower left, so the plate's corner is what crosses
+   it rather than its own centre — the same ornament, not the same picture. */
+.landing-plans .sheet-rings svg {
+  top: 60%;
+  left: 6%;
+  width: min(44rem, 108vw);
+}
+
+.landing-plans::before {
+  background: radial-gradient(52% 46% at 10% 58%, rgb(15 118 110 / 0.14), transparent 70%);
+}
+
+.plans-head {
+  display: grid;
+  justify-items: start;
+  max-width: 52rem;
+}
+
+.plans-deck {
+  max-width: 58ch;
+}
+
+/* The draft warning, in the app's amber because that is what amber already
+   means in this product: a thing the interface is not sure of. A 1px frame all
+   round rather than a bar down one edge — the caveat is the whole object, and
+   the same shape the doorway's error takes. */
+.plans-draft {
+  margin-top: clamp(1rem, 2vw, 1.35rem);
+  max-width: 64ch;
+  padding: 0.7rem 0.95rem;
+  font-size: var(--lp-body-sm);
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: var(--lp-r-sm);
+}
+
+.plans-slab {
+  gap: clamp(0.85rem, 1.8vw, 1.35rem);
+}
+
+.plans-slab:focus-visible {
+  /* The skip link lands here. It is a container, so it takes the world's ring
+     at a distance rather than tight to its edge. */
+  outline-offset: 6px;
+}
+
+/* `align-items: start` rather than a stretched row: a cell ends where its own
+   content ends. Padding the free tier out to the tallest neighbour put three
+   hundred pixels of empty tile above its action, and a column ending before its
+   neighbour inside a shared plate is ordinary typesetting — the same way the
+   doorway's aside is set. */
+.plans-tiers {
+  display: grid;
+  align-items: start;
+  gap: clamp(0.75rem, 1.6vw, 1.15rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plans-tiers > li {
+  display: grid;
+}
+
+/* Never four equal columns: at 74rem that leaves each tier 17rem wide, and the
+   subscription's list alone would run twenty lines in it. The free tier — the one
+   a visitor can actually start — holds a row of its own with a two-column
+   interior, and the three that cannot be bought yet sit beneath it as narrower
+   columns. On a phone the stack is the same order read straight down. */
+@media (min-width: 900px) {
+  .plans-tiers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .plans-tiers > li:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+.plans-tier {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 1.2vw, 0.9rem);
+  height: 100%;
+  padding: clamp(1.15rem, 2.1vw, 1.6rem);
+  background: var(--lp-tile-sunken);
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-r);
+}
+
+/* Raised, not outlined: the tier a visitor can actually start today is the one
+   sitting on top of the plate, and it is the only one carrying a shadow. */
+.plans-tier[data-state='live'] {
+  background: var(--lp-tile);
+  box-shadow: var(--lp-shadow);
+}
+
+/* The free tier spans the row, so its interior turns into two unequal columns
+   rather than running one 60rem-wide list across the plate. The offer and its
+   action stay together on the left; the contents sit on the right, where the
+   list's own measure is the column width. */
+@media (min-width: 900px) {
+  .plans-tier[data-layout='wide'] {
+    display: grid;
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+    grid-template-areas:
+      'name    lists'
+      'price   lists'
+      'summary lists'
+      'action  lists'
+      'note    lists';
+    grid-template-rows: auto auto auto auto 1fr;
+    column-gap: clamp(1.75rem, 3.5vw, 3rem);
+    row-gap: clamp(0.6rem, 1.2vw, 0.9rem);
+    padding: clamp(1.4rem, 2.4vw, 1.9rem);
+  }
+
+  .plans-tier[data-layout='wide'] .plans-tier-name {
+    grid-area: name;
+  }
+
+  .plans-tier[data-layout='wide'] .plans-price {
+    grid-area: price;
+  }
+
+  .plans-tier[data-layout='wide'] .plans-summary {
+    grid-area: summary;
+  }
+
+  .plans-tier[data-layout='wide'] .plans-lists {
+    grid-area: lists;
+  }
+
+  .plans-tier[data-layout='wide'] .plans-action {
+    grid-area: action;
+    align-self: start;
+    margin-top: clamp(0.5rem, 1.2vw, 0.9rem);
+  }
+
+  .plans-tier[data-layout='wide'] .plans-note {
+    grid-area: note;
+    align-self: start;
+  }
+}
+
+.plans-tier-name {
+  font-size: var(--lp-h3);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+.plans-price {
+  display: grid;
+  gap: 0.2rem;
+}
+
+/* The largest thing in the cell, and the one place this page raises its voice.
+   Set at the display weight of the world it belongs to rather than bolded — the
+   size is the emphasis. */
+.plans-price-value {
+  font-size: var(--lp-price);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.plans-tier[data-state='draft'] .plans-price-value {
+  color: var(--lp-ink-muted);
+}
+
+.plans-period {
+  font-size: var(--lp-meta);
+  color: var(--lp-ink-muted);
+}
+
+.plans-summary {
+  max-width: 44ch;
+  font-size: var(--lp-body-sm);
+  color: var(--lp-ink-soft);
+}
+
+/* Hairline-divided rows, the same rhythm the doorway's aside uses, with the
+   structural teal on the tick. The list is what the tier contains, so it takes
+   the cell's full width and its own reading size. */
+.plans-features {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plans-features li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.55rem;
+  padding: 0.5rem 0;
+  font-size: var(--lp-body-sm);
+  border-top: 1px solid var(--lp-line);
+}
+
+.plans-features svg {
+  margin-top: 0.22em;
+  color: var(--sekunder);
+}
+
+.plans-lists {
+  display: grid;
+  gap: clamp(0.7rem, 1.4vw, 1rem);
+}
+
+/* What the tier promises and the build does not have yet. Separated as its own
+   named block rather than hedged row by row: a visitor has to be able to tell in
+   one look which half of the cell they can use today, and PRODUCT.md does not
+   allow the two halves to be presented as one. No tick, because a tick here
+   would be the thing that misleads. */
+.plans-soon {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--lp-line-strong);
+}
+
+.plans-soon-title {
+  font-size: var(--lp-meta);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--lp-ink-muted);
+}
+
+.plans-soon-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Indented to the tick column above it, so both lists share one text edge. */
+.plans-soon-list li {
+  padding: 0.4rem 0 0.4rem calc(15px + 0.55rem);
+  font-size: var(--lp-body-sm);
+  color: var(--lp-ink-muted);
+}
+
+.plans-soon-list li + li {
+  border-top: 1px solid var(--lp-line);
+}
+
+/* Full width of its cell in the three-column row, capped where the free tier
+   spans a whole row: at 1100px a pill stops reading as a button. */
+.plans-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  max-width: 26rem;
+  margin-top: auto;
+  padding: 0 1.5rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--lp-ink-muted);
+  text-align: center;
+  text-decoration: none;
+  background: none;
+  border: 1px solid var(--lp-line-strong);
+  border-radius: var(--radius-pill);
+  cursor: not-allowed;
+}
+
+/* Tersier (10%): one indigo element per screen, and on this surface it is the
+   only tier that can be started. A disabled indigo button would spend the
+   accent on something that does not happen. */
+.landing .plans-action-live {
+  color: var(--tersier-contrast);
+  background: var(--tersier);
+  border-color: transparent;
+  box-shadow: var(--lp-shadow);
+  cursor: pointer;
+  transition: background 0.25s var(--lp-ease), transform 0.25s var(--lp-ease), box-shadow 0.25s var(--lp-ease);
+}
+
+.landing .plans-action-live:hover {
+  background: var(--tersier-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--lp-shadow-lg);
+}
+
+.landing .plans-action-live:active {
+  transform: none;
+  box-shadow: var(--lp-shadow);
+}
+
+/* What happens after the only live action on the page, said before it is taken.
+   Both facts are already true: there is nothing to pay, and verification is a
+   real step in signup rather than a formality. */
+.plans-note {
+  max-width: 34ch;
+  font-size: var(--lp-meta);
+  color: var(--lp-ink-muted);
+}
+
+/* The anchor. The doorway's dark teal aside, turned on its side and run under
+   all three tiers: one plate carrying the product's standing promise, which is
+   the thing a plans page is most likely to be read as contradicting. */
+.plans-anchor {
+  display: grid;
+  gap: clamp(0.55rem, 1.1vw, 0.85rem);
+  padding: clamp(1.15rem, 2.1vw, 1.6rem);
+  color: #eafaf7;
+  background: linear-gradient(155deg, #0f3b39 0%, #0a2624 100%);
+  border-radius: var(--lp-r);
+}
+
+.plans-anchor-title {
+  max-width: 34ch;
+  font-size: var(--lp-h3);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: #ffffff;
+}
+
+/* Tinted from the plate's own hue rather than grey, the same way the doorway's
+   aside is. */
+.plans-anchor-copy,
+.plans-anchor-note {
+  color: #a9d6d0;
+}
+
+.plans-anchor-copy {
+  max-width: 58ch;
+  font-size: var(--lp-body-sm);
+}
+
+.plans-anchor-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plans-anchor-list li {
+  padding: 0.55rem 0;
+  font-size: var(--lp-body-sm);
+  border-top: 1px solid rgb(255 255 255 / 0.16);
+}
+
+.plans-anchor-note {
+  font-size: var(--lp-meta);
+}
+
+.landing .plans-anchor :focus-visible {
+  /* Indigo disappears against this plate. */
+  outline-color: #eafaf7;
+}
+
+@media (min-width: 900px) {
+  /* Two unequal columns, and the divided facts sit beside the statement rather
+     than under it — the same rule the landing's own cells follow. */
+  .plans-anchor {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    column-gap: clamp(1.5rem, 3vw, 2.75rem);
+    align-items: start;
+  }
+
+  .plans-anchor-title {
+    grid-column: 1;
+  }
+
+  .plans-anchor-copy {
+    grid-column: 1;
+  }
+
+  .plans-anchor-list {
+    grid-row: 1 / span 3;
+    grid-column: 2;
+  }
+
+  .plans-anchor-note {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .plans-action {
+    width: 100%;
+  }
+}
+
+/* Motion. The same authored moment as the doorway — the plate lands, the ring
+   field settles behind it at a slower rate — with the cells following in reading
+   order on the keyframe the form's rows already use. */
+@media (prefers-reduced-motion: no-preference) {
+  .plans-tiers > li,
+  .plans-anchor {
+    animation: lp-sheet-row 0.7s var(--lp-ease) both;
+  }
+
+  .plans-tiers > li:nth-child(1) {
+    animation-delay: 180ms;
+  }
+
+  .plans-tiers > li:nth-child(2) {
+    animation-delay: 250ms;
+  }
+
+  .plans-tiers > li:nth-child(3) {
+    animation-delay: 320ms;
+  }
+
+  .plans-anchor {
+    animation-delay: 400ms;
   }
 }
 

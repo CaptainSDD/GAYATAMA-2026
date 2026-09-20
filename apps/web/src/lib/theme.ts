@@ -1,47 +1,43 @@
-export type ThemePreference = 'system' | 'light' | 'dark';
+export type ThemePreference = 'light' | 'dark';
 
 const STORAGE_KEY = 'lokabis.theme';
 
 function isPreference(value: unknown): value is ThemePreference {
-  return value === 'system' || value === 'light' || value === 'dark';
+  return value === 'light' || value === 'dark';
 }
 
 /**
  * Reading storage throws in a private window or when site data is blocked, so
- * every access is guarded and falls back to following the operating system.
+ * every access is guarded and falls back to the product's light default.
  */
 export function readPreference(): ThemePreference {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (isPreference(stored)) return stored;
   } catch {
-    /* storage unavailable — follow the system */
+    /* storage unavailable — keep the light default */
   }
-  return 'system';
+  return 'light';
 }
 
 export function storePreference(preference: ThemePreference): void {
   try {
-    if (preference === 'system') localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, preference);
+    localStorage.setItem(STORAGE_KEY, preference);
   } catch {
     /* storage unavailable — the choice lasts for this page only */
   }
 }
 
 /**
- * `system` removes the attribute entirely so the `prefers-color-scheme` rules in
- * styles.css decide. An explicit choice stamps the attribute, which wins in
- * both directions.
+ * Every visit has an explicit theme attribute. This keeps an untouched visit in
+ * light mode while preserving a visitor's deliberate light/dark choice.
  */
 export function applyPreference(preference: ThemePreference): void {
   const root = document.documentElement;
-  if (preference === 'system') root.removeAttribute('data-theme');
-  else root.setAttribute('data-theme', preference);
+  root.setAttribute('data-theme', preference);
 }
 
-/** What the page actually renders as right now, after the system is consulted. */
+/** What the page actually renders as right now. */
 export function resolveTheme(preference: ThemePreference): 'light' | 'dark' {
-  if (preference !== 'system') return preference;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return preference;
 }

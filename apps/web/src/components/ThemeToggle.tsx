@@ -3,8 +3,8 @@ import { applyPreference, readPreference, resolveTheme, storePreference } from '
 import { MoonIcon, SunIcon } from './Icons';
 
 /**
- * Switches between light and dark. The stored preference starts as `system`, so
- * an untouched interface follows the operating system; the first click pins it.
+ * Switches between light and dark. An untouched interface starts in light mode;
+ * the visitor's choice is persisted for later visits.
  */
 export function ThemeToggle() {
   const [preference, setPreference] = useState(readPreference);

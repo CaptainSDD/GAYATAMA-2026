@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -25,7 +25,8 @@
     <link rel="icon" href="/src/assets/lokabis-logo.png" type="image/png" />
     <title>LOKABIS — Nilai lokasi usaha sebelum terikat</title>
     <script>
-      // Applied before first paint so a dark-mode reload never flashes white.
+      // Applied before first paint: light is the default, while a deliberate
+      // saved choice is restored without a flash of the wrong palette.
       try {
         var stored = localStorage.getItem('lokabis.theme');
         if (stored === 'dark' || stored === 'light') {

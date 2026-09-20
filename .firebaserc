@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "production": "tulang-rusukku-3ed47"
+  },
+  "targets": {
+    "tulang-rusukku-3ed47": {
+      "hosting": {
+        "lokabis": [
+          "lokabis"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
