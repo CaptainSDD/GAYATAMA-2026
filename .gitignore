@@ -48,4 +48,15 @@ Thumbs.db
 .cache/
 .eslintcache
 
+# Local AI / design tooling
+# These contain machine-specific hooks, generated reports, and local indexes.
+.codex/
+.claude/
+.cursor/
+.impeccable/
+graphify-out/
+.graphifyignore
+AGENTS.md
+CLAUDE.local.md
+
 lokabis-99a3a-firebase-adminsdk-fbsvc-2611e852c0.json

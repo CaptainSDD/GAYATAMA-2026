@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Card } from '../../components/Card';
 import { QueryError } from '../../components/QueryState';
 import type { AnalysisResponse, SimulationResponse } from '../../lib/api-types';
-import { scoreTone, toneChip } from '../../lib/band-color';
+import { scoreTone, toneChip, toneTextColor } from '../../lib/band-color';
 import { BAND_LABELS } from '../../lib/copy';
 import { displayScore } from '../../lib/format';
 import { useSimulation } from '../../lib/queries';
@@ -160,7 +160,10 @@ function SimulationResult({ result }: { result: SimulationResponse }) {
         </span>
         <div>
           <span className="eyebrow">Dengan perubahan</span>
-          <strong style={{ color: `var(--tone-${scoreTone(simulated.score.value)})` }}>
+          {/* The tone name was being pasted into a var() by hand, which walked
+              straight past `toneTextColor` and painted a fill colour as text —
+              `--tone-fair` measures 2.7:1 on this surface. */}
+          <strong style={{ color: toneTextColor(scoreTone(simulated.score.value)) }}>
             {displayScore(simulated.score.value)}
           </strong>
           <span className="muted">{BAND_LABELS[simulated.score.band]}</span>

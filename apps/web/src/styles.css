@@ -31,11 +31,23 @@
      red all carry meaning on the score scale, and a warm background would
      bleed into how those chips read. */
   --primer: #e8eef6;
+  /* Softened from 0.7 / 0.6 / 0.6 / 0.65 by a single factor of 0.583.
+     Nothing had ever seen these values: in the app `.map-pane` is `inset: 0`
+     and covers the body, so the wash never rendered there and was tuned blind.
+     The landing page has no map, and the wash arrived at full strength as the
+     loudest thing on the product's front door.
+
+     The factor is not a taste call. `.landing-aside` is `--muted` on the bare
+     wash, and at the old strength it measured 4.48 / 3.72 / 4.36 over the teal,
+     indigo and sky stops against a 4.5 requirement — three of four corners
+     failing. Indigo is the darkest stop and therefore set the ceiling at 0.35;
+     the other three scale by the same factor so the mesh keeps its balance
+     rather than becoming four unrelated tints. Worst case is now 4.70. */
   --page-wash:
-    radial-gradient(55rem 38rem at 6% -8%, rgb(45 212 191 / 0.7), transparent 62%),
-    radial-gradient(50rem 36rem at 98% -4%, rgb(129 140 248 / 0.6), transparent 64%),
-    radial-gradient(48rem 42rem at 78% 104%, rgb(56 189 248 / 0.6), transparent 62%),
-    radial-gradient(46rem 40rem at -4% 100%, rgb(110 231 183 / 0.65), transparent 64%);
+    radial-gradient(55rem 38rem at 6% -8%, rgb(45 212 191 / 0.41), transparent 62%),
+    radial-gradient(50rem 36rem at 98% -4%, rgb(129 140 248 / 0.35), transparent 64%),
+    radial-gradient(48rem 42rem at 78% 104%, rgb(56 189 248 / 0.35), transparent 62%),
+    radial-gradient(46rem 40rem at -4% 100%, rgb(110 231 183 / 0.38), transparent 64%);
   --glass-blur: blur(18px) saturate(1.5);
   --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.65);
 
@@ -144,6 +156,10 @@
   --shadow-lg: 0 16px 40px rgb(15 23 42 / 0.12), 0 2px 8px rgb(15 23 42 / 0.06);
 
   /* Type scale */
+  /* The panel's label step. DESIGN.md records it in prose — "inside `.panel`
+     the label is overridden to 0.75rem / 700 / sentence case" — but it lived as
+     a literal in three places. Named, so the ramp and the prose agree. */
+  --text-2xs: 0.75rem;
   --text-xs: 0.8125rem;
   --text-sm: 0.9375rem;
   --text-base: 1.0625rem;
@@ -176,7 +192,6 @@
     --glass-blur: blur(18px) saturate(1.4);
     --glass-sheen: inset 0 1px 0 rgb(255 255 255 / 0.08);
     --primer-raised: #16213a;
-  --solid-surface: #16213a;
     --solid-surface: #16213a;
     --primer-sunken: #0e1626;
     --primer-ink: #e8eefb;
@@ -238,6 +253,7 @@
        basemap dark while keeping greens green and water blue. A partial invert
        muddies every colour, so the 1 here is deliberate. */
     --map-filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6);
+
 
     color-scheme: dark;
   }
@@ -308,6 +324,7 @@
 
   --map-filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6);
 
+
   color-scheme: dark;
 }
 
@@ -333,6 +350,29 @@ h2,
 h3,
 p {
   margin: 0;
+}
+
+/* Browser surfaces ---------------------------------------------------------
+   The parts nobody draws still belong to the design system. Selection, the
+   caret and the scrollbar ship in colours that come from the platform, not
+   from this palette, and on a page that is otherwise entirely cool slate and
+   teal a stock blue highlight is the one thing that gives away where the
+   design stopped. Tersier, because selecting and typing are interactions. */
+
+::selection {
+  color: var(--tersier-contrast);
+  background: var(--tersier);
+}
+
+:root {
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--tersier);
 }
 
 button,
@@ -825,9 +865,11 @@ input {
 
 .picked-coordinate {
   margin: 0;
-  /* Its own label now says what it is, so the number stops being the biggest
-     thing in the card. Decimal degrees were never the headline. */
-  font-size: var(--text-md);
+  /* Its own label says what it is, so the number does not also have to shout.
+     At --text-md this was the largest thing in the card — a headline made of
+     decimal degrees, above the category selector that actually carries the
+     decision. It steps down to body size: a reference, not a title. */
+  font-size: var(--text-base);
   font-weight: 650;
   line-height: 1.25;
   letter-spacing: -0.01em;
@@ -837,7 +879,7 @@ input {
 }
 
 .picked-coordinate[data-empty='true'] {
-  font-size: var(--text-md);
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--muted);
 }
@@ -933,6 +975,18 @@ input {
   color: var(--sekunder-strong);
   background: var(--surface-sunken);
   border-color: var(--border-strong);
+}
+
+/* 38px is comfortable under a cursor and small under a thumb, and screen width
+   does not tell you which one is being used — a touchscreen laptop is both.
+   Ask about the pointer instead, and give only coarse ones the full 44px. The
+   desktop scene keeps its density; nobody aiming with a finger pays for it. */
+@media (pointer: coarse) {
+  .icon-button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    justify-content: center;
+  }
 }
 
 .icon-button[data-copied='true'] {
@@ -1289,11 +1343,17 @@ select:hover {
   font-size: var(--text-sm);
   font-weight: 650;
   text-align: center;
-  color: var(--error-text);
-  background: var(--error-bg);
-  border: 1px solid var(--error-border);
+  /* Was the error triad. Clicking outside Semarang is a limit of the product,
+     not a mistake by the visitor, and alarm red said otherwise. It now shares
+     the held-back register with the other two states that mean "no answer
+     here", so one fact has one appearance. */
+  color: var(--text);
+  background: var(--surface-reading);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   transform: translateX(-50%);
 }
 
@@ -1669,6 +1729,29 @@ p.error {
 
 .error-title {
   font-weight: 650;
+}
+
+/* The product declining to answer. Deliberately the panel's own neutral ground
+   rather than a tinted alert: below the confidence floor nothing has failed,
+   and this is the behaviour the product is proudest of. It gets a rule in
+   brand teal — structure, not a score tone — because the engine's five tones
+   are data and this is not a reading. */
+.held-back {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding: var(--space-4);
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--sekunder) 6%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--sekunder) 28%, var(--border));
+  border-radius: var(--radius-md);
+}
+
+.held-back-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
 }
 
 .warnings {
@@ -2459,7 +2542,7 @@ p.error {
 
 .panel .field-label,
 .panel .eyebrow {
-  font-size: 0.75rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.01em;
@@ -2538,10 +2621,17 @@ p.error {
 
 .panel .card {
   gap: var(--space-3);
-  padding: var(--space-4);
-  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
-  border-color: var(--border);
-  border-radius: var(--radius-md);
+  /* Flattened. A chapter inside the panel is separated by the rule above it and
+     the space around it; giving it a box as well marks the same grouping twice
+     and nests a card inside the card the panel already is. The inset went with
+     the border so its content aligns with every sibling chapter rather than
+     stepping 16px inward. Blocks that still carry an edge — the verdict, the
+     held-back state, notices — keep it because the edge means something there,
+     not because it is a container. */
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -2816,14 +2906,29 @@ p.error {
   border: 0;
 }
 
-.panel .data-disclosure {
+.panel .model-disclosure {
   background: transparent;
 }
 
-.panel .data-disclosure .disclaimer {
+/* Weights, simulator and evidence now share one fold, so they need rules
+   between them rather than the gaps three separate blocks used to provide. */
+.panel .model-disclosure .disclosure-content > * + * {
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.panel .evidence-block {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.panel .decision-summary .disclaimer {
   padding: var(--space-3) 0 0;
   background: transparent;
-  border-top: 1px solid var(--border);
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--sekunder) 35%, var(--border));
+  border-radius: 0;
 }
 
 .panel .lead {
@@ -2892,7 +2997,7 @@ p.error {
 .panel .segment-position {
   display: block;
   margin-bottom: 0.15rem;
-  font-size: 0.75rem;
+  font-size: var(--text-2xs);
   font-weight: 650;
   color: var(--muted);
 }
@@ -2941,6 +3046,20 @@ p.error {
      It rides the shared xs step rather than a literal below the ramp. */
   font-size: var(--text-xs);
   line-height: 1.45;
+}
+
+/* The published figure and where it came from, as one object. The gauge and the
+   credit share a border and sit tight against each other, so the provenance
+   reads as part of the number rather than as a footer that happens to follow
+   it. This is the surface's focal moment; the brief names it as such. */
+.score-object {
+  display: grid;
+  gap: 0;
+}
+
+.score-object .attribution {
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 @media (max-width: 820px) {
@@ -3171,7 +3290,7 @@ p.error {
   /* The hairline between chapters keeps its rule; only the air above it
      closes up. */
   .results-panel .score-card > * + * {
-    padding-top: var(--space-4);
+    padding-top: var(--space-5);
   }
 }
 
@@ -3410,7 +3529,9 @@ p.error {
   align-items: center;
   gap: var(--space-2);
   width: max-content;
-  max-width: min(30rem, calc(100vw - 2rem));
+  /* 32rem is where the sentence stops wrapping. One line is also 15px shorter
+     than two, so this makes the strip smaller, not larger. */
+  max-width: min(33rem, calc(100vw - 2rem));
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   margin: 0;
   border-radius: var(--radius-pill);
@@ -3839,36 +3960,54 @@ button.opportunity-cell:hover {
   border-top: 1px solid var(--border);
 }
 
-/* Results panel: the chapters read as a rail ---------------------------------
-   Five names squeezed into five columns of a 32rem panel gave "Pilihan usaha"
-   about 65px of width. Beside the content each gets a full line, and the list
-   stays in view while the chapter scrolls. Scoped to the results panel so the
-   location card, which shares this component, is untouched. */
+/* Results panel chapters ------------------------------------------------------
+   These used to sit in a rail beside the content. That was the right call when
+   the panel was 32rem and desktop type was 15% smaller: the five names did not
+   fit one row, and beside the content each got a full line.
+
+   Both of those premises are gone. The panel is 29rem and type renders at its
+   real size, so the rail was spending 152px — 35% of the panel — to leave the
+   prose 32 characters a line, against a 65-character floor for sustained
+   reading. In a narrow column, width is the scarce axis and height is not: the
+   panel scrolls. So the chapters go back above the content, where they cost
+   height once and stay sticky exactly as they did in the rail.
+
+   The original objection still holds against *equal* columns, and that is what
+   the fix addresses rather than the placement. Scoped to the results panel so
+   the location card, which shares this component, is untouched. */
 
 .results-panel .score-card > * + * {
   padding-top: var(--space-5);
   border-top: 1px solid var(--border);
 }
 
+/* Cards lost their boxes, so consecutive ones need the same chapter rule the
+   score card's children get. Without it the four stacked cards in the
+   comparison view had nothing but a 16px gap between them and would read as one
+   undivided column. Scoped to siblings so a lone card stays unruled. */
+.panel .card + .card {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
 @media (min-width: 900px) {
-  .results-panel .tabs {
-    display: grid;
-    grid-template-columns: 8.5rem minmax(0, 1fr);
-    gap: var(--space-4);
-    align-items: start;
-  }
-
+  /* Sized to the labels instead of into five equal columns. Equal columns gave
+     each tab 71px, and "Pilihan usaha" needs 88px — it was the one name that
+     forced the whole row onto two lines. Measured to the content, the five
+     together come to about 342px in a 432px row. */
   .results-panel .tab-list {
-    grid-template-columns: minmax(0, 1fr);
-    position: sticky;
-    top: 0;
-    gap: 2px;
-    margin-bottom: 0;
+    /* `max-content` is the floor so "Pilihan usaha" keeps its one line; `1fr`
+       is the ceiling so the five share what is left and the row ends where the
+       rail ends. Content-sized alone left a void hanging off the right, which
+       read as a list of words rather than a tab bar. */
+    grid-template-columns: repeat(var(--tab-count, 5), minmax(max-content, 1fr));
+    gap: var(--space-1);
   }
 
+  /* At 0.35rem the labels sat about 11px apart and ran together. Each tab needs
+     enough room to read as its own target. */
   .results-panel .tab {
-    justify-content: flex-start;
-    text-align: left;
+    padding: 0.45rem 0.6rem;
   }
 }
 
@@ -4035,247 +4174,2490 @@ button.opportunity-cell:hover {
   color: var(--muted);
 }
 
-/* Landing -------------------------------------------------------------------
-   A Persuade surface inside an Operate product. It borrows the app's glass,
-   its teal/indigo roles and its one type stack rather than inventing a second
-   look — the argument is the composition, not a new identity.
+/* Landing ====================================================================
+   A Persuade surface with its own world, sitting inside an Operate product.
 
-   The two readings of the first viewport are deliberately unequal in weight
-   and equal in width: the left one is prose on the bare wash, the right one is
-   the product's own glass. That difference IS the page's thesis, so it must
-   not be flattened into two matching cards. */
+   Everything from `/app` inward is DESIGN.md's Glass Instrument Deck and is not
+   touched by anything in this block. The landing page is the exception, and it
+   is deliberate: the app's job is to be read for twenty minutes at a desk, and
+   the front door's job is to be understood in two seconds by someone who has
+   never heard of LOKABIS. Those want different amounts of air, different type,
+   and a different relationship to imagery. So this block defines a small world
+   of its own — `--lp-*` — rather than bending the app's tokens to a job they
+   were not designed for. The two worlds share the brand teal, the indigo
+   accent, and the `--tone-*` score scale, and nothing else.
+
+   The rule that survives from the app untouched is the one about colour: teal
+   structures, indigo is the only interactive accent, and the five `--tone-*`
+   score colours are data. They appear next to a real number or they do not
+   appear. No section of this page is tinted amber because amber looked good.
+
+   The full-bleed image is a live map. It cannot be a photograph: PRODUCT.md
+   forbids inventing evidence, and a stock picture of somebody else's warung
+   standing beside a score is exactly that.
+   ========================================================================== */
+
+/* The landing's voice. Onest is a variable grotesk with round, open counters and
+   a tall x-height, which is what carries a 6rem sentence without the page having
+   to shout; the app's system stack is a UI face and reads as one at display
+   size. Self-hosted from `src/assets/fonts` rather than linked from Google:
+   this audience is often on Indonesian mobile data, and a render-blocking
+   third-party stylesheet round trip costs more than the 62 kB of font. Latin and
+   latin-ext only — the interface language is Indonesian. SIL Open Font License.
+   Weights 100-900 ship in one variable file, so the display, running and label
+   weights cost nothing extra. */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/onest-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/onest-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
 .landing {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* --- The world ------------------------------------------------------- */
+  --lp-ground: #e6eaef;
+  /* One step down from the ground, for the bands that recede. */
+  --lp-ground-sunken: #dde3ea;
+  /* Slabs are near-opaque, not the app's 50% glass. The app's panels float over
+     a live map that must stay readable through them; these sit on a flat ground
+     and carry sustained Indonesian prose, so the blur is here for the edge
+     quality where a slab crosses the map, not as a see-through effect. */
+  --lp-slab: rgb(255 255 255 / 0.86);
+  --lp-tile: #ffffff;
+  --lp-tile-sunken: #eef1f5;
+  --lp-blur: blur(28px) saturate(1.35);
+  --lp-sheen: inset 0 1px 0 rgb(255 255 255 / 0.9);
+
+  --lp-ink: #0d1626;
+  --lp-ink-soft: #3a4557;
+  --lp-ink-muted: #5a6577;
+  --lp-line: rgb(13 22 38 / 0.1);
+  --lp-line-strong: rgb(13 22 38 / 0.2);
+
+  /* The page's one dark passage. In the night register it is set below
+     `--lp-ground` rather than equal to it, so the band still recedes from the
+     page instead of merging with it. */
+  --lp-dark: #0c1018;
+  --lp-dark-raised: #131b28;
+  --lp-dark-ink: #eef2f8;
+  --lp-dark-ink-soft: #a9b6c8;
+  --lp-dark-line: rgb(255 255 255 / 0.12);
+
+  /* The scrim the hero's map is read through, as channels so one rule can
+     compose several gradient layers from it, and so it can flip. A white scrim
+     on a dark page left the sentence in light ink over a bright city map at
+     about 1.2:1. */
+  --lp-scrim: 230 234 239;
+
+  /* --- Shape ------------------------------------------------------------
+     One corner family, three steps, and nothing square anywhere on the page.
+     The largest is generous on purpose: at 30px a slab reads as a plate with a
+     milled edge rather than as a rounded rectangle, which is the difference
+     between this composition and a card layout. */
+  --lp-r-xl: 30px;
+  --lp-r: 22px;
+  --lp-r-sm: 14px;
+
+  /* Real offset and real blur. A zero-offset halo is decoration, not depth. */
+  --lp-shadow: 0 2px 6px rgb(13 22 38 / 0.04), 0 10px 24px rgb(13 22 38 / 0.06);
+  --lp-shadow-lg: 0 8px 20px rgb(13 22 38 / 0.07), 0 32px 70px rgb(13 22 38 / 0.12);
+
+  /* Exponential ease-out: fast departure, long settle. Every transition and
+     keyframe on this page uses it, so the whole surface moves with one hand. */
+  --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --lp-col: 72rem;
+  --lp-gutter: clamp(1.25rem, 4vw, 2.75rem);
+  /* The space between acts. Deliberately larger than any gap inside one: a
+     stack of sections reads as separate acts only when the space between them
+     beats the space within them. */
+  --lp-act: clamp(5rem, 11vw, 9.5rem);
+  /* How far the slab rides up onto the hero. It is bounded below by the ODbL
+     credit, which sits at the foot of the hero copy and may never be covered:
+     at 1440x900 this resolves to 72px of live map behind the slab's top edge,
+     with the credit clearing it by about 25px. */
+  --lp-overlap: clamp(3rem, 8vh, 5rem);
+
+  /* One display step and two beneath it is the whole hierarchy. The page used
+     to carry four separate clamps, which is not a scale — it is four sizes that
+     happen to differ. */
+  --lp-display: clamp(2.7rem, 8.2vw, 6rem);
+  --lp-h2: clamp(2rem, 4.6vw, 3.4rem);
+  --lp-h3: clamp(1.15rem, 1.6vw, 1.4rem);
+
+  position: relative;
   min-height: 100dvh;
+  /* The hero band and the dark passage are `100vw`, which counts the scrollbar
+     and would otherwise push ~15px of horizontal scroll onto every page that
+     has one. `clip` rather than `hidden`: it trims the overflow without turning
+     this into a scroll container, which would break `position: sticky` for the
+     zone diagram inside it. */
+  overflow-x: clip;
+  background: var(--lp-ground);
+  color: var(--lp-ink);
+  font-family: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  line-height: 1.55;
+  /* Onest's default figures are proportional; every number on this page is
+     either compared to another number or read off a ruler. */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
-.landing-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+/* The dark register. Not a second design — the same composition after sunset:
+   the map darkens, the slabs become smoked glass, the ink inverts, and every
+   proportion, radius and motion cue is unchanged. Written twice, the same way
+   the app writes it: once for people who never touch the toggle, once so an
+   explicit choice wins in both directions. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .landing {
+    --lp-ground: #0c1018;
+    --lp-ground-sunken: #080c13;
+    --lp-slab: rgb(20 27 40 / 0.82);
+    --lp-tile: #141b28;
+    --lp-tile-sunken: #0e1420;
+    --lp-sheen: inset 0 1px 0 rgb(255 255 255 / 0.07);
+    --lp-ink: #eef2f8;
+    --lp-ink-soft: #b7c3d4;
+    --lp-ink-muted: #94a2b6;
+    --lp-line: rgb(255 255 255 / 0.1);
+    --lp-line-strong: rgb(255 255 255 / 0.2);
+    --lp-dark: #05080e;
+    --lp-dark-raised: #0d141f;
+    --lp-scrim: 8 13 21;
+    --lp-shadow: 0 2px 6px rgb(0 0 0 / 0.3), 0 10px 24px rgb(0 0 0 / 0.35);
+    --lp-shadow-lg: 0 8px 20px rgb(0 0 0 / 0.4), 0 32px 70px rgb(0 0 0 / 0.55);
+  }
 }
 
-.landing-logo {
-  display: block;
-  height: 2.25rem;
-  width: auto;
+:root[data-theme='dark'] .landing {
+  --lp-ground: #0c1018;
+  --lp-ground-sunken: #080c13;
+  --lp-slab: rgb(20 27 40 / 0.82);
+  --lp-tile: #141b28;
+  --lp-tile-sunken: #0e1420;
+  --lp-sheen: inset 0 1px 0 rgb(255 255 255 / 0.07);
+  --lp-ink: #eef2f8;
+  --lp-ink-soft: #b7c3d4;
+  --lp-ink-muted: #94a2b6;
+  --lp-line: rgb(255 255 255 / 0.1);
+  --lp-line-strong: rgb(255 255 255 / 0.2);
+  --lp-dark: #05080e;
+  --lp-dark-raised: #0d141f;
+  --lp-scrim: 8 13 21;
+  --lp-shadow: 0 2px 6px rgb(0 0 0 / 0.3), 0 10px 24px rgb(0 0 0 / 0.35);
+  --lp-shadow-lg: 0 8px 20px rgb(0 0 0 / 0.4), 0 32px 70px rgb(0 0 0 / 0.55);
+}
+
+/* Browser surfaces ------------------------------------------------------------
+   The parts nobody draws still belong to the design. Left alone they ship the
+   browser's own blue, which belongs to no design system on earth. */
+.landing ::selection {
+  color: var(--sekunder-contrast);
+  background: var(--sekunder);
+}
+
+.landing {
+  caret-color: var(--sekunder);
+}
+
+/* The document scrolls, not `.landing`, so the bar has to be themed from the
+   root — scoped with `:has()` so it applies on this page and nowhere else. */
+:root:has(.landing) {
+  scrollbar-color: rgb(13 22 38 / 0.28) transparent;
+  scrollbar-width: thin;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):has(.landing) {
+    scrollbar-color: rgb(255 255 255 / 0.24) transparent;
+  }
+}
+
+:root[data-theme='dark']:has(.landing) {
+  scrollbar-color: rgb(255 255 255 / 0.24) transparent;
+}
+
+.landing :focus-visible {
+  outline: 2px solid var(--tersier);
+  outline-offset: 3px;
+  border-radius: var(--lp-r-sm);
+}
+
+:where(.landing) :where(a) {
+  color: inherit;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--lp-line-strong);
+}
+
+:where(.landing) :where(h1, h2, h3) {
+  margin: 0;
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+:where(.landing) :where(p) {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.landing .muted {
+  color: var(--lp-ink-muted);
 }
 
 .landing-main {
   display: grid;
   align-content: start;
-  gap: var(--space-6);
-  width: 100%;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-5) var(--space-6);
+  /* Spacing as margins rather than `gap`, because one element here needs to sit
+     ABOVE its neighbour's edge. A negative `margin-top` on a grid item does not
+     reliably cancel the row gap in front of it — the row is sized from the item
+     plus its margins and the pull comes out short, which is why the slab landed
+     five pixels onto the hero instead of seventy-two. Margins compose. */
 }
 
-.landing-hero {
-  display: grid;
-  gap: var(--space-5);
+.landing-main > * + * {
+  margin-top: var(--lp-act);
 }
 
-.landing-title {
-  max-width: 18ch;
-  margin: 0;
-  font-size: clamp(1.75rem, 4vw, 2.75rem);
-  font-weight: 750;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: var(--text);
+/* Every act except the two full-bleed ones is held to one column. */
+.landing-slab,
+.landing-answers,
+.landing-zones,
+.landing-method,
+.landing-close {
+  width: min(100% - (2 * var(--lp-gutter)), var(--lp-col));
+  margin-inline: auto;
 }
 
-.landing-readings {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+/* Nav -------------------------------------------------------------------------
+   Floats over the map and settles onto glass once the page is underneath it.
+   Fixed rather than absolute: the sections are named and the links go to them,
+   so the nav has to still be there when a reader wants to move between them. */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-4);
-  align-items: start;
+  width: min(100% - (2 * var(--lp-gutter)), var(--lp-col));
+  margin-inline: auto;
+  padding-block: clamp(0.85rem, 2vw, 1.4rem);
+  transition: transform 0.4s var(--lp-ease);
 }
 
-.landing-reading {
+:root[data-landing-scrolled] .landing-nav {
+  transform: translateY(-0.35rem);
+}
+
+/* The wordmark is a full-colour raster drawn for light grounds: navy lettering
+   and a navy owl. Over map tiles it is thin, and over the darkened tiles of the
+   night register it all but disappears. Inverting it would destroy the mark, so
+   it keeps the light plate it was drawn for — near-white in both registers,
+   because a brand lockup sitting on its own field is not a theming failure. */
+.landing-nav-brand {
+  display: block;
+  flex: none;
+  padding: 0.32rem 0.75rem;
+  background: rgb(255 255 255 / 0.94);
+  border-radius: var(--lp-r-sm);
+  box-shadow: var(--lp-shadow);
+  backdrop-filter: var(--lp-blur);
+  -webkit-backdrop-filter: var(--lp-blur);
+  text-decoration: none;
+}
+
+.landing-nav-brand img {
+  display: block;
+  height: 2rem;
+  width: auto;
+}
+
+/* The destinations ride in one pill, the way the sections they point at are one
+   page. Only the primary action stands outside it. */
+.landing-nav-pill {
+  display: flex;
+  align-items: center;
+  padding: 0.3rem;
+  margin-left: auto;
+  background: var(--lp-slab);
+  border-radius: var(--lp-r-sm);
+  box-shadow: var(--lp-sheen), var(--lp-shadow);
+  backdrop-filter: var(--lp-blur);
+  -webkit-backdrop-filter: var(--lp-blur);
+}
+
+.landing-nav-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.15rem, 1vw, 0.6rem);
+}
+
+.landing-nav-links a {
+  padding: 0.42rem 0.85rem;
+  border-radius: calc(var(--lp-r-sm) - 0.25rem);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--lp-ink-soft);
+  text-decoration: none;
+  transition: color 0.25s var(--lp-ease), background 0.25s var(--lp-ease);
+}
+
+.landing-nav-links a:hover {
+  color: var(--lp-ink);
+  background: var(--lp-tile-sunken);
+}
+
+/* Tersier (10%): the page's action, in the one place that is inside the first
+   viewport at every height. The slab carries it too, in context, but the slab's
+   copy puts that one 1,377px down at 1440x900 and the slab cannot ride further
+   up without covering the ODbL credit — so the bar is where the first viewport
+   gets both the action and the world's only accent.
+
+   Masuk is the returning visitor's action. It held this fill while `daftar
+   akun` sat at the foot of the page; it keeps its place and gives it up.
+
+   Every coloured link on this page is written with the `.landing` prefix: the
+   element resets above are zero-specificity `:where()` now, but the prefix is
+   what makes that intentional rather than accidental. */
+/* Inside the pill, marked off from the section links by a hairline rather than
+   by a surface of its own: it is a destination like they are, just not one on
+   this page. */
+.landing .landing-nav-login {
+  margin-left: clamp(0.3rem, 1vw, 0.7rem);
+  padding: 0.42rem 0.85rem 0.42rem clamp(0.6rem, 1.3vw, 1rem);
+  border-left: 1px solid var(--lp-line);
+  border-radius: 0 calc(var(--lp-r-sm) - 0.25rem) calc(var(--lp-r-sm) - 0.25rem) 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lp-ink);
+  text-decoration: none;
+  transition: background 0.25s var(--lp-ease);
+}
+
+.landing .landing-nav-login:hover {
+  background: var(--lp-tile-sunken);
+}
+
+.landing .landing-nav-action {
+  flex: none;
+  padding: 0.62rem 1.2rem;
+  background: var(--tersier);
+  color: var(--tersier-contrast);
+  border-radius: var(--lp-r-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  box-shadow: var(--lp-shadow);
+  transition: background 0.25s var(--lp-ease), transform 0.25s var(--lp-ease);
+}
+
+.landing .landing-nav-action:hover {
+  background: var(--tersier-strong);
+  transform: translateY(-1px);
+}
+
+/* Hero ------------------------------------------------------------------------
+   The first viewport is the page's thesis, not a header: a city seen from above
+   with one sentence across it. The reader should be able to say what this is
+   about before reading a word of the deck. */
+.landing-hero {
+  position: relative;
   display: grid;
-  gap: var(--space-3);
+  grid-template-rows: 1fr auto;
+  align-content: end;
+  min-height: 100svh;
+  padding: clamp(5.5rem, 15vh, 8.5rem) var(--lp-gutter) clamp(5rem, 11vh, 7.5rem);
 }
 
-.landing-reading h2 {
-  margin: 0;
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sekunder-strong);
+.landing-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
-.landing-reading p {
-  max-width: 44ch;
-  font-size: var(--text-base);
-  line-height: 1.55;
-  color: var(--text-soft);
+/* One band behind the whole hero, full-bleed, masked at the bottom so the tiles
+   dissolve into the page rather than ending at a horizontal line across the
+   viewport. A scrim that fades cannot hide an edge that does not, so the
+   dissolve belongs on the element and not inside its gradient. */
+.landing-sky {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 0;
+  width: 100vw;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(-50%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - 5rem),
+    rgb(0 0 0 / 0.5) calc(100% - 2.5rem),
+    rgb(0 0 0 / 0.14) calc(100% - 1rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - 5rem),
+    rgb(0 0 0 / 0.5) calc(100% - 2.5rem),
+    rgb(0 0 0 / 0.14) calc(100% - 1rem),
+    transparent 100%
+  );
 }
 
-/* The concession, not a disclaimer: it keeps the left column honest. */
-.landing-aside {
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--border-strong);
-  font-size: var(--text-sm) !important;
-  color: var(--muted) !important;
+/* The element the scroll drives. Held slightly oversize at rest so the drift has
+   somewhere to go without ever exposing an edge. */
+.landing-sky-inner {
+  position: absolute;
+  inset: -6% -2%;
+  transform-origin: 50% 35%;
 }
 
-.landing-reading-scored {
-  padding: var(--space-5);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow), var(--glass-sheen);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+.landing-map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 
-.landing-score {
+.landing-map-canvas {
+  width: 100%;
+  height: 100%;
+  background: none;
+}
+
+/* The app's own basemap filter, so the tiles stay in the cool range the score
+   scale needs — and, the part that matters most, so they darken in the night
+   register. Only the tiles are filtered; the vector rings keep their real
+   colour. */
+.landing-map-canvas .leaflet-tile-pane {
+  filter: var(--map-filter);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .landing-map-canvas .leaflet-overlay-pane {
+    filter: brightness(1.95) saturate(1.15);
+  }
+}
+
+:root[data-theme='dark'] .landing-map-canvas .leaflet-overlay-pane {
+  filter: brightness(1.95) saturate(1.15);
+}
+
+/* The scrim is the page's own colour rather than white, so the band and the
+   ground are one material and the dissolve has nothing to give away. Weighted
+   to where the type sits: strong down the left and along the top where the
+   sentence and the nav are, and released through the right where the rings are
+   the picture. A single flat scrim strong enough for the sentence washed the
+   whole map out to pay for one column of type. */
+.landing-map::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Leaflet paints its tile pane at z-index 200 and its overlays at 400, so a
+     scrim at `auto` sits behind the map and does nothing. 500 puts it over
+     both. */
+  z-index: 500;
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--lp-scrim) / 0.82) 0%,
+    rgb(var(--lp-scrim) / 0.55) 28%,
+    rgb(var(--lp-scrim) / 0.6) 62%,
+    rgb(var(--lp-scrim) / 0.9) 100%
+  );
+}
+
+@media (min-width: 900px) {
+  .landing-map::after {
+    background:
+      linear-gradient(
+        to right,
+        rgb(var(--lp-scrim) / 0.8) 0%,
+        rgb(var(--lp-scrim) / 0.62) 34%,
+        rgb(var(--lp-scrim) / 0.1) 72%,
+        rgb(var(--lp-scrim) / 0) 100%
+      ),
+      linear-gradient(
+        to bottom,
+        rgb(var(--lp-scrim) / 0.68) 0%,
+        rgb(var(--lp-scrim) / 0.2) 26%,
+        rgb(var(--lp-scrim) / 0.26) 62%,
+        rgb(var(--lp-scrim) / 0.82) 100%
+      );
+  }
+}
+
+/* The sentence. Light weight at display size, because at 6rem a 300 has all the
+   presence it needs and a 700 becomes a wall; the second line is indented so the
+   two read as a spoken phrase rather than as a stacked block. */
+.landing-title {
+  display: grid;
+  justify-items: start;
+  align-self: end;
+  max-width: 16ch;
+  margin: 0 0 clamp(2rem, 6vh, 4rem);
+  font-size: var(--lp-display);
+  font-weight: 300;
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+}
+
+.landing-title-line {
+  display: block;
+}
+
+.landing-title-line-indent {
+  display: flex;
+  align-items: center;
+  gap: 0.22em;
+  margin-left: clamp(0.4rem, 4vw, 3.2rem);
+}
+
+/* The page's only ornament, and it is the product's own figure: three
+   concentric rings at the ratio of the real zone radii, which is the ratio the
+   diagram further down draws at true scale. A decorative shape here would be
+   the gap wearing chrome. */
+.landing-title-rings {
+  flex: none;
+  width: 0.88em;
+  height: 0.88em;
+  fill: none;
+  stroke: var(--sekunder);
+  stroke-width: 4;
+  opacity: 0.75;
+}
+
+.landing-hero-foot {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  max-width: 46ch;
+}
+
+.landing-deck {
+  font-size: clamp(1.0625rem, 1.5vw, 1.3rem);
+  line-height: 1.45;
+  color: var(--lp-ink-soft);
+}
+
+/* ODbL requires the credit to stay visible, and the band above is masked, so
+   the credit sits on its own plate below rather than dissolving with the tiles
+   it is required to credit. */
+.landing-credit {
+  padding: 0.3rem 0.7rem;
+  background: var(--lp-slab);
+  border-radius: var(--lp-r-sm);
+  backdrop-filter: var(--lp-blur);
+  -webkit-backdrop-filter: var(--lp-blur);
+  font-size: 0.75rem;
+  color: var(--lp-ink-muted);
+}
+
+.landing-credit a {
+  color: var(--lp-ink-soft);
+}
+
+.landing-hero-sentinel {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+}
+
+/* The slab ---------------------------------------------------------------------
+   One plate carrying five unequal cells. It overlaps the hero's lower edge, so
+   the map is left behind rather than scrolled past, and it is the page's first
+   solid ground after the image.
+
+   The cells are unequal on purpose and never interchangeable: a lede, two short
+   claims, one live result, and one dark statement. Five identically sized
+   heading-and-text tiles would be the feature grid this page exists to refuse. */
+.landing-slab {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: clamp(0.6rem, 1.2vw, 1rem);
+  padding: clamp(1.1rem, 2.2vw, 1.75rem);
+  background: var(--lp-slab);
+  border-radius: var(--lp-r-xl);
+  box-shadow: var(--lp-sheen), var(--lp-shadow-lg);
+  backdrop-filter: var(--lp-blur);
+  -webkit-backdrop-filter: var(--lp-blur);
+}
+
+/* The hero and the slab are one composition, not two acts: the slab sits on the
+   hero's lower edge rather than an act below it. Bounded below by the ODbL
+   credit, which ends at the foot of the hero copy and may never be covered. */
+.landing-opening .landing-slab {
+  margin-top: calc(var(--lp-overlap) * -1);
+}
+
+@media (min-width: 900px) {
+  .landing-slab {
+    grid-template-columns: 1.25fr 1fr 1fr;
+    grid-template-areas:
+      'lede uncertainty data'
+      'lede result result'
+      'dark result result';
+    align-items: start;
+  }
+
+  .landing-slab-lede {
+    grid-area: lede;
+  }
+
+  .landing-tile-uncertainty {
+    grid-area: uncertainty;
+  }
+
+  .landing-tile-data {
+    grid-area: data;
+  }
+
+  /* Let each proof end with its evidence. The next, larger result plate now
+     starts immediately below this row, so matching their outer heights would
+     only reintroduce a blank card interior. */
+  .landing-tile-claim {
+    align-self: start;
+  }
+
+  .landing-tile-result {
+    grid-area: result;
+  }
+
+  .landing-tile-dark {
+    grid-area: dark;
+  }
+}
+
+.landing-slab-lede {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: clamp(1rem, 2vw, 1.6rem) clamp(1rem, 2vw, 1.4rem) clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.landing-lede-action {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-3);
-  margin: 0;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding-top: var(--space-4);
 }
 
-.landing-score-value {
-  font-size: var(--text-display);
-  font-weight: 750;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
+.landing-lede-action-note {
+  font-size: 0.8125rem;
+  color: var(--lp-ink-muted);
 }
 
-.landing-score-margin {
-  font-size: var(--text-md);
-  font-weight: 650;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
+.landing-slab-lede h2 {
+  font-size: var(--lp-h2);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
 }
 
-/* The band is engine data, so it wears an engine tone rather than a brand one. */
-.landing-score-band {
-  padding: 0.2rem var(--space-3);
-  font-size: var(--text-sm);
-  font-weight: 650;
-  color: var(--tone-fair-fg);
-  background: var(--tone-fair-bg);
+.landing-slab-lede p {
+  max-width: 34ch;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--lp-ink-muted);
+}
+
+/* The cells. `.landing-tile` is the shared plate; what sits inside each one is
+   what makes it a different object. */
+.landing-tile {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: clamp(1.1rem, 2vw, 1.5rem);
+  background: var(--lp-tile);
+  border-radius: var(--lp-r);
+}
+
+.landing-tile h3 {
+  font-size: var(--lp-h3);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.landing-tile p {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--lp-ink-muted);
+}
+
+/* The claims are read as short evidence notes. They sit above the live result,
+   so the explanation belongs directly to the assertion instead of being pushed
+   to the floor of a row made tall by the lede beside it. */
+.landing-tile-claim {
+  grid-template-rows: auto auto 1fr;
+  min-height: 0;
+}
+
+.landing-tile-claim p {
+  align-self: start;
+}
+
+/* The claim, drawn. The span is the engine's range for the worked example and
+   the mark is the estimate inside it, on the same 0-100 ruler the answers
+   section uses — so the cell's space is measured by the thing the cell claims
+   rather than left blank in the shape of the cell beside it. */
+.landing-interval {
+  display: grid;
+  gap: 0.45rem;
+  align-self: start;
+  padding-block: var(--space-2) var(--space-3);
+}
+
+.landing-interval-track {
+  position: relative;
+  height: 0.5rem;
+  background: var(--lp-tile-sunken);
   border-radius: var(--radius-pill);
 }
 
-.landing-score-where {
-  margin-top: var(--space-1);
-  font-size: var(--text-sm) !important;
-  color: var(--muted) !important;
+.landing-interval-span {
+  position: absolute;
+  inset-block: 0;
+  background: var(--sekunder);
+  border-radius: var(--radius-pill);
+  opacity: 0.32;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.8s var(--lp-ease) 240ms;
 }
 
-.landing-evidence {
+.landing-interval-mark {
+  position: absolute;
+  inset-block: -3px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--sekunder-strong);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.4s var(--lp-ease) 620ms;
+}
+
+[data-revealed] .landing-interval-span {
+  transform: scaleX(1);
+}
+
+[data-revealed] .landing-interval-mark {
+  opacity: 1;
+}
+
+.landing-interval-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  color: var(--lp-ink-muted);
+}
+
+.landing-interval-read {
+  color: var(--sekunder-strong);
+  font-weight: 500;
+}
+
+/* Without the ruler, the data claim is simply a title and its explanation.
+   The shared grid still keeps its lower edge aligned with the proof beside it. */
+.landing-tile-claim-prose {
+  grid-template-rows: auto 1fr;
+}
+
+/* The wide cell is the one this composition would normally give to a
+   photograph. It holds the thing a photograph would only be standing in for: a
+   real result, computed by the engine on the way past. */
+.landing-tile-result {
+  gap: var(--space-4);
+  background: linear-gradient(150deg, var(--lp-tile) 0%, var(--lp-tile-sunken) 100%);
+}
+
+.landing-result-head {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.landing-result-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem;
+  /* The score rises into place behind a mask rather than counting up from a
+     lower number. A count-up would put a figure on screen that the engine never
+     returned, on the one page whose argument is that this product does not do
+     that. */
+  overflow: hidden;
+}
+
+.landing-result-value {
+  font-size: clamp(3.2rem, 7vw, 4.75rem);
+  font-weight: 300;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+}
+
+.landing-result-margin {
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  font-weight: 300;
+  color: var(--lp-ink-muted);
+}
+
+.landing-result-where {
+  font-size: 0.8125rem;
+  color: var(--lp-ink-muted);
+}
+
+/* Name and value as a two-column list rather than a tick and a sentence: the
+   three figures line up, which is what makes them comparable. */
+.landing-result-evidence {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--lp-line);
+}
+
+.landing-result-evidence li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--lp-line);
+  font-size: 0.875rem;
+}
+
+.landing-result-evidence-name {
+  color: var(--lp-ink-soft);
+}
+
+.landing-result-evidence-value {
+  font-size: 1.0625rem;
+  font-weight: 500;
+}
+
+.landing-result-range {
+  font-size: 0.875rem;
+  color: var(--lp-ink-muted);
+}
+
+/* The slab's dark anchor. Teal rather than neutral black: this cell carries the
+   product's structural claim, and teal is what structures this interface. */
+.landing-tile-dark {
+  min-height: clamp(11rem, 18vh, 14rem);
+  grid-template-rows: auto 1fr;
+  background: linear-gradient(155deg, #0f3b39 0%, #0a2624 100%);
+  color: #eafaf7;
+}
+
+.landing-tile-dark h3 {
+  color: #ffffff;
+}
+
+.landing-tile-dark p {
+  align-self: end;
+  /* Tinted from the cell's own hue rather than grey. Grey secondary text on a
+     coloured ground is the tell that the colour was applied afterwards. */
+  color: #a9d6d0;
+}
+
+/* The score, taken apart -----------------------------------------------------
+   The bar IS the score: each segment's width is that component's contribution
+   in points, so the five together are the total. Not a picture of the number —
+   the number, laid out end to end. */
+.landing-breakdown {
   display: grid;
   gap: var(--space-2);
-  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--lp-line);
+}
+
+.landing-breakdown-bar {
+  display: flex;
+  gap: 2px;
+  height: 1.1rem;
+}
+
+.landing-breakdown-segment {
+  min-width: 0;
+  padding: 0;
+  /* One teal, not a ramp. A five-step tint ramp was the first version, and
+     measuring it killed it: three of the five steps fell under 3:1 against the
+     cell, and these segments are required to understand the content, so 1.4.11
+     applies. It was also dishonest — a ramp implies the shades mean something
+     and they did not. The width is the information; the colour only has to be
+     legible. Teal because this is structure, never the --tone-* scale, which
+     means score bands. */
+  background: color-mix(in srgb, var(--sekunder) 82%, transparent);
+  border: 0;
+  /* 2px, not the corner family's smallest step. At 14px on a bar this short
+     every segment rounded into a lozenge and the five read as five detached
+     pills rather than as one score cut into its parts, which is the only thing
+     this component says. The outer ends keep the pill, so the bar is finished at
+     both edges and open in the middle. */
+  border-radius: 2px;
+  cursor: pointer;
+  transform-origin: left center;
+  transition: opacity 0.18s var(--lp-ease), transform 0.18s var(--lp-ease), background 0.18s var(--lp-ease);
+}
+
+.landing-breakdown-segment:first-child {
+  border-start-start-radius: var(--radius-pill);
+  border-end-start-radius: var(--radius-pill);
+}
+
+.landing-breakdown-segment:last-child {
+  border-start-end-radius: var(--radius-pill);
+  border-end-end-radius: var(--radius-pill);
+}
+
+.landing-breakdown-segment[data-active='true'] {
+  background: var(--sekunder-strong);
+  transform: scaleY(1.35);
+}
+
+.landing-breakdown-segment[data-dimmed='true'] {
+  opacity: 0.35;
+}
+
+/* Reserves both lines so choosing a segment never moves anything below it. */
+.landing-breakdown-detail {
+  min-height: 2.6em;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  color: var(--lp-ink-soft);
+}
+
+/* One point, several businesses ------------------------------------------------
+   A studio's index of projects, turned on a location: the rail names the trades,
+   the panel holds the one currently open. Nothing about the site changes as the
+   reader moves down the rail — only the question being asked of it, which is
+   the whole argument. */
+.landing-answers {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.25rem);
+}
+
+.landing-answers-title {
+  font-size: var(--lp-h2);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-align: center;
+  justify-self: center;
+}
+
+.landing-answers-body {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+@media (min-width: 900px) {
+  .landing-answers-body {
+    grid-template-columns: minmax(14rem, 20rem) 1fr;
+    align-items: start;
+  }
+}
+
+.landing-rail {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* The rail's spine. One hairline down the left, with the open entry marked by
+     a heavier segment against it — the list's structure carries the state, so
+     nothing needs a box around it. */
+  border-left: 1px solid var(--lp-line-strong);
+}
+
+.landing-rail-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+  width: 100%;
+  padding: 0.85rem 0 0.85rem 1.1rem;
+  background: none;
+  border: 0;
+  border-radius: 0 var(--lp-r-sm) var(--lp-r-sm) 0;
+  color: var(--lp-ink-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.3s var(--lp-ease), background 0.3s var(--lp-ease);
+}
+
+/* The two spans that carry the row's words, so the offset moves the content and
+   leaves the marker on the spine where it is. */
+.landing-rail-name,
+.landing-rail-sub {
+  transition: transform 0.35s var(--lp-ease);
+}
+
+/* The marker rides on the spine itself rather than beside it. */
+.landing-rail-item::before {
+  content: '';
+  position: absolute;
+  top: 0.7rem;
+  bottom: 0.7rem;
+  left: -1px;
+  width: 2px;
+  background: var(--sekunder);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.4s var(--lp-ease);
+}
+
+.landing-rail-item:hover {
+  color: var(--lp-ink-soft);
+}
+
+.landing-rail-item[data-open='true'] {
+  color: var(--lp-ink);
+}
+
+.landing-rail-item:hover .landing-rail-name,
+.landing-rail-item:hover .landing-rail-sub,
+.landing-rail-item[data-open='true'] .landing-rail-name,
+.landing-rail-item[data-open='true'] .landing-rail-sub {
+  transform: translateX(0.25rem);
+}
+
+.landing-rail-item[data-open='true']::before {
+  transform: scaleY(1);
+}
+
+.landing-rail-name {
+  font-size: clamp(1.0625rem, 1.5vw, 1.3rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.landing-rail-sub {
+  grid-column: 1;
+  font-size: 0.75rem;
+  color: var(--lp-ink-muted);
+  line-height: 1.35;
+}
+
+.landing-rail-score {
+  grid-row: 1;
+  grid-column: 2;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--lp-ink-muted);
+}
+
+.landing-rail-item[data-open='true'] .landing-rail-score {
+  color: var(--sekunder);
+}
+
+/* The open panel. A tinted ground with the answer floating on it, which is what
+   this composition gives a project's photograph — except that here the tint is
+   the product's own teal and the floating thing is the figure itself. */
+.landing-open {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  gap: clamp(2rem, 5vw, 4rem);
+  min-height: clamp(22rem, 46vh, 30rem);
+  padding: clamp(1.1rem, 2.2vw, 1.75rem);
+  overflow: hidden;
+  background:
+    radial-gradient(130% 100% at 8% 4%, rgb(15 118 110 / 0.5), transparent 58%),
+    radial-gradient(110% 90% at 96% 98%, rgb(79 70 229 / 0.3), transparent 56%),
+    linear-gradient(155deg, #cfe0de 0%, #dbe3ea 100%);
+  border-radius: var(--lp-r-xl);
+  box-shadow: var(--lp-sheen), var(--lp-shadow);
+}
+
+:root[data-theme='dark'] .landing-open {
+  background:
+    radial-gradient(130% 100% at 8% 4%, rgb(15 118 110 / 0.42), transparent 58%),
+    radial-gradient(110% 90% at 96% 98%, rgb(79 70 229 / 0.3), transparent 56%),
+    linear-gradient(155deg, #12222a 0%, #0d1420 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .landing-open {
+    background:
+      radial-gradient(130% 100% at 8% 4%, rgb(15 118 110 / 0.42), transparent 58%),
+      radial-gradient(110% 90% at 96% 98%, rgb(79 70 229 / 0.3), transparent 56%),
+      linear-gradient(155deg, #12222a 0%, #0d1420 100%);
+  }
+}
+
+/* Bottom-right and bleeding off two edges, so it reads as a figure the panel is
+   cropping rather than a badge sitting in a corner. */
+.landing-open-rings {
+  position: absolute;
+  right: -7%;
+  bottom: -22%;
+  width: min(26rem, 62%);
+  height: auto;
+  fill: none;
+  stroke: var(--sekunder-strong);
+  stroke-width: 1.4;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.landing-open-card {
+  position: relative;
+  justify-self: start;
+  display: grid;
+  gap: 0.35rem;
+  max-width: 22rem;
+  padding: clamp(1.1rem, 2vw, 1.5rem);
+  background: var(--lp-tile);
+  border-radius: var(--lp-r);
+  box-shadow: var(--lp-shadow);
+  /* Keyed on the open trade in the markup, so switching replays this. The card
+     re-enters; the ruler under it does not, because the ruler's job is that all
+     five stay visible while one is chosen. */
+  animation: lp-card-in 0.5s var(--lp-ease) both;
+}
+
+.landing-open-where {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lp-ink-soft);
+}
+
+.landing-open-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.landing-open-value {
+  font-size: clamp(3rem, 6vw, 4.25rem);
+  font-weight: 300;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+}
+
+.landing-open-margin {
+  font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+  font-weight: 300;
+  color: var(--lp-ink-muted);
+}
+
+.landing-open-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.landing-open-range {
+  font-size: 0.8125rem;
+  color: var(--lp-ink-muted);
+}
+
+/* The ruler. One 0-100 scale for all five, so the spread is read by position
+   rather than by comparing five numbers, and choosing one never hides it. */
+.landing-ruler {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.landing-evidence li {
+.landing-ruler-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text);
+  grid-template-columns: minmax(6rem, 10rem) 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  opacity: 0.55;
+  filter: saturate(0.25);
+  transition: opacity 0.4s var(--lp-ease), filter 0.4s var(--lp-ease);
 }
 
-.landing-evidence svg {
-  margin-top: 0.15em;
+.landing-ruler-row[data-open='true'] {
+  opacity: 1;
+  filter: none;
+}
+
+.landing-ruler-name {
+  font-size: 0.75rem;
+  color: var(--lp-ink-soft);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-ruler-track {
+  position: relative;
+  height: 0.55rem;
+  background: rgb(255 255 255 / 0.55);
+  border-radius: var(--radius-pill);
+}
+
+/* Uncertainty drawn wider and softer than the estimate: the same argument the
+   whole product makes, in one shape. */
+.landing-ruler-interval {
+  position: absolute;
+  inset-block: 0;
+  border-radius: var(--radius-pill);
+  opacity: 0.5;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.7s var(--lp-ease) var(--delay, 0ms);
+}
+
+.landing-ruler-marker {
+  position: absolute;
+  inset-block: -2px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.4s var(--lp-ease) calc(var(--delay, 0ms) + 260ms);
+}
+
+.landing-ruler-row[data-revealed] .landing-ruler-interval {
+  transform: scaleX(1);
+}
+
+.landing-ruler-row[data-revealed] .landing-ruler-marker {
+  opacity: 1;
+}
+
+.landing-ruler-axis {
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) 1fr;
+  gap: var(--space-3);
+  margin-top: 0.1rem;
+}
+
+.landing-ruler-axis .landing-ruler-track {
+  display: flex;
+  justify-content: space-between;
+  height: auto;
+  background: none;
+  font-size: 0.6875rem;
+  /* One tier up from muted: these three labels land on the lightest corner of
+     the field's gradient, which is the only ground on this page that is not a
+     token and therefore the only place the muted tier was not measured. */
+  color: var(--lp-ink-soft);
+}
+
+.landing-answers-note {
+  max-width: 62ch;
+  justify-self: center;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--lp-ink-soft);
+}
+
+.landing-answers-note strong {
+  font-weight: 500;
+  color: var(--lp-ink);
+}
+
+/* Zones -----------------------------------------------------------------------
+   The one place on this page where scrolling does explanatory work rather than
+   staging. The reader is moving outward from the point, so the figure holds
+   still and the three distances move past it: the movement reads as distance
+   instead of as the page scrolling. The pin is `position: sticky`, so where it
+   cannot apply this is simply a figure above a list. */
+.landing-zones {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+.landing-zones-lede {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44ch;
+}
+
+.landing-zones-lede h2 {
+  font-size: var(--lp-h2);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.landing-zones-lede p {
+  color: var(--lp-ink-muted);
+  font-size: 0.9375rem;
+}
+
+.landing-zones-body {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+
+@media (min-width: 820px) {
+  .landing-zones-body {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .landing-zones-figure {
+    position: sticky;
+    /* Clear of the settled nav, and high enough that the rings sit in the upper
+       half of the viewport while the rows run past them. */
+    top: clamp(6rem, 18vh, 10rem);
+  }
+}
+
+.landing-zones-figure {
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  background: var(--lp-tile-sunken);
+  border-radius: var(--lp-r-xl);
+  box-shadow: var(--lp-sheen), var(--lp-shadow);
+}
+
+.landing-zones-svg {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  height: auto;
+  overflow: visible;
+}
+
+/* The selected row drives one measured ring. Width does not animate: changing
+   the SVG stroke is paint work, while fill and opacity already make the state
+   change clear. */
+.landing-zone-ring {
+  fill: var(--sekunder);
+  fill-opacity: 0;
+  stroke: var(--sekunder);
+  stroke-width: 1;
+  stroke-opacity: 0.35;
+  transition: fill-opacity 0.9s var(--lp-ease), stroke-opacity 0.6s var(--lp-ease);
+}
+
+.landing-zone-point {
+  fill: var(--sekunder-strong);
+  stroke: var(--lp-tile-sunken);
+  stroke-width: 2;
+}
+
+.landing-zone-steps {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-zone-step {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 0.35rem var(--space-4);
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  background: var(--lp-tile);
+  border-radius: var(--lp-r);
+  box-shadow: var(--lp-shadow);
+}
+
+@media (min-width: 820px) {
+  .landing-zone-steps {
+    /* The pin needs travel, and the travel lives here rather than in a row
+       height: three cards of their natural size, spaced far enough apart that
+       the figure holds while each one arrives on its own. Padding at the ends
+       lets the first and last row meet the figure at its pinned position
+       instead of at the top and bottom of the column. */
+    gap: clamp(4rem, 17vh, 11rem);
+    padding-block: clamp(1rem, 6vh, 4rem) clamp(3rem, 14vh, 9rem);
+  }
+}
+
+.landing-zone-range {
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.landing-zone-weight {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 300;
+  letter-spacing: -0.03em;
   color: var(--sekunder);
 }
 
-.landing-action {
+.landing-zone-weight strong {
+  font-weight: inherit;
+}
+
+.landing-zone-say {
+  grid-column: 1 / -1;
+  max-width: 38ch;
+  font-size: 0.875rem;
+  color: var(--lp-ink-muted);
+}
+
+/* The refusal -----------------------------------------------------------------
+   Full-bleed and dark: the page's one quiet passage, and the sentence it
+   carries is the product going quiet too. Nobody puts their product's limit on
+   a landing page, which is exactly why this may not read as generic. */
+.landing-decline {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-block: clamp(4rem, 10vw, 7.5rem);
+  background: var(--lp-dark);
+  color: var(--lp-dark-ink);
+}
+
+.landing-decline-inner {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  width: min(100% - (2 * var(--lp-gutter)), var(--lp-col));
+  margin-inline: auto;
+}
+
+@media (min-width: 900px) {
+  .landing-decline-inner {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+}
+
+.landing-decline-lede {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 36ch;
+}
+
+.landing-decline h2 {
+  font-size: var(--lp-h2);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.landing-decline p {
+  font-size: 0.9375rem;
+  color: var(--lp-dark-ink-soft);
+}
+
+.landing-decline strong {
+  font-weight: 500;
+  color: var(--lp-dark-ink);
+}
+
+.landing-decline-aside {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--lp-dark-line);
+}
+
+.landing-decline-figure {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.landing-decline-caption {
+  font-size: 0.75rem;
+  color: var(--lp-dark-ink-soft);
+}
+
+/* It is a depiction, so it does not offer a pointer it cannot honour. */
+.landing-held-action {
+  cursor: default;
+}
+
+/* The real state, rendered by the real strings the app uses when this happens.
+   It keeps its own surface rather than borrowing the app's `.held-back`: that
+   component belongs to a light glass panel over a map, and dropping it onto a
+   near-black band would be two worlds in one frame. */
+.landing-held {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding: clamp(1.25rem, 2.5vw, 1.9rem);
+  background: var(--lp-dark-raised);
+  border: 1px solid var(--lp-dark-line);
+  border-radius: var(--lp-r);
+}
+
+.landing-held-title {
+  font-size: var(--lp-h3);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: #ffffff;
+}
+
+.landing-held-body {
+  color: var(--lp-dark-ink-soft);
+}
+
+.landing-held-action {
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--lp-dark-line);
+  border-radius: var(--lp-r-sm);
+  font-size: 0.875rem;
+  color: var(--lp-dark-ink);
+}
+
+/* Method and weights ---------------------------------------------------------- */
+.landing-method {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .landing-method {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.landing-method-lede {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 40ch;
+}
+
+.landing-method-lede h2 {
+  font-size: var(--lp-h2);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.landing-method-lede p {
+  font-size: 0.9375rem;
+  color: var(--lp-ink-muted);
+}
+
+/* Tersier (10%): an action link, not body text. */
+.landing .landing-textlink {
+  color: var(--tersier-strong);
+  font-weight: 500;
+  text-decoration-color: currentcolor;
+}
+
+.landing-method-link {
+  font-size: 0.875rem;
+}
+
+/* The weights are widths, and each one says what it weighs. Each bar sits in a
+   full-width track, so a weight is read against the whole rather than only
+   against the bar above it. */
+.landing-weights {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: clamp(1.25rem, 2.5vw, 1.9rem);
+  list-style: none;
+  background: var(--lp-tile);
+  border-radius: var(--lp-r-xl);
+  box-shadow: var(--lp-sheen), var(--lp-shadow);
+}
+
+.landing-weight {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem var(--space-3);
+  align-items: baseline;
+}
+
+.landing-weight-name {
+  font-size: 0.9375rem;
+  color: var(--lp-ink-soft);
+}
+
+.landing-weight-value {
+  font-size: 1.0625rem;
+  font-weight: 500;
+}
+
+.landing-weight-track {
+  grid-column: 1 / -1;
+  height: 0.5rem;
+  background: rgb(13 22 38 / 0.07);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.landing-weight-bar {
+  display: block;
+  width: calc(var(--w) * 100%);
+  height: 100%;
+  /* Teal: this is structure, not a score. The `--tone-*` scale would claim the
+     weights are good or bad, which they are not — they are a documented split. */
+  background: var(--sekunder);
+  border-radius: inherit;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.9s var(--lp-ease) var(--delay, 0ms);
+}
+
+.landing-weight[data-revealed] .landing-weight-bar {
+  transform: scaleX(1);
+}
+
+/* The close ------------------------------------------------------------------- */
+.landing-close {
   display: grid;
   justify-items: center;
-  gap: var(--space-2);
+  gap: var(--space-5);
+  padding: clamp(3rem, 7vw, 5.5rem) clamp(1.5rem, 4vw, 3.5rem);
   text-align: center;
+  background:
+    radial-gradient(90% 120% at 50% 0%, rgb(15 118 110 / 0.14), transparent 62%),
+    var(--lp-tile);
+  border-radius: var(--lp-r-xl);
+  box-shadow: var(--lp-sheen), var(--lp-shadow);
 }
 
-.landing-cta {
-  /* .button-primary is display:flex, so as a grid item it filled the column.
-     The action is one decision, not a bar across the page. */
-  display: inline-flex;
-  width: auto;
-  min-width: 14rem;
+.landing-close h2 {
+  max-width: 18ch;
+  font-size: var(--lp-h2);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+/* Tersier (10%): the page's primary action. */
+.landing .landing-cta {
+  padding: 0.95rem 2.2rem;
+  background: var(--tersier);
+  color: var(--tersier-contrast);
+  border-radius: var(--radius-pill);
+  font-size: 1.0625rem;
+  font-weight: 500;
   text-decoration: none;
+  box-shadow: var(--lp-shadow);
+  transition: background 0.25s var(--lp-ease), transform 0.25s var(--lp-ease), box-shadow 0.25s var(--lp-ease);
 }
 
-.landing-action-note {
-  max-width: 46ch;
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--muted);
+.landing .landing-cta:hover {
+  background: var(--tersier-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--lp-shadow-lg);
 }
 
-.landing-reasons h2,
-.landing-method h2 {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-md);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-
-.landing-reason-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: var(--space-5) var(--space-4);
-}
-
-.landing-reason {
-  display: grid;
-  gap: var(--space-2);
-  align-content: start;
-  padding-top: var(--space-3);
-  border-top: 2px solid var(--sekunder);
-}
-
-.landing-reason h3 {
-  margin: 0;
-  font-size: var(--text-base);
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-
-.landing-reason p,
-.landing-method p {
-  max-width: 62ch;
-  font-size: var(--text-sm);
-  line-height: 1.6;
-  color: var(--text-soft);
-}
-
-.landing-method p + p {
-  margin-top: var(--space-3);
-}
-
-.landing-coverage {
-  font-weight: 650;
-  color: var(--sekunder-strong) !important;
+.landing-close-note {
+  max-width: 54ch;
+  font-size: 0.875rem;
+  color: var(--lp-ink-muted);
 }
 
 .landing-foot {
-  padding: var(--space-4) var(--space-5) var(--space-5);
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  color: var(--muted);
+  width: min(100% - (2 * var(--lp-gutter)), var(--lp-col));
+  margin-inline: auto;
+  margin-top: var(--lp-act);
+  padding-block: var(--space-6) clamp(2.5rem, 6vw, 4.5rem);
+  border-top: 1px solid var(--lp-line);
+  font-size: 0.8125rem;
+  color: var(--lp-ink-muted);
   text-align: center;
+}
+
+.landing-foot-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-5);
+  padding-top: var(--space-5);
+}
+
+.landing-foot-nav a {
+  padding: 0.2rem 0;
+  font-size: 0.875rem;
+  color: var(--lp-ink-soft);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.25s var(--lp-ease), border-color 0.25s var(--lp-ease);
+}
+
+.landing-foot-nav a:hover {
+  color: var(--lp-ink);
+  border-bottom-color: var(--lp-line-strong);
+}
+
+.landing-foot p {
+  max-width: 62ch;
+  margin-inline: auto;
+  padding-top: var(--space-5);
+}
+
+/* Chips, in this world --------------------------------------------------------
+   The score chips are the app's, because their colours are data and may not be
+   restyled for visual balance. Only their shell is brought into this page's
+   corner family and type. */
+.landing .chip {
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.landing .chip-lg {
+  padding: 0.3rem 0.95rem;
+  font-size: 0.9375rem;
+}
+
+/* Motion ======================================================================
+   Two mechanisms, and they are deliberately not the same one.
+
+   Arrivals are one-shot and run from an IntersectionObserver, which sets
+   `data-revealed` and never takes it away. They are transitions rather than
+   scroll-driven animations on purpose: a `view()` timeline is reversible, and
+   reversing an arrival on this page means the score and its interval animating
+   backwards out of the page when the reader scrolls up.
+
+   Continuous motion — the map drifting and scaling under the sentence — is
+   scroll-linked CSS and belongs nowhere near JavaScript. Where the browser
+   cannot drive a timeline, that motion simply does not happen and the
+   composition is the same composition at rest.
+
+   Under `prefers-reduced-motion: reduce` neither runs: the observer marks
+   everything arrived without animating, and the block below is never entered.
+   The default state of every element here is its finished state plus a
+   transform, so nothing is ever hidden by motion that fails to start. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    opacity: 0;
+    transition:
+      opacity 0.75s var(--lp-ease) var(--delay, 0ms),
+      transform 0.95s var(--lp-ease) var(--delay, 0ms),
+      filter 0.75s var(--lp-ease) var(--delay, 0ms);
+  }
+
+  [data-reveal='rise'],
+  [data-reveal='step'],
+  [data-reveal='weight'] {
+    transform: translate3d(0, 2rem, 0);
+  }
+
+  /* The slab is the heaviest object on the page, so it arrives from further
+     down and settles longer: weight is read in how long something takes to
+     stop. */
+  [data-reveal='slab'] {
+    transform: translate3d(0, 3.5rem, 0) scale(0.985);
+  }
+
+  /* The sentence is set, not faded: each line rises from behind its own edge.
+     The blur is what makes it read as type resolving rather than as a box
+     sliding, and it is cheap here because it runs once on two elements. */
+  [data-reveal='line'] {
+    transform: translate3d(0, 0.3em, 0);
+    filter: blur(14px);
+  }
+
+  [data-reveal='rail'] {
+    transform: translate3d(-1.25rem, 0, 0);
+  }
+
+  [data-reveal] [data-reveal] {
+    /* A reveal inside a reveal would double the fade and halve the opacity of
+       the inner element while both are running. */
+    opacity: 1;
+  }
+
+  [data-revealed] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  /* The rail staggers item by item, which is what makes it read as an index
+     being listed rather than a block appearing. */
+  .landing-rail li {
+    opacity: 0;
+    transform: translate3d(-0.75rem, 0, 0);
+    transition:
+      opacity 0.6s var(--lp-ease) var(--delay, 0ms),
+      transform 0.7s var(--lp-ease) var(--delay, 0ms);
+  }
+
+  .landing-rail[data-revealed] li {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* The five segments grow from nothing to their real widths when the slab
+     lands, in weight order, so the reader watches the score being assembled
+     from its parts rather than being handed it. */
+  .landing-tile-result .landing-breakdown-segment {
+    transform: scaleX(0);
+  }
+
+  [data-revealed] .landing-breakdown-segment {
+    transform: scaleX(1);
+    transition:
+      transform 0.7s var(--lp-ease) var(--seg-delay, 0ms),
+      opacity 0.18s var(--lp-ease),
+      background 0.18s var(--lp-ease);
+  }
+
+  [data-revealed] .landing-breakdown-segment:nth-child(1) { --seg-delay: 260ms; }
+  [data-revealed] .landing-breakdown-segment:nth-child(2) { --seg-delay: 330ms; }
+  [data-revealed] .landing-breakdown-segment:nth-child(3) { --seg-delay: 400ms; }
+  [data-revealed] .landing-breakdown-segment:nth-child(4) { --seg-delay: 470ms; }
+  [data-revealed] .landing-breakdown-segment:nth-child(5) { --seg-delay: 540ms; }
+
+  /* The figure rises into place behind the mask its own overflow provides. */
+  [data-reveal='slab'] .landing-result-value,
+  [data-reveal='slab'] .landing-result-margin {
+    transform: translate3d(0, 110%, 0);
+    transition: transform 0.85s var(--lp-ease) 180ms;
+  }
+
+  [data-reveal='slab'][data-revealed] .landing-result-value,
+  [data-reveal='slab'][data-revealed] .landing-result-margin {
+    transform: none;
+  }
+}
+
+@keyframes lp-card-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.9rem, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-open-card {
+    animation: none;
+  }
+}
+
+/* The scroll-linked layer. The map drifts down and grows as the hero is left
+   behind, and the sentence lifts and releases ahead of it — the two moving at
+   different rates is the whole effect, and it is what makes the slab read as
+   arriving over a scene rather than as the next block down. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .landing-sky-inner {
+      animation: lp-sky linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100svh;
+      will-change: transform;
+    }
+
+    .landing-title {
+      animation: lp-title linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 85svh;
+      will-change: transform, opacity;
+    }
+
+    .landing-hero-foot {
+      animation: lp-hero-foot linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 60svh;
+    }
+  }
+}
+
+@keyframes lp-sky {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: scale(1.14) translate3d(0, 5%, 0);
+  }
+}
+
+@keyframes lp-title {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translate3d(0, -3.5rem, 0);
+    opacity: 0.08;
+  }
+}
+
+@keyframes lp-hero-foot {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* Narrow ======================================================================
+   The primary scene is a desktop, but the analysis URL is shareable and this is
+   the page a link lands on, so the phone is a real arrival and not a fallback. */
+@media (max-width: 899px) {
+  .landing-nav-links {
+    display: none;
+  }
+
+  /* With the sections gone the pill holds only Masuk, so the divider has
+     nothing left to divide. */
+  .landing .landing-nav-login {
+    margin-left: 0;
+    padding-inline: 0.85rem;
+    border-left: 0;
+    border-radius: calc(var(--lp-r-sm) - 0.25rem);
+  }
+
+  .landing-title {
+    max-width: none;
+  }
+
+  .landing-title {
+    /* Kept off the deck at display size, where a 0.96 line-height eats most of
+       a nominal gap. */
+    margin-bottom: clamp(2.5rem, 8vh, 4rem);
+  }
+
+  .landing-tile-claim,
+  .landing-tile-dark {
+    min-height: 0;
+  }
+
+  .landing-rail {
+    /* Two abreast on a phone: five full-width rows pushed the panel below them
+       off the screen entirely, and the rail's job is to be seen next to what it
+       controls. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-left: 0;
+    gap: 0.25rem;
+  }
+
+  .landing-rail-item {
+    padding: 0.7rem 0.85rem;
+    background: var(--lp-tile);
+    border-radius: var(--lp-r-sm);
+  }
+
+  .landing-rail-item::before {
+    top: auto;
+    bottom: 0;
+    left: 0.85rem;
+    right: 0.85rem;
+    width: auto;
+    height: 2px;
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  .landing-rail-item[data-open='true']::before {
+    transform: scaleX(1);
+  }
+
+  /* No offset on a phone: the rows are tiles here, not a rail against a spine,
+     and nudging a tile's contents sideways has nothing to nudge them away
+     from. */
+  .landing-rail-item:hover .landing-rail-name,
+  .landing-rail-item:hover .landing-rail-sub,
+  .landing-rail-item[data-open='true'] .landing-rail-name,
+  .landing-rail-item[data-open='true'] .landing-rail-sub {
+    transform: none;
+  }
+
+  .landing-ruler-row,
+  .landing-ruler-axis {
+    grid-template-columns: 7rem 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-result-evidence li {
+    font-size: 0.8125rem;
+  }
+
+  .landing-ruler-row,
+  .landing-ruler-axis {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .landing-ruler-name {
+    font-size: 0.6875rem;
+  }
+}
+
+/* Landing interaction finish =================================================
+   Delight here is the page answering curiosity: destinations show where the
+   reader is, measurements respond when inspected, and every disclosure reveals
+   real methodology or recovery guidance. No static evidence tile pretends to
+   be clickable. */
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:has(.landing) {
+    scroll-behavior: smooth;
+  }
+}
+
+.landing :where(#bukti, #jawaban, #zona, #batas, #metode) {
+  scroll-margin-top: 6.5rem;
+}
+
+.landing-nav-links a[aria-current='location'] {
+  color: var(--lp-ink);
+  background: var(--lp-tile-sunken);
+  box-shadow: inset 0 -2px 0 var(--sekunder);
+}
+
+.landing-nav-links a:active,
+.landing .landing-nav-login:active,
+.landing .landing-nav-action:active,
+.landing .landing-cta:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.landing-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.landing .landing-hero-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.72rem;
+  color: var(--tersier-strong);
+  background: var(--lp-slab);
+  border-radius: var(--lp-r-sm);
+  box-shadow: var(--lp-sheen);
+  backdrop-filter: var(--lp-blur);
+  -webkit-backdrop-filter: var(--lp-blur);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.25s var(--lp-ease), background 0.25s var(--lp-ease), transform 0.25s var(--lp-ease);
+}
+
+.landing-hero-next svg,
+.landing-back-top svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.25s var(--lp-ease);
+}
+
+.landing .landing-hero-next:hover {
+  color: var(--tersier-strong);
+  background: var(--lp-tile);
+}
+
+.landing-hero-next:hover svg {
+  transform: translateY(2px);
+}
+
+.landing .landing-inline-link {
+  color: var(--tersier-strong);
+  font-weight: 500;
+  text-decoration-color: currentcolor;
+}
+
+/* The bar remains visually measured at 1.1rem, but every segment now occupies
+   a 44px-high button. The visible score stays thin while touch and focus no
+   longer have to hit a hairline. */
+.landing-breakdown-bar {
+  align-items: stretch;
+  height: 2.75rem;
+}
+
+.landing-breakdown-segment {
+  background: linear-gradient(color-mix(in srgb, var(--sekunder) 82%, transparent), color-mix(in srgb, var(--sekunder) 82%, transparent)) center / 100% 1.1rem no-repeat;
+  transition: opacity 0.18s var(--lp-ease), transform 0.18s var(--lp-ease), background-size 0.18s var(--lp-ease);
+}
+
+.landing-breakdown-segment[data-active='true'] {
+  background: linear-gradient(var(--sekunder-strong), var(--sekunder-strong)) center / 100% 1.45rem no-repeat;
+  transform: none;
+}
+
+.landing-answers-heading {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  text-align: center;
+}
+
+.landing-answers-guide {
+  max-width: 46ch;
+  color: var(--lp-ink-muted);
+  font-size: 0.875rem;
+}
+
+.landing-rail-item:active {
+  background: var(--lp-tile-sunken);
+}
+
+/* On a phone, one horizontally scrollable question rail leaves the changed
+   answer directly below it. A sliver of the next trade remains visible as the
+   invitation to explore, and snap keeps the rail calm rather than slippery. */
+@media (max-width: 899px) {
+  .landing-rail {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(11rem, min(72vw, 20rem));
+    gap: 0.35rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lp-line-strong) transparent;
+    padding-bottom: var(--space-2);
+  }
+
+  .landing-rail li {
+    scroll-snap-align: start;
+  }
+}
+
+.landing-zones-guide {
+  color: var(--lp-ink-soft) !important;
+  font-weight: 500;
+}
+
+.landing-zone-ring[data-active='false'] {
+  fill-opacity: 0;
+  stroke-opacity: 0.24;
+  stroke-width: 1;
+}
+
+.landing-zone-ring.landing-zone-a[data-active='true'] {
+  fill-opacity: 0.22;
+  stroke-opacity: 1;
+  stroke-width: 1.7;
+}
+
+.landing-zone-ring.landing-zone-b[data-active='true'] {
+  fill-opacity: 0.12;
+  stroke-opacity: 0.9;
+  stroke-width: 1.7;
+}
+
+.landing-zone-ring.landing-zone-c[data-active='true'] {
+  fill-opacity: 0.055;
+  stroke-opacity: 0.8;
+  stroke-width: 1.7;
+}
+
+.landing-zone-step {
+  padding: 0;
+  background: none;
+  border-radius: var(--lp-r);
+  box-shadow: none;
+}
+
+.landing-zone-step-button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 0.35rem var(--space-4);
+  width: 100%;
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  color: var(--lp-ink);
+  background: var(--lp-tile);
+  border: 0;
+  border-radius: var(--lp-r);
+  box-shadow: var(--lp-shadow);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.25s var(--lp-ease), box-shadow 0.35s var(--lp-ease), transform 0.25s var(--lp-ease);
+}
+
+.landing-zone-step-button:hover {
+  background: color-mix(in srgb, var(--lp-tile) 96%, var(--tersier));
+  transform: translateY(-1px);
+}
+
+.landing-zone-step[data-active='true'] .landing-zone-step-button {
+  background: color-mix(in srgb, var(--lp-tile) 97%, var(--tersier));
+  box-shadow: inset 0 0 0 1px var(--tersier), var(--lp-shadow);
+}
+
+.landing-zone-step-button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.landing-zone-step-button .landing-zone-say {
+  display: block;
+}
+
+/* The dark pause now includes a genuine recovery disclosure. The depicted app
+   control remains inert; this summary is the clearly interactive element. */
+.landing-decline-help {
+  border-top: 1px solid var(--lp-dark-line);
+}
+
+.landing-decline-help summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding-block: var(--space-3);
+  color: var(--lp-dark-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+}
+
+.landing-decline-help summary::-webkit-details-marker,
+.landing-weight summary::-webkit-details-marker {
+  display: none;
+}
+
+.landing-decline-help summary::after,
+.landing-weight summary::after {
+  content: '';
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  background:
+    linear-gradient(currentcolor, currentcolor) center / 100% 1px no-repeat,
+    linear-gradient(currentcolor, currentcolor) center / 1px 100% no-repeat;
+  opacity: 0.7;
+  transition: transform 0.25s var(--lp-ease), opacity 0.25s var(--lp-ease);
+}
+
+.landing-decline-help[open] summary::after,
+.landing-weight[open] summary::after {
+  transform: rotate(90deg);
+  background-size: 100% 1px, 0 100%;
+}
+
+.landing-decline-help p {
+  padding-bottom: var(--space-4);
+}
+
+.landing-decline-help a {
+  color: var(--tersier-soft);
+  font-weight: 500;
+  text-decoration-color: currentcolor;
+}
+
+/* Each weight is now a native disclosure. The resting state still reads as the
+   original measured list; opening one reveals exactly what the methodology says
+   the component measures. */
+.landing-weight {
+  display: block;
+}
+
+.landing-weight summary {
+  display: grid;
+  grid-template-columns: 1fr auto 1rem;
+  gap: 0.4rem var(--space-3);
+  align-items: center;
+  border-radius: var(--lp-r-sm);
+  list-style: none;
+  cursor: pointer;
+}
+
+.landing-weight summary::after {
+  grid-column: 3;
+  grid-row: 1;
+  color: var(--tersier-strong);
+}
+
+.landing-weight-name {
+  grid-column: 1;
+}
+
+.landing-weight-value {
+  grid-column: 2;
+}
+
+.landing-weight-track {
+  grid-column: 1 / -1;
+}
+
+.landing-weight summary:hover .landing-weight-name,
+.landing-weight[open] .landing-weight-name {
+  color: var(--lp-ink);
+}
+
+.landing-weight summary:hover .landing-weight-bar,
+.landing-weight[open] .landing-weight-bar {
+  background: var(--sekunder-strong);
+}
+
+.landing-weight-copy {
+  margin-top: var(--space-3) !important;
+  padding: var(--space-3);
+  color: var(--lp-ink-muted);
+  background: var(--lp-tile-sunken);
+  border-radius: var(--lp-r-sm);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.landing .landing-back-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--lp-ink-soft);
+  border-radius: var(--lp-r-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.25s var(--lp-ease), background 0.25s var(--lp-ease);
+}
+
+.landing-back-top:hover {
+  color: var(--lp-ink);
+  background: var(--lp-tile-sunken);
+}
+
+.landing-back-top:hover svg {
+  transform: translateY(-2px);
+}
+
+/* Unified landing example and resting-state score evidence ------------------- */
+.landing-hero-availability {
+  max-width: 46ch;
+  font-size: 0.8125rem;
+  color: var(--lp-ink-soft);
+}
+
+.landing-hero-availability strong {
+  color: var(--lp-ink);
+  font-weight: 500;
+}
+
+.landing-slab-lede .landing-lede-flow {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--lp-line);
+  font-size: 0.8125rem;
+  color: var(--lp-ink-soft);
+}
+
+.landing-result-source {
+  font-size: 0.75rem !important;
+  color: var(--lp-ink-muted);
+}
+
+.landing-breakdown-segment {
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+
+.landing-breakdown-segment-index {
+  position: relative;
+  z-index: 1;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.24);
+}
+
+.landing-breakdown-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--lp-line);
+  list-style: none;
+}
+
+.landing-breakdown-legend li {
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.1rem var(--space-2);
+  align-content: center;
+  min-height: 3.25rem;
+  padding: 0.5rem var(--space-2);
+  border-bottom: 1px solid var(--lp-line);
+  transition: background 0.18s var(--lp-ease);
+}
+
+.landing-breakdown-legend li:nth-child(odd) {
+  border-right: 1px solid var(--lp-line);
+}
+
+.landing-breakdown-legend li[data-active='true'] {
+  background: var(--lp-tile-sunken);
+}
+
+.landing-breakdown-legend-index {
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--sekunder-strong);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.landing-breakdown-legend-name {
+  overflow: hidden;
+  color: var(--lp-ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-breakdown-legend-value {
+  color: var(--lp-ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+@media (max-width: 480px) {
+  .landing .landing-nav-action {
+    padding-inline: 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .landing-breakdown-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-breakdown-legend li:nth-child(odd) {
+    border-right: 0;
+  }
 }
 
 /* Account -------------------------------------------------------------------
@@ -4472,25 +6854,32 @@ button.opportunity-cell:hover {
    go ragged as the longer labels wrapped. */
 .weights-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 2.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-1) var(--space-3);
 }
 
+/* The label used to span both columns, which put the name on one line and its
+   percentage on the next, bottom-right — two halves of one fact, read
+   diagonally, five times over. Name and number now share a line as a pair, and
+   the slider that changes them sits underneath. */
 .weights-label {
-  grid-column: 1 / -1;
+  grid-column: 1;
   font-size: var(--text-sm);
   color: var(--text-soft);
   overflow-wrap: anywhere;
 }
 
 .weights-slider {
+  grid-column: 1 / -1;
   min-width: 0;
   height: 1.5rem;
   accent-color: var(--tersier);
 }
 
 .weights-value {
+  grid-column: 2;
+  grid-row: 1;
   font-size: var(--text-sm);
   font-weight: 650;
   font-variant-numeric: tabular-nums;

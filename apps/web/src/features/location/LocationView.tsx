@@ -34,6 +34,8 @@ interface LocationViewProps {
   onWeightsChange: (weights: ComponentWeights | null) => void;
   /** `compare` opens on the category comparison, for visitors who have not chosen one. */
   entryMode?: 'score' | 'compare';
+  /** The way out of a state the analysis cannot answer: drop the point and pick again. */
+  onClearPoint: () => void;
 }
 
 export function LocationView({
@@ -44,6 +46,7 @@ export function LocationView({
   weights,
   onWeightsChange,
   entryMode = 'score',
+  onClearPoint,
 }: LocationViewProps) {
   const comparing = entryMode === 'compare';
   const [tab, setTab] = useState<TabKey>(comparing ? 'recommend' : 'score');
@@ -59,9 +62,16 @@ export function LocationView({
 
   if (!inCoverage) {
     return (
-      <p className="notice" role="status">
-        Titik ini berada di luar area cakupan Semarang. Pilih lokasi di dalam garis merah pada peta.
-      </p>
+      <div className="held-back" role="status">
+        <p className="held-back-title">Lokasi ini di luar cakupan</p>
+        <p>
+          LOKABIS baru mencakup Kota Semarang, area di dalam garis merah pada peta. Titik ini ada di luarnya, jadi
+          belum bisa dinilai.
+        </p>
+        <button type="button" className="button-secondary" onClick={onClearPoint}>
+          Pilih titik lain di peta
+        </button>
+      </div>
     );
   }
 
@@ -102,6 +112,7 @@ export function LocationView({
           point={point}
           weights={weights}
           onWeightsChange={onWeightsChange}
+          onClearPoint={onClearPoint}
         />
       )}
     </Tabs>
@@ -114,11 +125,13 @@ interface AnalysisTabProps {
   point: LatLng;
   weights: ComponentWeights | null;
   onWeightsChange: (weights: ComponentWeights | null) => void;
+  onClearPoint: () => void;
 }
 
-function AnalysisTab({ tab, query, point, weights, onWeightsChange }: AnalysisTabProps) {
+function AnalysisTab({ tab, query, point, weights, onWeightsChange, onClearPoint }: AnalysisTabProps) {
   if (query.isPending) return <Loading message="Menganalisis lokasi ini…" />;
-  if (query.isError) return <QueryError error={query.error} onRetry={() => void query.refetch()} />;
+  if (query.isError)
+    return <QueryError error={query.error} onRetry={() => void query.refetch()} onPickAnother={onClearPoint} />;
 
   switch (tab) {
     case 'score':

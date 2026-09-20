@@ -48,7 +48,14 @@ export function ScorePanel({ analysis, onRefresh, refreshing, weights, onWeights
           dengan skor bawaan.
         </p>
       )}
-      <ScoreGauge score={score} businessLabel={BUSINESS_TYPE_LABELS[analysis.businessType]} />
+      {/* One object. The number, its interval, its reliability and where the
+          data came from belong together — a figure whose provenance sits at the
+          bottom of a long scroll is a figure nobody can cite. */}
+      <div className="score-object">
+        <ScoreGauge score={score} businessLabel={BUSINESS_TYPE_LABELS[analysis.businessType]} />
+        <Attribution dataSource={dataSource} modelVersion={analysis.modelVersion} />
+      </div>
+
       <DecisionSummary analysis={analysis} />
 
       <DataNotices dataSource={dataSource} onRefresh={onRefresh} refreshing={refreshing} />
@@ -107,37 +114,34 @@ export function ScorePanel({ analysis, onRefresh, refreshing, weights, onWeights
         </details>
       </Card>
 
-      <details className="panel-disclosure weights-disclosure">
+      {/* Three separate top-level blocks — the weights editor, the simulator and
+          the evidence — became one. Each is a way of interrogating the model
+          rather than reading its answer, so they belong behind one door at a
+          predictable place instead of scattered through the scroll. The answer
+          above is what most visitors came for; this is for the ones who want to
+          argue with it. */}
+      <details className="panel-disclosure model-disclosure">
         <summary>
-          Bobot penilaian <span className="muted">· {customWeights ? 'diubah' : 'bawaan'}</span>
+          Bobot, simulasi &amp; data{' '}
+          <span className="muted">· {customWeights ? 'bobot diubah' : 'bobot bawaan'}</span>
         </summary>
         <div className="disclosure-content">
           <WeightsEditor weights={weights} onChange={onWeightsChange} />
-        </div>
-      </details>
-
-      <SimulationPanel analysis={analysis} />
-
-      <details className="panel-disclosure data-disclosure">
-        <summary>Data & cara penilaian</summary>
-        <div className="disclosure-content">
-          <p>{evidenceSummary(analysis.evidence.facilityCount)}</p>
-          <p>{sourceSummary(dataSource)}</p>
-          <p className="muted">
-            {analysis.evidence.facilityCount.toLocaleString('id-ID')} fasilitas dalam radius 1,5 km: sangat dekat{' '}
-            {analysis.evidence.zones.a.toLocaleString('id-ID')}, cukup dekat{' '}
-            {analysis.evidence.zones.b.toLocaleString('id-ID')}, dan area terluar{' '}
-            {analysis.evidence.zones.c.toLocaleString('id-ID')}.
-          </p>
-          <p className="disclaimer">
-            Skor membantu membandingkan lokasi, bukan menjamin keuntungan. Cek sewa, banjir, legalitas, lalu lintas,
-            dan kondisi lapangan sebelum berinvestasi.
-          </p>
+          <SimulationPanel analysis={analysis} />
+          <div className="evidence-block">
+            <p>{evidenceSummary(analysis.evidence.facilityCount)}</p>
+            <p>{sourceSummary(dataSource)}</p>
+            <p className="muted">
+              {analysis.evidence.facilityCount.toLocaleString('id-ID')} fasilitas dalam radius 1,5 km: sangat dekat{' '}
+              {analysis.evidence.zones.a.toLocaleString('id-ID')}, cukup dekat{' '}
+              {analysis.evidence.zones.b.toLocaleString('id-ID')}, dan area terluar{' '}
+              {analysis.evidence.zones.c.toLocaleString('id-ID')}.
+            </p>
+          </div>
         </div>
       </details>
 
       <ReportExportButton analysis={analysis} />
-      <Attribution dataSource={dataSource} modelVersion={analysis.modelVersion} />
     </article>
   );
 }
@@ -165,12 +169,31 @@ function DecisionSummary({ analysis }: { analysis: AnalysisResponse }) {
   const generatedByAi = narrative.generatedBy === 'ai';
   return (
     <section className={`decision-summary${narrative.provisional ? ' decision-summary-provisional' : ''}`}>
-      <span className="eyebrow">Ringkasan</span>
+      {/* The "Ringkasan" eyebrow above this heading is gone. A label that only
+          restates what the heading already is adds a line and no information. */}
       <h2>{narrative.headline}</h2>
       <p>{narrative.summary}</p>
 
+      {/* Lifted out of the fold. This is the one part a visitor can act on, and
+          it was opt-in behind a summary most people never press — worst of all
+          on a low score, where the way forward is the whole point. */}
+      {narrative.nextSteps.length > 0 && (
+        <div className="next-steps">
+          <h3>Langkah selanjutnya</h3>
+          <ol>{narrative.nextSteps.map((item) => <li key={item}>{item}</li>)}</ol>
+        </div>
+      )}
+
+      {/* Also out of the fold, and deliberately next to the verdict rather than
+          buried with the data notes: the caveat belongs beside the claim it
+          qualifies, not three folds away from it. */}
+      <p className="disclaimer">
+        Skor membantu membandingkan lokasi, bukan menjamin keuntungan. Cek sewa, banjir, legalitas, lalu lintas, dan
+        kondisi lapangan sebelum berinvestasi.
+      </p>
+
       <details className="panel-disclosure decision-details">
-        <summary>Alasan & langkah berikutnya</summary>
+        <summary>Alasan lengkap</summary>
         <div className="disclosure-content">
           <p className="ai-explanation-note">
             {generatedByAi
@@ -192,13 +215,6 @@ function DecisionSummary({ analysis }: { analysis: AnalysisResponse }) {
               </div>
             )}
           </div>
-
-          {narrative.nextSteps.length > 0 && (
-            <div className="next-steps">
-              <h3>Langkah selanjutnya</h3>
-              <ol>{narrative.nextSteps.map((item) => <li key={item}>{item}</li>)}</ol>
-            </div>
-          )}
         </div>
       </details>
     </section>

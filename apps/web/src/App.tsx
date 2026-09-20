@@ -363,6 +363,7 @@ export function App({
                 weights={selection.weights}
                 onWeightsChange={chooseWeights}
                 entryMode={entryMode}
+                onClearPoint={clearPoint}
               />
             )}
           </FloatingPanel>

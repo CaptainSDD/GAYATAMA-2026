@@ -1,9 +1,10 @@
 import type { LatLng } from '@gayatama/scoring';
-import { AdvancedMarker, APIProvider, Circle, ControlPosition, Map, Polygon, Polyline } from '@vis.gl/react-google-maps';
-import { useMemo, type CSSProperties } from 'react';
+import { AdvancedMarker, APIProvider, Circle, ControlPosition, Map, Polygon, Polyline, useMap } from '@vis.gl/react-google-maps';
+import { useCallback, useMemo, type CSSProperties } from 'react';
 import { SEMARANG_MAP_LIMITS } from '../../lib/location';
 import { GOOGLE_MAP_ID, GOOGLE_MAPS_API_KEY } from '../../lib/map-config';
 import { SEMARANG_BOUNDARY } from '../../lib/semarang-boundary';
+import { useKeyboardPan } from './useKeyboardPan';
 import { ZoneLabel } from './ZoneLabel';
 import {
   DEFAULT_MAP_ZOOM,
@@ -37,7 +38,7 @@ const PICK_MARKER_LABEL_STYLE: CSSProperties = {
   width: 26,
   height: 26,
   color: '#ffffff',
-  fontSize: '0.75rem',
+  fontSize: 'var(--text-2xs)',
   fontWeight: 700,
   lineHeight: 1,
 };
@@ -136,9 +137,21 @@ export function GoogleMapPicker({
             </span>
           </AdvancedMarker>
         )}
+        <KeyboardPan />
       </Map>
     </APIProvider>
   );
+}
+
+/**
+ * Lives inside <Map> so `useMap` can reach the instance the provider created.
+ * Renders nothing; it only teaches the map to answer arrow keys.
+ */
+function KeyboardPan() {
+  const map = useMap();
+  const panBy = useCallback((dx: number, dy: number) => map?.panBy(dx, dy), [map]);
+  useKeyboardPan(map?.getDiv(), panBy);
+  return null;
 }
 
 /**

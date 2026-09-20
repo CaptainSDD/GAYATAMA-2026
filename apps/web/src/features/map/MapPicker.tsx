@@ -3,7 +3,7 @@ import { divIcon } from 'leaflet';
 // Ships with the map chunk rather than the entry bundle: a visitor on the
 // landing page should not download Leaflet's stylesheet to read a pitch.
 import 'leaflet/dist/leaflet.css';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Circle,
   CircleMarker,
@@ -24,6 +24,7 @@ import { USE_GOOGLE_MAP } from '../../lib/map-config';
 import { usePois } from '../../lib/queries';
 import { SEMARANG_BOUNDARY } from '../../lib/semarang-boundary';
 import { GoogleMapPicker } from './GoogleMapPicker';
+import { useKeyboardPan } from './useKeyboardPan';
 import { ZoneLabel } from './ZoneLabel';
 import {
   DEFAULT_MAP_ZOOM,
@@ -351,5 +352,9 @@ function MapEvents({ onPick, onCenterChange }: Pick<MapPickerProps, 'onPick' | '
       onCenterChange({ lat: center.lat, lng: center.lng });
     },
   });
+
+  const panBy = useCallback((dx: number, dy: number) => map.panBy([dx, dy]), [map]);
+  useKeyboardPan(map.getContainer(), panBy);
+
   return null;
 }
