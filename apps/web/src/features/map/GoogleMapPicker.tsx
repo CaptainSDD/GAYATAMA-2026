@@ -54,6 +54,7 @@ export function GoogleMapPicker({
   onCenterChange,
   hoveredZone,
   onZoneHover,
+  highlightPoint = null,
 }: MapPickerProps & ZoneHoverProps) {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
@@ -135,6 +136,13 @@ export function GoogleMapPicker({
               <span className="picked-pin-pulse" aria-hidden="true" />
               <span style={PICK_MARKER_LABEL_STYLE}>B</span>
             </span>
+          </AdvancedMarker>
+        )}
+        {highlightPoint !== null && (
+          // Same element and same CSS rule as the Leaflet path, so the hovered
+          // cell is marked identically whichever provider is drawing the map.
+          <AdvancedMarker position={highlightPoint} clickable={false} anchorLeft="-50%" anchorTop="-50%">
+            <span className="opportunity-ping" />
           </AdvancedMarker>
         )}
         <KeyboardPan />

@@ -495,6 +495,34 @@ input {
   width: auto;
 }
 
+/* Dark mode, over the map. The wordmark is dark navy artwork on transparency,
+   so the standard dark plate left it almost invisible against dark tiles. The
+   plate turns light rather than the logo being filtered: the owl carries teal
+   and amber next to that navy, and any brightness or invert trick that rescues
+   the navy wrecks those. Declared twice, matching the convention at the top of
+   this file, so an explicit choice wins in both directions. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .brand-summary {
+    color: #334155;
+    background: rgb(248 250 252 / 0.94);
+    border-color: rgb(255 255 255 / 0.5);
+  }
+
+  :root:not([data-theme='light']) .brand-summary:hover {
+    background: #ffffff;
+  }
+}
+
+:root[data-theme='dark'] .brand-summary {
+  color: #334155;
+  background: rgb(248 250 252 / 0.94);
+  border-color: rgb(255 255 255 / 0.5);
+}
+
+:root[data-theme='dark'] .brand-summary:hover {
+  background: #ffffff;
+}
+
 .brand-nav-actions {
   display: flex;
   gap: var(--space-2);
@@ -581,48 +609,13 @@ input {
   background: var(--tersier);
 }
 
-/* The crosshair only earns its place while the map is being driven by
-   keyboard; with a pointer, the cursor already says where the click lands. */
-.map-centre-crosshair {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 1140;
-  width: 1.75rem;
-  height: 1.75rem;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-}
-
-.map-pane:focus-within .map-centre-crosshair {
-  opacity: 1;
-}
-
+/* The button is the whole keyboard affordance now. The crosshair that used to
+   mark the centre is gone: it was meant to appear only while the map had focus,
+   but Leaflet's container is focusable, so any click left it sitting over the
+   middle of the map for the rest of the session. */
 .map-pane:focus-within .map-centre-pick {
   opacity: 1;
   pointer-events: auto;
-}
-
-.map-centre-crosshair::before,
-.map-centre-crosshair::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  background: var(--tersier);
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.85);
-  transform: translate(-50%, -50%);
-}
-
-.map-centre-crosshair::before {
-  width: 100%;
-  height: 2px;
-}
-
-.map-centre-crosshair::after {
-  width: 2px;
-  height: 100%;
 }
 
 /* Overlay columns ---------------------------------------------------------
@@ -738,7 +731,12 @@ input {
   transition: transform 0.18s ease;
 }
 
-.floating-panel-toggle[aria-expanded='false'] svg {
+/* Driven by the panel's own state, not by the chevron's attributes. This used to
+   read `.floating-panel-toggle[aria-expanded='false']`, which stopped matching
+   anything when `aria-expanded` moved to the heading button beside it — so the
+   chevron sat pointing down whether the panel was open or shut. Down for open,
+   right for closed, on both cards. */
+.floating-panel[data-collapsed='true'] .floating-panel-toggle svg {
   transform: rotate(-90deg);
 }
 
@@ -1424,6 +1422,44 @@ select:hover {
   100% {
     transform: scale(2.4);
     opacity: 0;
+  }
+}
+
+/* The point a cell of the opportunity grid is pointing at.
+   One element, no pseudo-elements and no positioning of its own: the expanding
+   ring is a box-shadow spread, which costs no layout and cannot fight the
+   `position: absolute` Leaflet writes onto its own marker elements. That is what
+   lets the Leaflet divIcon and the Google AdvancedMarker share this one rule.
+   Violet, not the red the chosen point uses — this is a place being considered,
+   not the place being analysed. */
+.opportunity-ping {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: #7c3aed;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.4);
+  animation: opportunity-ping 1.5s ease-out infinite;
+}
+
+@keyframes opportunity-ping {
+  0% {
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 0 rgb(124 58 237 / 0.5);
+  }
+  70% {
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 16px rgb(124 58 237 / 0);
+  }
+  100% {
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 0 rgb(124 58 237 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keeps a static halo: the mark still has to be findable on a busy map. */
+  .opportunity-ping {
+    animation: none;
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 6px rgb(124 58 237 / 0.3);
   }
 }
 
@@ -3287,11 +3323,6 @@ p.error {
     gap: var(--space-3);
   }
 
-  /* The hairline between chapters keeps its rule; only the air above it
-     closes up. */
-  .results-panel .score-card > * + * {
-    padding-top: var(--space-5);
-  }
 }
 
 /* One existing five-pose owl sprite accompanies the guide. `background-size`
@@ -3960,7 +3991,19 @@ button.opportunity-cell:hover {
    the fix addresses rather than the placement. Scoped to the results panel so
    the location card, which shares this component, is untouched. */
 
-.results-panel .score-card > * + * {
+/* Only the flattened chapters take the rule, which is what `.panel .card` above
+   already says the rule is for: blocks that keep an edge of their own — the
+   verdict, the notices, the disclosure, the export button — mean "separate
+   block" with that edge and need no second marker.
+   `> * + *` handed it to all of them, and since these selectors tie on
+   specificity and this one comes later, its `padding-top` beat
+   `.panel .panel-disclosure { padding: 0 }`. The 1.5rem landed *inside* the
+   bordered boxes: a void above the collapsed "Bobot, simulasi & data" summary
+   that was not even part of the summary's click target, padding inside the
+   export button, and a doubled top border on the verdict. It also drew a
+   hairline above the gauge with nothing above it, because the visually hidden
+   status line is a sibling and made the gauge an `* + *` match. */
+.results-panel .score-card > * + .card {
   padding-top: var(--space-5);
   border-top: 1px solid var(--border);
 }
@@ -3968,8 +4011,13 @@ button.opportunity-cell:hover {
 /* Cards lost their boxes, so consecutive ones need the same chapter rule the
    score card's children get. Without it the four stacked cards in the
    comparison view had nothing but a 16px gap between them and would read as one
-   undivided column. Scoped to siblings so a lone card stays unruled. */
-.panel .card + .card {
+   undivided column. Scoped to siblings so a lone card stays unruled.
+   `:not(.panel-disclosure)` for the same reason the score card's rule carries
+   one: several blocks are both `.card` and a disclosure, and this selector is
+   specific enough to beat `.panel .panel-disclosure { padding: 0 }`, so the
+   1.5rem landed inside the bordered box — most visibly on "Nama pesaing
+   terdekat", which sits second in its group and so matched `+`. */
+.panel .card + .card:not(.panel-disclosure) {
   padding-top: var(--space-5);
   border-top: 1px solid var(--border);
 }
@@ -8179,6 +8227,19 @@ button.opportunity-cell:hover {
   color: var(--text-soft);
 }
 
+/* Outcome of the last send. Scoped through the parent so it outranks the muted
+   colour the rule above gives every paragraph in this block. A receipt and a
+   problem, told apart by colour and weight rather than by size, so neither
+   competes with the button they belong to. */
+.account-verify .account-verify-note {
+  color: var(--text);
+}
+
+.account-verify .account-verify-error {
+  font-weight: 600;
+  color: var(--error-text);
+}
+
 .account-card a.button-secondary {
   text-decoration: none;
 }
@@ -8193,6 +8254,14 @@ button.opportunity-cell:hover {
   max-width: 54ch;
   font-size: var(--text-sm);
   line-height: 1.55;
+}
+
+/* The export button gained a wrapper so a failure can be reported directly under
+   it. A grid, because the button was a direct child of the score card's grid
+   before and has to keep filling the column rather than shrinking to its label. */
+.report-export-block {
+  display: grid;
+  gap: var(--space-2);
 }
 
 /* Adjustable weights ------------------------------------------------------- */
@@ -8236,9 +8305,11 @@ button.opportunity-cell:hover {
    go ragged as the longer labels wrapped. */
 .weights-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* Name, the number itself, then its normalised share. The slider spans all
+     three underneath. */
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: var(--space-1) var(--space-3);
+  gap: var(--space-1) var(--space-2);
 }
 
 /* The label used to span both columns, which put the name on one line and its
@@ -8259,11 +8330,38 @@ button.opportunity-cell:hover {
   accent-color: var(--tersier);
 }
 
-.weights-value {
+/* The relative figure, typed. The slider is for feeling out a trade-off; this is
+   for when the exact number is the point, and for anyone who would rather not
+   drag a control at all. */
+.weights-number {
   grid-column: 2;
   grid-row: 1;
+  width: 4.25rem;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
   font-size: var(--text-sm);
   font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.weights-number:hover {
+  border-color: var(--sekunder);
+}
+
+/* The share the engine actually applies, after normalising the set to 100. Muted
+   and read-only, so the pair does not read as two editable numbers. */
+.weights-value {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 2.75rem;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--text-soft);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -8272,6 +8370,14 @@ button.opportunity-cell:hover {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* `.button-primary` is full width, so this takes its own line above the two
+   secondary actions — right for the one control that re-runs the analysis. The
+   panel's 3rem primary height is trimmed back though: this is the main action of
+   a block inside a fold, not the headline action of the whole panel. */
+.panel .weights-apply {
+  min-height: 2.5rem;
 }
 
 /* Rides on `.notice` for its surface and accent rather than restating them:

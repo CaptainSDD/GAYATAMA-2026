@@ -139,6 +139,15 @@ const PIN_B = pickedPin('B');
 const LABEL_ANCHOR = divIcon({ className: 'zone-label-anchor', iconSize: [0, 0] });
 
 /**
+ * The pulsing dot for a point being hovered in the opportunity grid. All of its
+ * appearance, including the expanding ring, comes from one CSS rule on a single
+ * element — see `.opportunity-ping` — so the Google map can mark the same point
+ * with the same markup. Sized to match `iconSize`, since Leaflet writes that
+ * onto the element as an inline style.
+ */
+const HIGHLIGHT_PING = divIcon({ className: 'opportunity-ping', html: '', iconSize: [14, 14], iconAnchor: [7, 7] });
+
+/**
  * A Google map when a Maps JavaScript API key is configured, otherwise an
  * OpenStreetMap map. Google data may only be shown on a Google map, so the
  * choice also decides whether the API is asked for Google counts.
@@ -185,6 +194,7 @@ function OpenStreetMapPicker({
   facilities,
   hoveredZone,
   onZoneHover,
+  highlightPoint = null,
 }: MapPickerProps & ZoneHoverProps & { facilities: readonly PoiFacility[] }) {
   return (
     <MapContainer
@@ -232,6 +242,9 @@ function OpenStreetMapPicker({
       )}
       {comparing && secondPoint !== null && (
         <Marker position={[secondPoint.lat, secondPoint.lng]} icon={PIN_B} interactive={false} />
+      )}
+      {highlightPoint !== null && (
+        <Marker position={[highlightPoint.lat, highlightPoint.lng]} icon={HIGHLIGHT_PING} interactive={false} />
       )}
     </MapContainer>
   );

@@ -1,5 +1,6 @@
 import type { BusinessType, LatLng } from '@gayatama/scoring';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Loading, QueryError } from '../../components/QueryState';
 import type { OpportunitiesResponse } from '../../lib/api-types';
 import { scoreTone, toneTextColor } from '../../lib/band-color';
@@ -11,9 +12,19 @@ interface OpportunityViewProps {
   query: UseQueryResult<OpportunitiesResponse>;
   businessType: BusinessType;
   onAnalysePoint: (point: LatLng) => void;
+  /**
+   * Marks a point on the map while it is pointed at here. Must be referentially
+   * stable — the cleanup below depends on it.
+   */
+  onHoverPoint: (point: LatLng | null) => void;
 }
 
-export function OpportunityView({ query, businessType, onAnalysePoint }: OpportunityViewProps) {
+export function OpportunityView({ query, businessType, onAnalysePoint, onHoverPoint }: OpportunityViewProps) {
+  // Declared before the early returns below, because a hook cannot be skipped.
+  // Leaving this tab, or picking one of the nine, must not leave a marker
+  // pulsing on the map with nothing on screen explaining it.
+  useEffect(() => () => onHoverPoint(null), [onHoverPoint]);
+
   if (query.isPending) return <Loading message="Menilai sembilan titik di sekitar sini…" />;
   if (query.isError) return <QueryError error={query.error} onRetry={() => void query.refetch()} />;
 
@@ -41,6 +52,7 @@ export function OpportunityView({ query, businessType, onAnalysePoint }: Opportu
                 isCentre={cell.id === CENTRE_ID}
                 isBest={best !== null && cell.id === best.id && best.id !== CENTRE_ID}
                 onAnalyse={() => onAnalysePoint({ lat: cell.lat, lng: cell.lng })}
+                onHover={(hovering) => onHoverPoint(hovering ? { lat: cell.lat, lng: cell.lng } : null)}
               />
             );
           }),
@@ -50,7 +62,13 @@ export function OpportunityView({ query, businessType, onAnalysePoint }: Opportu
         Atas = utara
       </p>
 
-      <Verdict centre={centre} best={best} spacingMeters={spacingMeters} onAnalysePoint={onAnalysePoint} />
+      <Verdict
+        centre={centre}
+        best={best}
+        spacingMeters={spacingMeters}
+        onAnalysePoint={onAnalysePoint}
+        onHoverPoint={onHoverPoint}
+      />
 
       {cells.some((cell) => cell.status !== 'scored') && (
         <p className="muted">
@@ -72,20 +90,38 @@ function OpportunityCell({
   isCentre,
   isBest,
   onAnalyse,
+  onHover,
 }: {
   cell: Cell;
   isCentre: boolean;
   isBest: boolean;
   onAnalyse: () => void;
+  onHover: (hovering: boolean) => void;
 }) {
   const direction = DIRECTIONS[cell.id] ?? '';
   const classes = ['opportunity-cell'];
   if (isCentre) classes.push('opportunity-cell-centre');
   if (isBest) classes.push('opportunity-cell-best');
 
+  /**
+   * Focus as well as hover, so tabbing through the eight marks the map the same
+   * way pointing at them does. The centre cell is left out: it is the analysed
+   * point, and it already carries the pin.
+   */
+  const pointerProps = isCentre
+    ? {}
+    : {
+        onMouseEnter: () => onHover(true),
+        onMouseLeave: () => onHover(false),
+        onFocus: () => onHover(true),
+        onBlur: () => onHover(false),
+      };
+
   if (cell.status !== 'scored' || cell.score === null) {
+    // Still marked on hover: "where is the point I could not score" is a fair
+    // question, and the answer is the same kind of answer.
     return (
-      <div className={`${classes.join(' ')} opportunity-cell-blank`}>
+      <div className={`${classes.join(' ')} opportunity-cell-blank`} {...pointerProps}>
         <span className="opportunity-direction">{isCentre ? 'Titik Anda' : direction}</span>
         <span className="opportunity-score muted">{cell.status === 'unavailable' ? 'gagal' : 'data tipis'}</span>
       </div>
@@ -112,7 +148,13 @@ function OpportunityCell({
   }
 
   return (
-    <button type="button" className={classes.join(' ')} onClick={onAnalyse} aria-label={`${label}. Analisis titik ini`}>
+    <button
+      type="button"
+      className={classes.join(' ')}
+      onClick={onAnalyse}
+      aria-label={`${label}. Analisis titik ini`}
+      {...pointerProps}
+    >
       {body}
     </button>
   );
@@ -123,11 +165,13 @@ function Verdict({
   best,
   spacingMeters,
   onAnalysePoint,
+  onHoverPoint,
 }: {
   centre: Cell | undefined;
   best: ScoredCell | null;
   spacingMeters: number;
   onAnalysePoint: (point: LatLng) => void;
+  onHoverPoint: (point: LatLng | null) => void;
 }) {
   if (best === null) {
     return (
@@ -159,7 +203,17 @@ function Verdict({
         , dengan skor <strong>{displayScore(best.score)}</strong>
         {gap !== null && gap > 0 && ` — ${gap.toLocaleString('id-ID', { maximumFractionDigits: 1 })} poin di atas titik Anda`}.
       </p>
-      <button type="button" className="button-primary" onClick={() => onAnalysePoint({ lat: best.lat, lng: best.lng })}>
+      {/* "500 m ke timur laut" is a direction, not a place. Pointing at the
+          button that acts on it shows which place is meant. */}
+      <button
+        type="button"
+        className="button-primary"
+        onClick={() => onAnalysePoint({ lat: best.lat, lng: best.lng })}
+        onMouseEnter={() => onHoverPoint({ lat: best.lat, lng: best.lng })}
+        onMouseLeave={() => onHoverPoint(null)}
+        onFocus={() => onHoverPoint({ lat: best.lat, lng: best.lng })}
+        onBlur={() => onHoverPoint(null)}
+      >
         Analisis titik itu
       </button>
     </div>

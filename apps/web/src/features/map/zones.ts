@@ -114,6 +114,13 @@ export interface MapPickerProps {
   comparing?: boolean;
   /** The second candidate, once picked. Only meaningful while comparing. */
   secondPoint?: LatLng | null;
+  /**
+   * A point being pointed at elsewhere in the interface — a cell of the
+   * opportunity grid under the cursor. Shown, never selected: the grid names
+   * nine places by compass direction and distance, which is a poor substitute
+   * for seeing which one it means.
+   */
+  highlightPoint?: LatLng | null;
   onPick: (point: LatLng) => void;
   onCenterChange: (center: LatLng) => void;
 }

@@ -17,6 +17,17 @@ export interface RegisterProfileResponse {
   username: string;
 }
 
+export interface VerificationStatusResponse {
+  email: string | null;
+  emailVerified: boolean;
+}
+
+export interface VerificationSendResponse {
+  sent: boolean;
+  /** Nothing was sent because the address was already verified. */
+  alreadyVerified: boolean;
+}
+
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 /** An error from the API, carrying the stable `error` code from docs/api.md. */
@@ -156,6 +167,30 @@ export function saveWeights(idToken: string, weights: ComponentWeights | null, s
 
 export function registerProfile(idToken: string, username: string, signal?: AbortSignal) {
   return postJson<RegisterProfileResponse>('/auth/register-profile', { username }, signal, {
+    authorization: `Bearer ${idToken}`,
+  });
+}
+
+/**
+ * Live verification state, read by the API from Firebase Auth itself rather
+ * than from the `email_verified` claim the caller's token carries — that claim
+ * is a snapshot and stays stale for up to an hour after the link is followed.
+ */
+export function fetchVerificationStatus(idToken: string, signal?: AbortSignal) {
+  return request<VerificationStatusResponse>('/auth/verification-status', {
+    signal,
+    headers: { authorization: `Bearer ${idToken}` },
+  });
+}
+
+/**
+ * Asks the API to send the verification email. `sent: false` with
+ * `alreadyVerified: true` is a success, not a failure: there was nothing left
+ * to verify. Throws `MAIL_NOT_CONFIGURED` when the server has no mail
+ * transport, which is the signal to fall back to Firebase's own sender.
+ */
+export function requestVerificationEmail(idToken: string, signal?: AbortSignal) {
+  return postJson<VerificationSendResponse>('/auth/verification-email', {}, signal, {
     authorization: `Bearer ${idToken}`,
   });
 }

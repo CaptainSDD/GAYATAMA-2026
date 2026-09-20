@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router-dom';
 import { ApiError, registerProfile } from '../../lib/api';
-import { currentIdToken, sendVerificationEmail, signUp } from '../../lib/auth';
+import { currentIdToken, signUp } from '../../lib/auth';
+import { resendVerificationEmail } from '../../lib/verification';
 import { errorMessage, firebaseAuthErrorMessage } from '../../lib/copy';
 import { AuthField } from './AuthField';
 import { AuthSheet, type SheetCounterpart } from './AuthSheet';
@@ -84,7 +85,9 @@ export function SignupPage() {
         setCreatedUser(user);
         // Best-effort: a slow or failed verification email should not block
         // the account from existing, since the user can ask to resend it.
-        await sendVerificationEmail(user).catch(() => undefined);
+        // Goes through the API when it has a mailer, and through Firebase when
+        // it does not — see lib/verification.ts.
+        await resendVerificationEmail(user).catch(() => undefined);
       }
       const idToken = await currentIdToken(user);
       await registerProfile(idToken, result.data.username);

@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
+import { MailModule } from '../mail/mail.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { RequireVerifiedEmailGuard } from './require-verified-email.guard';
+import { VerificationService } from './verification.service';
 import { VerifyTokenGuard } from './verify-token.guard';
 
 @Module({
+  imports: [MailModule],
   controllers: [AuthController],
-  providers: [AuthService, VerifyTokenGuard],
+  providers: [AuthService, VerificationService, VerifyTokenGuard, RequireVerifiedEmailGuard],
 })
 export class AuthModule {}

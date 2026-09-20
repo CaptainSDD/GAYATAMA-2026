@@ -23,6 +23,7 @@ import {
   serializeSelection,
   type Selection,
 } from './lib/location';
+import type { VerificationResendState } from './features/auth/useVerificationResend';
 import { BUSINESS_TYPE_LABELS } from './lib/copy';
 import { USE_GOOGLE_MAP } from './lib/map-config';
 import { resetProgress } from './lib/tour';
@@ -33,7 +34,8 @@ interface AppProps {
   /** Scopes the onboarding tour to the signed-in account. */
   userId?: string;
   emailVerified?: boolean;
-  verificationResent?: boolean;
+  /** How the last resend went, so a failure is reported rather than looking like an ignored press. */
+  verificationState?: VerificationResendState;
   onSignOut?: () => void;
   onResendVerification?: () => void;
 }
@@ -42,7 +44,7 @@ export function App({
   userEmail,
   userId = 'anon',
   emailVerified = true,
-  verificationResent = false,
+  verificationState = { status: 'idle' },
   onSignOut,
   onResendVerification,
 }: AppProps) {
@@ -55,6 +57,12 @@ export function App({
   const [locationCollapsed, setLocationCollapsed] = useState(false);
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const [outsideCoverage, setOutsideCoverage] = useState(false);
+  /**
+   * A point the opportunity grid is pointing at. Held here rather than in the
+   * grid because the map is the thing that has to draw it, and the two are on
+   * opposite sides of the layout.
+   */
+  const [highlightPoint, setHighlightPoint] = useState<LatLng | null>(null);
   /* Session-scoped on purpose: the reminder should stop nagging while someone
      is working, and come back next visit if the email is still unverified. */
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
@@ -251,9 +259,27 @@ export function App({
           nothing here is urgent enough to be permanent. */}
       {!emailVerified && onResendVerification !== undefined && !verifyBannerDismissed && (
         <div className="notice auth-banner" role="status">
-          <span className="auth-banner-message">Verifikasi email Anda untuk mengamankan akun ini.</span>
-          <button type="button" className="button-secondary" onClick={onResendVerification} disabled={verificationResent}>
-            {verificationResent ? 'Email terkirim' : 'Kirim ulang'}
+          <span className="auth-banner-message">
+            {verificationState.status === 'sent'
+              ? 'Tautan verifikasi terkirim. Cek inbox dan folder spam.'
+              : verificationState.status === 'failed'
+                ? verificationState.message
+                : 'Verifikasi email Anda untuk mengamankan akun ini.'}
+          </span>
+          {/* Stays pressable after a send: an email can be lost or filtered, and
+              a button that permanently disables itself on success leaves the one
+              person who needs it most with no way to ask again. */}
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={onResendVerification}
+            disabled={verificationState.status === 'sending'}
+          >
+            {verificationState.status === 'sending'
+              ? 'Mengirim…'
+              : verificationState.status === 'sent'
+                ? 'Kirim lagi'
+                : 'Kirim ulang'}
           </button>
           <button
             type="button"
@@ -279,6 +305,7 @@ export function App({
             analysisPoint={siteCompare.active ? null : analysisSelection?.point ?? null}
             comparing={siteCompare.active}
             secondPoint={siteCompare.pointB}
+            highlightPoint={highlightPoint}
             onPick={pick}
             onCenterChange={setMapCenter}
           />
@@ -288,7 +315,6 @@ export function App({
               missing half was a way to commit the centre. `prepareTourResult`
               already did exactly this for the guided tour and kept it from
               users. */}
-          <span className="map-centre-crosshair" aria-hidden="true" />
           <button
             type="button"
             className="map-centre-pick"
@@ -360,6 +386,7 @@ export function App({
                 businessType={analysisSelection.businessType}
                 onBusinessTypeChange={analyseBusinessType}
                 onAnalysePoint={analysePoint}
+                onHoverPoint={setHighlightPoint}
                 weights={selection.weights}
                 onWeightsChange={chooseWeights}
                 entryMode={entryMode}

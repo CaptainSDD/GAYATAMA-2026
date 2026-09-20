@@ -62,3 +62,14 @@ export function subscribeToAuthState(callback: (state: AuthState) => void): () =
 export function currentIdToken(user: User): Promise<string> {
   return user.getIdToken();
 }
+
+/**
+ * Mints a new ID token instead of reusing the cached one.
+ *
+ * Needed after the email is verified: `email_verified` is a claim baked into
+ * the token when it was issued, so until a fresh one is minted the API keeps
+ * being told the address is unverified — for as long as an hour.
+ */
+export function refreshIdToken(user: User): Promise<string> {
+  return user.getIdToken(true);
+}

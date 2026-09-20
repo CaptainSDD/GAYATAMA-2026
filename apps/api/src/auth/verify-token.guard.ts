@@ -8,6 +8,12 @@ export interface AuthenticatedRequest extends Request {
   /** Set once the ID token has been verified against Firebase Auth itself. */
   uid: string;
   email: string | null;
+  /**
+   * The token's `email_verified` claim. A snapshot from when the token was
+   * minted, so `false` means "not verified as of this token" rather than "not
+   * verified" — RequireVerifiedEmailGuard asks Firebase before acting on it.
+   */
+  emailVerified: boolean;
 }
 
 const BEARER_PREFIX = 'Bearer ';
@@ -39,6 +45,7 @@ export class VerifyTokenGuard implements CanActivate {
       const decoded = await this.auth.verifyIdToken(token);
       request.uid = decoded.uid;
       request.email = decoded.email ?? null;
+      request.emailVerified = decoded.email_verified === true;
       return true;
     } catch {
       throw unauthorized('Invalid or expired ID token.');

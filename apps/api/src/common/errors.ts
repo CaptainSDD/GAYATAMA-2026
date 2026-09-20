@@ -9,8 +9,10 @@ export type ErrorCode =
   | 'REQUEST_FAILED'
   | 'INTERNAL_ERROR'
   | 'UNAUTHORIZED'
+  | 'EMAIL_NOT_VERIFIED'
   | 'USERNAME_TAKEN'
-  | 'LOCATION_NOT_ELIGIBLE';
+  | 'LOCATION_NOT_ELIGIBLE'
+  | 'MAIL_NOT_CONFIGURED';
 
 export interface ErrorBody {
   statusCode: number;
@@ -51,6 +53,36 @@ export function upstreamUnavailable(): ApiError {
 
 export function unauthorized(message = 'Missing or invalid ID token.'): ApiError {
   return new ApiError(HttpStatus.UNAUTHORIZED, 'UNAUTHORIZED', message);
+}
+
+/**
+ * 403, not 401: the caller proved who they are, they just have not proved the
+ * address is theirs. A 401 would tell the client to sign in again, which is
+ * exactly the wrong remedy.
+ */
+export function emailNotVerified(): ApiError {
+  return new ApiError(
+    HttpStatus.FORBIDDEN,
+    'EMAIL_NOT_VERIFIED',
+    'Verifikasi alamat email Anda dulu untuk memakai fitur ini.',
+  );
+}
+
+/** Distinct from REQUEST_FAILED so the browser knows it may fall back to Firebase's own sender. */
+export function mailNotConfigured(): ApiError {
+  return new ApiError(
+    HttpStatus.SERVICE_UNAVAILABLE,
+    'MAIL_NOT_CONFIGURED',
+    'No mail transport is configured on the server, so it cannot send the verification email itself.',
+  );
+}
+
+export function mailSendFailed(): ApiError {
+  return new ApiError(
+    HttpStatus.BAD_GATEWAY,
+    'REQUEST_FAILED',
+    'Email verifikasi gagal dikirim. Coba lagi sebentar lagi.',
+  );
 }
 
 export function usernameTaken(username: string): ApiError {
