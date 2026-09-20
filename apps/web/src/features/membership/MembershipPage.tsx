@@ -3,7 +3,7 @@ import lokabisLogo from '../../assets/lokabis-logo.png';
 import { CheckIcon } from '../../components/Icons';
 
 /**
- * Draft plans page, in the landing page's Studio Sheet rather than the app's
+ * The plans page, in the landing page's Studio Sheet rather than the app's
  * Glass Instrument Deck.
  *
  * A visitor reaches `/membership` from the front door or from either auth door,
@@ -16,14 +16,22 @@ import { CheckIcon } from '../../components/Icons';
  * breath and the centred main this page shares with the doorway.
  *
  * ────────────────────────────────────────────────────────────────────────────
- * THE FOUR TIERS BELOW ARE THE INTENDED REVENUE MODEL, NOT A PRICE LIST.
+ * THE FOUR PRICES ARE DECIDED. THE PAYMENT IS NOT BUILT. BOTH FACTS SHIP.
  *
- * The split follows the model the user recorded: a free quota for one owner
- * trying the product, pay-per-report for the one decision, a subscription for
- * someone running a growing business, and a contract tier for investors and
- * franchisors. No price has been set for any of them, so `price` is null
- * everywhere except the free tier and every control except the free one says
- * `Belum tersedia`.
+ * Prices recorded 2026-09-20: Rp 0 for the free core, Rp 25.000 per report,
+ * Rp 150.000 per month, Rp 6.000.000 per year for the B2B contract tier. They
+ * are held as numbers rather than strings because the page reasons about them:
+ * the per-report cell states the point at which the subscription costs less and
+ * the contract cell states what it is worth in reports, and both are computed
+ * from the constants below. Change a price and the arithmetic that quotes it
+ * changes with it — there is no sentence on this page carrying a number that
+ * was typed twice.
+ *
+ * `CHECKOUT_OPEN` is false because nothing in this repository can take money:
+ * no payment provider, no usage metering, no orders. So the page states a price
+ * and then refuses the purchase, in that order, and says so once at the head
+ * rather than hedging every cell. It is no longer a draft — the prices are real
+ * and quotable; what is missing is the till.
  *
  * `ready` and `soon` are not a marketing device. `ready` lists what the engine
  * and the app actually do today; `soon` lists what the model promises and the
@@ -37,26 +45,68 @@ import { CheckIcon } from '../../components/Icons';
  * price list without a published privacy position would be a claim this project
  * has not earned.
  *
- * To make this page real: set `price` and `unit`, move items from `soon` to
- * `ready` as they ship, set `available` on what can be bought, and delete
- * `DRAFT`.
+ * To open this page for business: move items from `soon` to `ready` as they
+ * ship, set `available` on the tiers that can be bought, and flip
+ * `CHECKOUT_OPEN`.
  * ────────────────────────────────────────────────────────────────────────────
  */
-const DRAFT = true;
+
+/** No payment provider, no metering, no orders table. Nothing here can take money yet. */
+const CHECKOUT_OPEN = false;
+
+/** The decided prices, in rupiah. Everything else on this page is derived from them. */
+const PRICE_REPORT = 25_000;
+const PRICE_SUBSCRIPTION = 150_000;
+const PRICE_ENTERPRISE = 6_000_000;
+
+/**
+ * Indonesian grouping and no currency mark: the `Rp` is set separately, one
+ * type step down, so the figures themselves line up down the three-column row
+ * and the mark never competes with the number a visitor is comparing.
+ */
+function groupRupiah(value: number): string {
+  return new Intl.NumberFormat('id-ID').format(value);
+}
+
+/**
+ * How many reports a price is worth, floored — never rounded, so the count is
+ * always one the money actually covers. At Rp 25.000 a report, Rp 6.000.000 is
+ * 240 reports and never 241, and if a future price stops dividing evenly the
+ * figure understates rather than overstates what is bought.
+ */
+function reportsWorth(price: number): number {
+  return Math.floor(price / PRICE_REPORT);
+}
 
 interface Tier {
   id: string;
   name: string;
-  /** Left as null until a real number exists. */
-  price: string | null;
+  /** Rupiah, as a number: the page compares these to each other. */
+  price: number;
   /** What the money buys — the billing unit differs on every tier here. */
   unit: string;
+  /**
+   * One computed line placing this price against another. Only the two tiers
+   * where the comparison changes a decision carry it: someone holding a single
+   * choice needs to know when the subscription overtakes paying per report, and
+   * someone assessing many sites needs the contract in units of report. The
+   * subscription cell carries none, because the per-report cell already points
+   * at it and saying the same arithmetic twice makes it read as a pitch.
+   */
+  crossover?: string;
   summary: string;
   /** Capabilities that ship today. */
   ready: string[];
   /** Capabilities the model promises and the code does not have yet. */
   soon: string[];
+  /** The control's label where the tier can be acted on. */
   cta: string;
+  /**
+   * The control's label where it cannot. It names the missing thing rather than
+   * saying "unavailable": the price is settled, so what stands in the way is a
+   * payment path, or for the contract tier a channel to agree terms on.
+   */
+  blocked?: string;
   /** Whether the tier can actually be started today. Only the free core can. */
   available?: boolean;
 }
@@ -65,7 +115,7 @@ const TIERS: Tier[] = [
   {
     id: 'gratis',
     name: 'Gratis',
-    price: 'Rp 0',
+    price: 0,
     // The quota is the plan, not the behaviour: nothing in the API counts
     // analyses yet, so the unit says so rather than implying a live limit.
     unit: '5 analisis pertama · kuota sedang disiapkan',
@@ -86,8 +136,13 @@ const TIERS: Tier[] = [
   {
     id: 'laporan',
     name: 'Per laporan',
-    price: null,
-    unit: 'per laporan · harga belum ditetapkan',
+    price: PRICE_REPORT,
+    unit: 'sekali bayar, per laporan',
+    // Six reports cost what a month of the subscription costs, so the seventh is
+    // where paying per report stops being the cheaper way round. Derived, not
+    // written: `+ 1` is the first report the subscription is strictly cheaper
+    // than, at any pair of prices.
+    crossover: `Mulai laporan ke-${reportsWorth(PRICE_SUBSCRIPTION) + 1} dalam sebulan, langganan lebih murah.`,
     summary: 'Untuk satu keputusan yang sudah dekat: bayar sekali, dapat laporan lengkapnya.',
     ready: [
       'Analisis kompetitor dan tingkat kejenuhan',
@@ -98,13 +153,14 @@ const TIERS: Tier[] = [
       'Laporan PDF siap cetak',
     ],
     soon: ['Pembayaran per laporan'],
-    cta: 'Pilih paket ini',
+    cta: 'Beli laporan',
+    blocked: 'Pembayaran belum dibuka',
   },
   {
     id: 'langganan',
     name: 'Langganan',
-    price: null,
-    unit: 'per bulan atau per tahun · harga belum ditetapkan',
+    price: PRICE_SUBSCRIPTION,
+    unit: 'per bulan',
     summary: 'Untuk pemilik usaha yang sedang berkembang dan menimbang lokasi baru lebih dari sekali.',
     ready: ['Semua yang ada di Per laporan', 'Peta peluang 3 × 3 di sekitar satu titik'],
     soon: [
@@ -115,13 +171,17 @@ const TIERS: Tier[] = [
       'Pemberitahuan saat kondisi kompetitor berubah',
       'Tanya jawab lanjutan untuk menjajal skenario usaha',
     ],
-    cta: 'Pilih paket ini',
+    cta: 'Mulai langganan',
+    blocked: 'Pembayaran belum dibuka',
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: null,
-    unit: 'kontrak atau per laporan · harga belum ditetapkan',
+    price: PRICE_ENTERPRISE,
+    unit: 'per tahun · kontrak B2B',
+    // The volume buyer's own unit. Floored, so it is a count the contract
+    // certainly covers rather than one it nearly does.
+    crossover: `Setara ${groupRupiah(reportsWorth(PRICE_ENTERPRISE))} laporan setahun.`,
     summary:
       'Untuk investor, pemberi waralaba, dan lembaga yang menilai banyak lokasi sekaligus dan perlu laporan yang bisa dipertanggungjawabkan.',
     ready: ['Semua yang ada di Langganan', 'Bukti yang bisa dilacak ke sumbernya di setiap laporan'],
@@ -129,9 +189,10 @@ const TIERS: Tier[] = [
       'Bandingkan banyak lokasi dalam satu laporan',
       'Laporan uji kelayakan untuk calon investor',
       'Izin pakai laporan untuk pemberi waralaba',
-      'Kontrak atau harga khusus per laporan',
+      'Harga khusus per laporan di atas volume tertentu',
     ],
     cta: 'Hubungi kami',
+    blocked: 'Kontrak belum dibuka',
   },
 ];
 
@@ -181,18 +242,28 @@ export function MembershipPage() {
             membandingkan banyak pilihan, dan tidak mengubah cara skornya dihitung.
           </p>
 
-          {DRAFT && (
-            <p className="plans-draft" role="status">
-              Halaman contoh. Harga belum ditetapkan dan bukan penawaran. Fitur yang ditandai sedang disiapkan belum
-              bisa dipakai.
+          {/* The one line no neighbouring product can write. Every number LOKABIS
+              produces arrives as an interval, and below its confidence floor the
+              product declines to produce one at all — so a page of exact figures
+              is the single place that has to be said out loud. It belongs here
+              rather than in a footnote: it is what makes the four numbers below
+              readable as promises instead of estimates. */}
+          <p className="plans-certain">
+            Harganya pasti. Ini satu-satunya angka di LOKABIS yang datang tanpa rentang ketidakpastian.
+          </p>
+
+          {!CHECKOUT_OPEN && (
+            <p className="plans-status" role="status">
+              Harga di halaman ini sudah ditetapkan; pembayarannya belum dibuka. Fitur yang ditandai “Sedang
+              disiapkan” juga belum bisa dipakai.
             </p>
           )}
         </div>
 
         {/* One plate, four cells that are not interchangeable. The free tier can
             actually be started today, so it holds a row of its own, the raised
-            tile and the page's single indigo element; the three tiers whose price
-            and plumbing do not exist yet take the sunken tile and say so. */}
+            tile and the page's single indigo element; the three priced tiers take
+            the sunken tile and a control that names what is missing. */}
         <div className="sheet-slab plans-slab" id="paket" tabIndex={-1}>
           <ul className="plans-tiers">
             {TIERS.map((tier, index) => {
@@ -201,20 +272,21 @@ export function MembershipPage() {
                 <li key={tier.id}>
                   <article
                     className="plans-tier"
-                    data-state={live ? 'live' : 'draft'}
+                    data-state={live ? 'live' : 'priced'}
                     data-layout={index === 0 ? 'wide' : 'column'}
                   >
                     <h2 className="plans-tier-name">{tier.name}</h2>
 
+                    {/* The mark names the unit; the figure is what a visitor
+                        compares across the row, so they are separate spans at
+                        separate steps and the figure carries tabular numerals. */}
                     <p className="plans-price">
-                      {tier.price === null ? (
-                        <span className="plans-price-value" aria-label="Harga belum ditetapkan">
-                          —
-                        </span>
-                      ) : (
-                        <span className="plans-price-value">{tier.price}</span>
-                      )}
+                      <span className="plans-price-value">
+                        <span className="plans-price-mark">Rp</span>
+                        <span className="plans-price-figure">{groupRupiah(tier.price)}</span>
+                      </span>
                       <span className="plans-period">{tier.unit}</span>
+                      {tier.crossover && <span className="plans-crossover">{tier.crossover}</span>}
                     </p>
 
                     <p className="plans-summary">{tier.summary}</p>
@@ -252,8 +324,10 @@ export function MembershipPage() {
                         <p className="plans-note">Tanpa kartu kredit. Akun diverifikasi lewat email.</p>
                       </>
                     ) : (
+                      // The fallback is the old blanket label, so a tier added
+                      // without a reason can never render a nameless control.
                       <button type="button" className="plans-action" disabled>
-                        Belum tersedia
+                        {tier.blocked ?? 'Belum tersedia'}
                       </button>
                     )}
                   </article>

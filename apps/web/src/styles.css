@@ -7633,17 +7633,19 @@ button.opportunity-cell:hover {
    room further along, and adds only the plate's own contents.
 
    What it refuses is the pricing page's own default: a rack of interchangeable
-   cards of equal weight. Only one of the four tiers can be started today, so the
-   free core takes a full row, the raised tile, a two-column interior and the
-   page's single indigo action, while the three tiers whose price and plumbing do
-   not exist yet take the sunken tile in a narrower column and say so. The dark
-   anchor under them is the doorway's aside, carrying the promise no tier
-   changes. */
+   cards of equal weight. All four prices are decided, but only the free core can
+   be started today, so it takes a full row, the raised tile, a two-column
+   interior and the page's single indigo action, while the three tiers whose
+   payment path does not exist yet take the sunken tile in a narrower column and
+   carry a control that names what is missing. The dark anchor under them is the
+   doorway's aside, carrying the promise no tier changes. */
 
 /* One step this world did not have: a figure large enough to lead a cell without
    reaching the landing's own score figure, which belongs to a real measurement.
-   Recorded in DESIGN.md as `lp-price`; its ceiling is set by the longest price
-   this page can carry (`Rp 149.000` in a three-column cell), not by taste. */
+   Recorded in DESIGN.md as `lp-price`; its ceiling is set by the longest figure
+   this page can carry (`6.000.000` in a three-column cell), not by taste. The
+   currency mark is excluded from that measurement on purpose — see
+   `.plans-price-mark`, which is what buys the ceiling. */
 .landing-plans {
   --lp-price: clamp(2.1rem, 3.2vw, 2.85rem);
 }
@@ -7683,11 +7685,26 @@ button.opportunity-cell:hover {
   max-width: 58ch;
 }
 
-/* The draft warning, in the app's amber because that is what amber already
-   means in this product: a thing the interface is not sure of. A 1px frame all
-   round rather than a bar down one edge — the caveat is the whole object, and
-   the same shape the doorway's error takes. */
-.plans-draft {
+/* The page's own aside, and the only sentence here that raises its voice by ink
+   rather than by size: one step darker than the deck above it, at the same
+   reading size, on a short measure so it holds one line of thought. Every number
+   this product returns arrives as an interval and below the confidence floor it
+   returns none at all, so a page of exact figures is the one place that has to be
+   stated — and stating it is what lets the four prices below read as promises
+   rather than estimates. */
+.plans-certain {
+  margin-top: clamp(1.1rem, 2.2vw, 1.5rem);
+  max-width: 46ch;
+  font-size: var(--lp-body);
+  color: var(--lp-ink);
+}
+
+/* Not a draft warning any more: the prices are settled and the till is not open.
+   Still the app's amber, because that is what amber already means in this
+   product — a thing the interface cannot yet act on. A 1px frame all round rather
+   than a bar down one edge: the caveat is the whole object, and the same shape
+   the doorway's error takes. */
+.plans-status {
   margin-top: clamp(1rem, 2vw, 1.35rem);
   max-width: 64ch;
   padding: 0.7rem 0.95rem;
@@ -7820,21 +7837,56 @@ button.opportunity-cell:hover {
 
 /* The largest thing in the cell, and the one place this page raises its voice.
    Set at the display weight of the world it belongs to rather than bolded — the
-   size is the emphasis. */
+   size is the emphasis. Baseline alignment rather than centring: the mark is a
+   third the figure's size and a currency mark sits on the line, not beside its
+   middle. */
 .plans-price-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
   font-size: var(--lp-price);
   font-weight: 300;
   line-height: 1;
   letter-spacing: -0.035em;
 }
 
-.plans-tier[data-state='draft'] .plans-price-value {
+/* Every price on this page is in rupiah, so the mark is a unit rather than
+   information, and it drops to the metadata step in muted ink — the same
+   demotion the engine's `±` margin takes beside a score. Demoting it is also
+   what buys the figure its ceiling: at the full price step `Rp 6.000.000` does
+   not fit a three-column cell at 74rem and `6.000.000` does. Tracking is
+   released back to zero because -0.035em at 0.8125rem closes two capitals into
+   one shape. */
+.plans-price-mark {
+  font-size: var(--lp-meta);
+  letter-spacing: 0;
   color: var(--lp-ink-muted);
+}
+
+/* The Tabular Number Rule, and here it is load-bearing rather than habitual:
+   three figures of different lengths sit side by side in the three-column row and
+   are read against each other. */
+.plans-price-figure {
+  font-variant-numeric: tabular-nums;
 }
 
 .plans-period {
   font-size: var(--lp-meta);
   color: var(--lp-ink-muted);
+}
+
+/* The one computed line on the page: where the neighbouring tier costs less, and
+   what the contract is worth in reports. Derived in the component from the prices
+   themselves rather than written, so it cannot fall out of step with the figure
+   directly above it. `lp-ink-soft` and not the muted step, because it changes how
+   the price is read and DESIGN.md holds that role above muted. A little more air
+   than the billing unit gets: it is a second thought about the price, not part of
+   its label. */
+.plans-crossover {
+  margin-top: 0.3rem;
+  max-width: 34ch;
+  font-size: var(--lp-meta);
+  color: var(--lp-ink-soft);
 }
 
 .plans-summary {
@@ -8074,8 +8126,15 @@ button.opportunity-cell:hover {
     animation-delay: 320ms;
   }
 
+  /* There are four cells, not three. Without this the last tier inherited a zero
+     delay and arrived before the free row above it, which is the one thing the
+     stagger exists to prevent. */
+  .plans-tiers > li:nth-child(4) {
+    animation-delay: 390ms;
+  }
+
   .plans-anchor {
-    animation-delay: 400ms;
+    animation-delay: 460ms;
   }
 }
 
