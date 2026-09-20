@@ -1,11 +1,39 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card } from '../../components/Card';
-import { MapPinIcon } from '../../components/Icons';
 import { signIn } from '../../lib/auth';
 import { firebaseAuthErrorMessage } from '../../lib/copy';
 import { AuthField } from './AuthField';
+import { AuthSheet, type SheetCounterpart } from './AuthSheet';
 import { fieldErrors, loginSchema, type FieldErrors } from './schemas';
+
+const COUNTERPART: SheetCounterpart = { to: '/signup', label: 'Daftar' };
+
+/**
+ * What the aside says is what the product promises everywhere else — the
+ * interval, the confidence floor, the per-category rule. No claim here that
+ * isn't already true in the engine, and nothing about an account the visitor
+ * does not have yet.
+ */
+function LoginAside() {
+  return (
+    <>
+      <h2 className="sheet-aside-title">Angkanya selalu membawa ketidakpastiannya</h2>
+      <p className="sheet-aside-copy">
+        Setiap skor datang dengan rentang dan tingkat keyakinannya. Di bawah batas keyakinan, LOKABIS menolak memberi
+        rekomendasi daripada menyodorkan angka yang terlihat pasti.
+      </p>
+      <ul className="sheet-aside-list">
+        <li>Skor per jenis usaha, bukan per lokasi</li>
+        <li>Zona 300 m, 800 m, dan 1.500 m di sekitar titik</li>
+        <li>Bukti terurai ke fasilitas, jarak, dan mutu data</li>
+      </ul>
+      <p className="sheet-aside-note">
+        Menilai satu lokasi untuk satu jenis usaha gratis. Alat perbandingan dan ekspor sedang disiapkan sebagai paket
+        berbayar — <Link to="/membership">lihat paket</Link>.
+      </p>
+    </>
+  );
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -36,44 +64,44 @@ export function LoginPage() {
   };
 
   return (
-    <div className="auth-page">
-      <Card>
-        {/* noValidate: the browser's own popup would otherwise block submit before
-            these fields' Indonesian messages ever get a chance to render. */}
-        <form className="auth-card" noValidate onSubmit={(event) => void onSubmit(event)}>
-          <p className="auth-brand">
-            <MapPinIcon size={20} />
-            LOKABIS
-          </p>
-          <h1 className="auth-title">Masuk</h1>
-          <p className="auth-subtitle">Lanjutkan menilai lokasi usaha Anda.</p>
+    <AuthSheet counterpart={COUNTERPART} aside={<LoginAside />}>
+      <h1 className="sheet-title">Masuk</h1>
+      <p className="sheet-deck">Lanjutkan menilai lokasi usaha Anda.</p>
 
-          {formError !== null && (
-            <p className="error" role="alert">
-              {formError}
-            </p>
-          )}
+      {formError !== null && (
+        <p className="sheet-error" role="alert">
+          {formError}
+        </p>
+      )}
 
-          <div className="auth-form">
-            <AuthField label="Email" type="email" value={email} onChange={setEmail} error={errors.email} autoComplete="email" />
-            <AuthField
-              label="Kata sandi"
-              type="password"
-              value={password}
-              onChange={setPassword}
-              error={errors.password}
-              autoComplete="current-password"
-            />
-            <button type="submit" className="button-secondary auth-submit" disabled={submitting}>
-              {submitting ? 'Memproses…' : 'Masuk'}
-            </button>
-          </div>
+      {/* noValidate: the browser's own popup would otherwise block submit before
+          these fields' Indonesian messages ever get a chance to render. */}
+      <form className="sheet-form" noValidate onSubmit={(event) => void onSubmit(event)}>
+        <AuthField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          error={errors.email}
+          autoComplete="email"
+          autoFocus
+        />
+        <AuthField
+          label="Kata sandi"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          error={errors.password}
+          autoComplete="current-password"
+        />
+        <button type="submit" className="sheet-submit" disabled={submitting} aria-busy={submitting}>
+          {submitting ? 'Memproses…' : 'Masuk'}
+        </button>
+      </form>
 
-          <p className="auth-switch">
-            Belum punya akun? <Link to="/signup">Daftar</Link>
-          </p>
-        </form>
-      </Card>
-    </div>
+      <p className="sheet-switch">
+        Belum punya akun? <Link to="/signup">Daftar gratis</Link>
+      </p>
+    </AuthSheet>
   );
 }

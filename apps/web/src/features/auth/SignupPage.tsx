@@ -1,16 +1,43 @@
 import { useState, type FormEvent } from 'react';
 import type { User } from 'firebase/auth';
 import { Link, Navigate } from 'react-router-dom';
-import { Card } from '../../components/Card';
-import { MailIcon, MapPinIcon } from '../../components/Icons';
 import { ApiError, registerProfile } from '../../lib/api';
 import { currentIdToken, sendVerificationEmail, signUp } from '../../lib/auth';
 import { errorMessage, firebaseAuthErrorMessage } from '../../lib/copy';
 import { AuthField } from './AuthField';
-import { AuthLoading } from './AuthLoading';
-import { AuthUnavailable } from './AuthUnavailable';
+import { AuthSheet, type SheetCounterpart } from './AuthSheet';
+import { AuthSheetLoading, AuthSheetUnavailable } from './AuthSheetStates';
 import { fieldErrors, signupSchema, type FieldErrors } from './schemas';
 import { useAuthState } from './useAuthState';
+
+const COUNTERPART: SheetCounterpart = { to: '/login', label: 'Masuk' };
+
+/**
+ * Every line here is already true of the shipped free tier: the score and its
+ * interval, the confidence score with its reasons, and the facilities inside the
+ * three zones. The paid split is named only as what it is — being prepared —
+ * because PRODUCT.md records no tier, limit or price as decided.
+ */
+function SignupAside() {
+  return (
+    <>
+      <h2 className="sheet-aside-title">Skor inti gratis</h2>
+      <p className="sheet-aside-copy">
+        Menilai satu lokasi untuk satu jenis usaha tetap gratis, lengkap dengan buktinya. Saat ini tersedia untuk Kota
+        Semarang.
+      </p>
+      <ul className="sheet-aside-list">
+        <li>Skor potensi 0–100 dengan rentang ketidakpastiannya</li>
+        <li>Skor kepercayaan dan alasan tiap komponennya</li>
+        <li>Fasilitas, pesaing, dan zona 300 / 800 / 1.500 m di peta</li>
+      </ul>
+      <p className="sheet-aside-note">
+        Alat perbandingan, simulasi, dan ekspor sedang disiapkan sebagai paket berbayar —{' '}
+        <Link to="/membership">lihat paket</Link>.
+      </p>
+    </>
+  );
+}
 
 /**
  * Guards itself rather than sitting behind PublicOnly, because signing up has a
@@ -75,83 +102,79 @@ export function SignupPage() {
     }
   };
 
-  if (authState.status === 'loading') return <AuthLoading />;
+  if (authState.status === 'loading') return <AuthSheetLoading />;
   // A signup form that can never succeed is worse than no form at all.
-  if (authState.status === 'unavailable') return <AuthUnavailable />;
+  if (authState.status === 'unavailable') return <AuthSheetUnavailable />;
   if (authState.status === 'signed-in' && !signingUp) return <Navigate to="/app" replace />;
 
   if (sent) {
     return (
-      <div className="auth-page">
-        <Card>
-          <div className="auth-card">
-            <p className="auth-brand">
-              <MapPinIcon size={20} />
-              LOKABIS
-            </p>
-            <h1 className="auth-title">
-              <MailIcon size={18} /> Cek email Anda
-            </h1>
-            <p className="auth-subtitle">
-              Akun Anda sudah aktif. Kami mengirim tautan verifikasi ke <strong>{email}</strong> — klik tautan itu untuk
-              mengamankan akun Anda.
-            </p>
-            <Link className="button-secondary auth-submit auth-submit-link" to="/app">
-              Mulai pakai LOKABIS
-            </Link>
-          </div>
-        </Card>
-      </div>
+      <AuthSheet>
+        <h1 className="sheet-title">Cek email Anda</h1>
+        <p className="sheet-deck">
+          Akun Anda sudah aktif. Kami mengirim tautan verifikasi ke <strong>{email}</strong> — klik tautan itu untuk
+          mengamankan akun Anda.
+        </p>
+        <p className="sheet-sent-actions">
+          <Link className="sheet-submit sheet-submit-link" to="/app">
+            Mulai pakai LOKABIS
+          </Link>
+        </p>
+        <p className="sheet-switch">
+          Belum ada emailnya? Periksa folder spam — Anda juga bisa mengirim ulang tautannya dari dalam aplikasi.
+        </p>
+      </AuthSheet>
     );
   }
 
   return (
-    <div className="auth-page">
-      <Card>
-        {/* noValidate: the browser's own popup would otherwise block submit before
-            these fields' Indonesian messages ever get a chance to render. */}
-        <form className="auth-card" noValidate onSubmit={(event) => void onSubmit(event)}>
-          <p className="auth-brand">
-            <MapPinIcon size={20} />
-            LOKABIS
-          </p>
-          <h1 className="auth-title">Buat akun baru</h1>
-          <p className="auth-subtitle">Skor lokasi usaha Anda, dengan bukti dan tingkat keyakinannya.</p>
+    <AuthSheet counterpart={COUNTERPART} aside={<SignupAside />}>
+      <h1 className="sheet-title">Buat akun</h1>
+      <p className="sheet-deck">Skor lokasi usaha Anda, dengan bukti dan tingkat keyakinannya.</p>
 
-          {formError !== null && (
-            <p className="error" role="alert">
-              {formError}
-            </p>
-          )}
+      {formError !== null && (
+        <p className="sheet-error" role="alert">
+          {formError}
+        </p>
+      )}
 
-          <div className="auth-form">
-            <AuthField label="Email" type="email" value={email} onChange={setEmail} error={errors.email} autoComplete="email" />
-            <AuthField
-              label="Username"
-              type="text"
-              value={username}
-              onChange={setUsername}
-              error={errors.username}
-              autoComplete="username"
-            />
-            <AuthField
-              label="Kata sandi"
-              type="password"
-              value={password}
-              onChange={setPassword}
-              error={errors.password}
-              autoComplete="new-password"
-            />
-            <button type="submit" className="button-secondary auth-submit" disabled={submitting}>
-              {submitting ? 'Memproses…' : 'Daftar'}
-            </button>
-          </div>
+      {/* noValidate: the browser's own popup would otherwise block submit before
+          these fields' Indonesian messages ever get a chance to render. */}
+      <form className="sheet-form" noValidate onSubmit={(event) => void onSubmit(event)}>
+        <AuthField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          error={errors.email}
+          autoComplete="email"
+        />
+        <AuthField
+          label="Username"
+          type="text"
+          value={username}
+          onChange={setUsername}
+          error={errors.username}
+          hint="3–20 karakter, diawali huruf. Boleh huruf, angka, atau garis bawah."
+          autoComplete="username"
+        />
+        <AuthField
+          label="Kata sandi"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          error={errors.password}
+          hint="Minimal 8 karakter, memuat huruf dan angka."
+          autoComplete="new-password"
+        />
+        <button type="submit" className="sheet-submit" disabled={submitting} aria-busy={submitting}>
+          {submitting ? 'Memproses…' : 'Buat akun'}
+        </button>
+      </form>
 
-          <p className="auth-switch">
-            Sudah punya akun? <Link to="/login">Login</Link>
-          </p>
-        </form>
-      </Card>
-    </div>
+      <p className="sheet-switch">
+        Sudah punya akun? <Link to="/login">Masuk</Link>
+      </p>
+    </AuthSheet>
   );
 }

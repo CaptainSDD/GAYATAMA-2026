@@ -73,15 +73,12 @@ export default function LandingMap() {
             center={[point.lat, point.lng]}
             radius={ZONE_LIMITS_METERS[zone]}
             pathOptions={{
-              // Leaflet paints through canvas and cannot resolve `var()`, so the
-              // teal is a literal here — the same constraint the app's facility
-              // colours carry, and documented alongside them. It is also why the
-              // night register lifts the overlay pane with a CSS filter instead
-              // of recolouring these: the tile pane is inverted and this pane is
-              // not, which left the rings at teal on near-black.
-              color: '#0f766e',
+              // This renderer emits SVG presentation attributes, so the
+              // landing token remains live across explicit and system themes.
+              // The static fallback uses the same token and the same radii.
+              color: 'var(--lp-map-ring)',
               weight: 2,
-              fillColor: '#0f766e',
+              fillColor: 'var(--lp-map-ring)',
               fillOpacity: zone === 'a' ? 0.2 : zone === 'b' ? 0.12 : 0.06,
               interactive: false,
             }}

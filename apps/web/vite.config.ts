@@ -1,8 +1,74 @@
+import { readFile } from 'node:fs/promises';
 import react from '@vitejs/plugin-react';
+import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 
+const COMMON_END = '/* Layout ----------------------------------------------------------------- */';
+const CHIP_START = '/* Chips ------------------------------------------------------------------- */';
+const CHIP_END = '/* States ------------------------------------------------------------------ */';
+const FALLBACK_START = '/* Route chunk fetch.';
+const FALLBACK_END = '/* Grid because the <div> notices';
+const LANDING_START = '/* Landing ====================================================================';
+const LANDING_END = '/* Account -------------------------------------------------------------------';
+
+/**
+ * Keep one readable stylesheet as the source of truth while emitting route-owned
+ * CSS. The public page needs the tokens/base plus its Studio Sheet block; app
+ * routes need everything except that block. Query IDs remain CSS modules, so
+ * Vite still resolves font/image URLs and performs ordinary CSS extraction.
+ */
+function routeStyles(): Plugin {
+  return {
+    name: 'gayatama-route-styles',
+    enforce: 'pre',
+    async load(id) {
+      const [filePath, query = ''] = id.split('?', 2);
+      if (!filePath.replaceAll('\\', '/').endsWith('/src/styles.css') || !['landing', 'app'].includes(query)) {
+        return null;
+      }
+
+      const source = await readFile(filePath, 'utf8');
+      this.addWatchFile(filePath);
+
+      const commonEnd = source.indexOf(COMMON_END);
+      const chipStart = source.indexOf(CHIP_START);
+      const chipEnd = source.indexOf(CHIP_END);
+      const fallbackStart = source.indexOf(FALLBACK_START);
+      const fallbackEnd = source.indexOf(FALLBACK_END);
+      const landingStart = source.indexOf(LANDING_START);
+      const landingEnd = source.indexOf(LANDING_END);
+      if (
+        commonEnd < 0 ||
+        chipStart < 0 ||
+        chipEnd < 0 ||
+        fallbackStart < 0 ||
+        fallbackEnd < 0 ||
+        landingStart < 0 ||
+        landingEnd < 0 ||
+        !(
+          commonEnd < chipStart &&
+          chipStart < chipEnd &&
+          chipEnd < fallbackStart &&
+          fallbackStart < fallbackEnd &&
+          fallbackEnd < landingStart &&
+          landingStart < landingEnd
+        )
+      ) {
+        this.error('Unable to split src/styles.css: one or more route-style boundary comments are missing or out of order.');
+      }
+
+      const code =
+        query === 'landing'
+          ? `${source.slice(0, commonEnd)}${source.slice(chipStart, chipEnd)}${source.slice(fallbackStart, fallbackEnd)}${source.slice(landingStart, landingEnd)}`
+          : `${source.slice(0, landingStart)}${source.slice(landingEnd)}`;
+
+      return { code, map: null };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [routeStyles(), react()],
   // `.env` lives at the repository root and is shared with the API.
   envDir: '../../',
   server: { port: 5173, strictPort: true },

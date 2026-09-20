@@ -3,6 +3,19 @@ import { useEffect, useState } from 'react';
 /** Everything the observer watches declares itself with this attribute. */
 const SELECTOR = '[data-reveal]';
 const EAGER = '[data-reveal-eager]';
+/**
+ * Opts a single node out of an eager ancestor, and out of the "already on
+ * screen at load" shortcut below it.
+ *
+ * The opening act is eager because the slab's top edge is inside the first
+ * viewport and may not be missing at load. Its cells are a different matter:
+ * they sit below the fold, so marking them arrived at load spends their
+ * choreography — the score rising, the segments assembling, the ruler drawing —
+ * before the reader has scrolled far enough to see any of it. Deferred nodes
+ * always go to the observer, which still fires on the first callback for
+ * anything genuinely in view.
+ */
+const DEFER = 'data-reveal-defer';
 const ROOT_MARGIN = '0px 0px -12% 0px';
 
 /**
@@ -34,6 +47,10 @@ export function useScrollReveal(enabled = true): void {
     );
 
     for (const node of Array.from(document.querySelectorAll(SELECTOR))) {
+      if (node.hasAttribute(DEFER)) {
+        observer.observe(node);
+        continue;
+      }
       const eager = node.closest(EAGER) !== null;
       if (eager || node.getBoundingClientRect().top < window.innerHeight) {
         node.setAttribute('data-revealed', '');
