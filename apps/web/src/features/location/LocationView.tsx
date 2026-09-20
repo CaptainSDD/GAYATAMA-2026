@@ -29,6 +29,8 @@ interface LocationViewProps {
   onBusinessTypeChange: (businessType: BusinessType) => void;
   /** Moves the whole analysis to another point, keeping the chosen category. */
   onAnalysePoint: (point: LatLng) => void;
+  /** Marks a point on the map while the opportunity grid points at it. */
+  onHoverPoint: (point: LatLng | null) => void;
   /** null means the documented baseline; the engine is never sent anything. */
   weights: ComponentWeights | null;
   onWeightsChange: (weights: ComponentWeights | null) => void;
@@ -43,6 +45,7 @@ export function LocationView({
   businessType,
   onBusinessTypeChange,
   onAnalysePoint,
+  onHoverPoint,
   weights,
   onWeightsChange,
   entryMode = 'score',
@@ -99,6 +102,10 @@ export function LocationView({
       ) : tab === 'opportunity' ? (
         <OpportunityView
           query={opportunities}
+          // Passed straight through, not wrapped: OpportunityView clears the
+          // highlight in an effect keyed on this function, so a new identity
+          // every render would wipe the mark as fast as it was set.
+          onHoverPoint={onHoverPoint}
           businessType={businessType}
           onAnalysePoint={(next) => {
             onAnalysePoint(next);

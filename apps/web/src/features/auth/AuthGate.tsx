@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { App } from '../../App';
-import { sendVerificationEmail, signOutUser } from '../../lib/auth';
+import { signOutUser } from '../../lib/auth';
 import { AuthLoading } from './AuthLoading';
 import { useAuthState } from './useAuthState';
+import { useEmailVerified } from './useEmailVerified';
+import { useVerificationResend } from './useVerificationResend';
 
 /**
  * Guards the main app: signed-out visitors are sent to /login. When
@@ -16,32 +17,10 @@ import { useAuthState } from './useAuthState';
  */
 export function AuthGate() {
   const state = useAuthState();
-  const [resent, setResent] = useState(false);
-  // Keyed by uid, not a bare boolean, so one account's verification never
-  // carries over to the next account signed in during the same session.
-  const [verifiedUid, setVerifiedUid] = useState<string | null>(null);
 
   const signedInUser = state.status === 'signed-in' ? state.user : null;
-
-  // `emailVerified` is a snapshot taken when the user signed in, and
-  // onAuthStateChanged does not fire when the verification link is clicked —
-  // often in another tab entirely. Only reload() refreshes it, so ask again
-  // whenever the window regains focus, which is exactly when the user comes
-  // back from their inbox.
-  useEffect(() => {
-    if (signedInUser === null || signedInUser.emailVerified) return;
-    const check = () => {
-      void signedInUser
-        .reload()
-        .then(() => {
-          if (signedInUser.emailVerified) setVerifiedUid(signedInUser.uid);
-        })
-        .catch(() => undefined);
-    };
-    check();
-    window.addEventListener('focus', check);
-    return () => window.removeEventListener('focus', check);
-  }, [signedInUser]);
+  const emailVerified = useEmailVerified(signedInUser);
+  const verification = useVerificationResend(signedInUser);
 
   if (state.status === 'loading') return <AuthLoading />;
   if (state.status === 'unavailable') return <App />;
@@ -55,12 +34,10 @@ export function AuthGate() {
       // Scopes the onboarding tour, so a new account is shown around even on a
       // browser where someone else already finished it.
       userId={user.uid}
-      emailVerified={user.emailVerified || verifiedUid === user.uid}
-      verificationResent={resent}
+      emailVerified={emailVerified}
+      verificationState={verification.state}
       onSignOut={() => void signOutUser()}
-      onResendVerification={() => {
-        void sendVerificationEmail(user).then(() => setResent(true));
-      }}
+      onResendVerification={verification.resend}
     />
   );
 }

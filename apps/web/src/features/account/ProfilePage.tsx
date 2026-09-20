@@ -3,12 +3,14 @@ import { Link, Navigate } from 'react-router-dom';
 import { COMPONENT_KEYS, type ComponentWeights } from '@gayatama/scoring';
 import lokabisLogo from '../../assets/lokabis-logo.png';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { sendVerificationEmail, signOutUser } from '../../lib/auth';
+import { signOutUser } from '../../lib/auth';
 import { formatDateTime } from '../../lib/format';
 import { AuthLoading } from '../auth/AuthLoading';
 import { AuthUnavailable } from '../auth/AuthUnavailable';
 import { useAuthState } from '../auth/useAuthState';
+import { useEmailVerified } from '../auth/useEmailVerified';
 import { useIdToken } from '../auth/useIdToken';
+import { useVerificationResend } from '../auth/useVerificationResend';
 import { COMPONENT_LABELS } from '../../lib/copy';
 import { useProfile, useSaveWeights } from '../../lib/queries';
 import { DEFAULT_WEIGHT_INPUTS } from '../score/WeightsEditor';
@@ -33,8 +35,11 @@ import { DEFAULT_WEIGHT_INPUTS } from '../score/WeightsEditor';
  */
 export function ProfilePage() {
   const state = useAuthState();
-  const [resent, setResent] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  // Was reading `user.emailVerified` straight from the sign-in snapshot, so
+  // anyone who verified during this session was still told they had not.
+  const emailVerified = useEmailVerified(state.status === 'signed-in' ? state.user : null);
+  const verification = useVerificationResend(state.status === 'signed-in' ? state.user : null);
 
   if (state.status === 'loading') return <AuthLoading />;
   if (state.status === 'unavailable') return <AuthUnavailable />;
@@ -72,7 +77,7 @@ export function ProfilePage() {
             <div className="account-fact">
               <dt>Status email</dt>
               <dd>
-                {user.emailVerified ? (
+                {emailVerified ? (
                   <span className="account-state account-state-ok">Terverifikasi</span>
                 ) : (
                   <span className="account-state account-state-pending">Belum diverifikasi</span>
@@ -95,22 +100,35 @@ export function ProfilePage() {
             )}
           </dl>
 
-          {!user.emailVerified && (
+          {!emailVerified && (
             <div className="account-verify">
               <p>
                 Verifikasi email mengamankan akun ini dan memastikan Anda bisa memulihkannya kalau lupa kata sandi.
               </p>
+              {/* Never disabled on success: an email can be filtered or lost, and
+                  the whole point of this button is asking for another one. */}
               <button
                 type="button"
                 className="button-secondary"
-                disabled={resent}
-                onClick={() => {
-                  void sendVerificationEmail(user);
-                  setResent(true);
-                }}
+                disabled={verification.state.status === 'sending'}
+                onClick={verification.resend}
               >
-                {resent ? 'Email terkirim' : 'Kirim ulang verifikasi'}
+                {verification.state.status === 'sending'
+                  ? 'Mengirim…'
+                  : verification.state.status === 'sent'
+                    ? 'Kirim lagi'
+                    : 'Kirim ulang verifikasi'}
               </button>
+              {verification.state.status === 'sent' && (
+                <p className="account-verify-note" role="status">
+                  Tautan verifikasi terkirim ke {user.email ?? 'alamat akun ini'}. Cek inbox dan folder spam.
+                </p>
+              )}
+              {verification.state.status === 'failed' && (
+                <p className="account-verify-error" role="alert">
+                  {verification.state.message}
+                </p>
+              )}
             </div>
           )}
         </section>

@@ -117,11 +117,13 @@ Maps business counts, and `overture` the shops added from Overture Maps.
 |------|--------|---------|
 | `VALIDATION_FAILED` | 400 | Malformed body, invalid field, unknown field, or a coordinate outside Indonesia. `details.issues` lists each problem |
 | `UNAUTHORIZED` | 401 | Missing, invalid or expired Firebase ID token on the protected profile route |
+| `EMAIL_NOT_VERIFIED` | 403 | The token is valid but the account's email address has never been confirmed. Checked against live Firebase state, not just the token's `email_verified` claim |
 | `NOT_FOUND` | 404 | Unknown route |
 | `USERNAME_TAKEN` | 409 | The requested case-insensitive username reservation belongs to another UID |
 | `INSUFFICIENT_DATA` | 422 | Confidence below 40 — no definitive recommendation given |
 | `RATE_LIMITED` | 429 | Client exceeded the throttle |
-| `REQUEST_FAILED` | 503 | Firebase Auth or Firestore required by profile registration is not configured |
+| `REQUEST_FAILED` | 502/503 | Firebase Auth or Firestore required by profile registration is not configured, or the SMTP relay refused the verification email |
+| `MAIL_NOT_CONFIGURED` | 503 | No SMTP transport is configured, so the API cannot send the verification email itself. The web client treats this as its cue to fall back to Firebase's own sender |
 | `UPSTREAM_TIMEOUT` | 504 | The live POI provider did not respond and nothing was cached for the area |
 
 `INSUFFICIENT_DATA` is a deliberate design choice, not a failure: below a

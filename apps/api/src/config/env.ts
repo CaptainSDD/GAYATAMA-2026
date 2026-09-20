@@ -6,6 +6,24 @@ const optionalString = z.preprocess(
   z.string().optional(),
 );
 
+/**
+ * A port or timeout that may be left blank. `z.coerce.number()` alone turns
+ * `''` into `0`, which then fails `.positive()` and takes the whole API down
+ * over an empty line in `.env` — so blank has to mean "use the default".
+ */
+function optionalPort(fallback: number) {
+  return z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.coerce.number().int().positive().default(fallback),
+  );
+}
+
+/** Blank, absent and anything unrecognised all mean false. */
+const booleanFlag = z.preprocess(
+  (value) => (typeof value === 'string' ? ['true', '1', 'yes'].includes(value.trim().toLowerCase()) : value),
+  z.boolean().default(false),
+);
+
 /** A comma-separated list of URLs. An empty value means an empty list. */
 const urlList = z.preprocess(
   (value) =>
@@ -67,6 +85,27 @@ export const envSchema = z.object({
   GROQ_API_KEY: optionalString,
   GROQ_MODEL: z.string().default('llama-3.1-8b-instant'),
   GROQ_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
+  /**
+   * SMTP, used to send the account verification email ourselves instead of
+   * leaving it to Firebase's own sender. Without SMTP_HOST and MAIL_FROM the
+   * API reports that it cannot send, and the web app falls back to the Firebase
+   * client SDK — same absent-not-fatal rule the other integrations follow.
+   */
+  SMTP_HOST: optionalString,
+  SMTP_PORT: optionalPort(587),
+  /** True for implicit TLS on port 465. Port 587 upgrades with STARTTLS, so it stays false. */
+  SMTP_SECURE: booleanFlag,
+  SMTP_USER: optionalString,
+  SMTP_PASSWORD: optionalString,
+  /** The From header, e.g. `LOKABIS <no-reply@lokabis.id>`. Required to send. */
+  MAIL_FROM: optionalString,
+  /**
+   * Where the verification link returns the visitor once Firebase has marked
+   * the address verified. Its domain must be listed under Authentication →
+   * Settings → Authorized domains in the Firebase console, or Firebase refuses
+   * to mint the link. `localhost` is authorised by default.
+   */
+  APP_PUBLIC_URL: z.string().url().default('http://localhost:5173'),
 });
 
 export type Env = z.infer<typeof envSchema>;

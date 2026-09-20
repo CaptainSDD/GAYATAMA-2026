@@ -31,7 +31,12 @@ function render(overrides: Partial<OpportunitiesResponse> = {}): string {
     },
   } as never;
   return renderToStaticMarkup(
-    createElement(OpportunityView, { query, businessType: 'laundry', onAnalysePoint: () => {} }),
+    createElement(OpportunityView, {
+      query,
+      businessType: 'laundry',
+      onAnalysePoint: () => {},
+      onHoverPoint: () => {},
+    }),
   );
 }
 
