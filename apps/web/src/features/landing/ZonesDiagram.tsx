@@ -84,10 +84,11 @@ export function ZonesDiagram() {
       <div className="landing-zones-lede" data-reveal="rise">
         <h2 id="landing-zones-title">Yang dekat dihitung lebih berat.</h2>
         <p>
-          Radius analisisnya 1,5 km, tapi tidak rata. Warung sejenis 250 meter dari pintu Anda berpengaruh penuh; yang
-          1,2 km jauhnya dihitung seperempatnya. Ini bukan penyederhanaan untuk halaman ini — ini cara mesinnya bekerja.
+          LOKABIS membaca area hingga 1,5 km, tetapi fasilitas dan pesaing yang lebih dekat diberi bobot lebih besar.
+          Contohnya, usaha sejenis yang berjarak 250 meter dari lokasi memberi pengaruh jauh lebih besar dalam penilaian
+          dibandingkan usaha sejenis yang berada 1,2 km dari lokasi.
         </p>
-        <p className="landing-zones-guide">Pilih jarak untuk melihat zona dan pesaing ilustratif yang sedang dibaca.</p>
+        <p className="landing-zones-guide">Pilih zona untuk melihat rentang jarak, bobot, dan contoh pesaing yang dihitung.</p>
       </div>
 
       <div className="landing-zones-body">

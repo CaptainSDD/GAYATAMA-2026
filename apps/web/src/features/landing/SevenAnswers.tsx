@@ -4,13 +4,6 @@ import { bandTone, toneChip, toneColor, toneTextColor } from '../../lib/band-col
 import { BAND_LABELS, BUSINESS_TYPE_EXAMPLES, BUSINESS_TYPE_LABELS, STATUS_LABELS } from '../../lib/copy';
 import { LANDING_EXAMPLE } from './landingExample';
 
-const SNAPSHOT_DATE = new Intl.DateTimeFormat('id-ID', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-}).format(new Date(LANDING_EXAMPLE.source.osmSnapshotAt));
-
 /** One documented Semarang coordinate, asked all seven business questions. */
 export function SevenAnswers() {
   const [selected, setSelected] = useState<BusinessType>(LANDING_EXAMPLE.featuredBusiness);
@@ -29,8 +22,6 @@ export function SevenAnswers() {
   });
 
   const best = rows[0]!;
-  const worst = rows[rows.length - 1]!;
-  const spread = Math.round(best.summary.value - worst.summary.value);
   const openIndex = Math.max(0, rows.findIndex((row) => row.businessType === selected));
   const open = rows[openIndex] ?? best;
 
@@ -44,12 +35,13 @@ export function SevenAnswers() {
     <section className="landing-answers" id="jawaban" aria-labelledby="landing-answers-title">
       <div className="landing-answers-heading" data-reveal="rise">
         <h2 id="landing-answers-title" className="landing-answers-title">
-          Titik yang sama.
+          Satu lokasi dapat
           <br />
-          Jawaban yang berbeda.
+          cocok untuk usaha yang berbeda.
         </h2>
         <p className="landing-answers-guide">
-          Pilih jenis usaha untuk melihat bagaimana {LANDING_EXAMPLE.label.toLowerCase()} dibaca ulang.
+          Pilih jenis usaha untuk membandingkan skor pada {LANDING_EXAMPLE.label.toLowerCase()}. Setiap pilihan dinilai
+          dengan kebutuhan pelanggan dan pesaingnya sendiri.
         </p>
       </div>
 
@@ -134,9 +126,6 @@ export function SevenAnswers() {
             <p className="landing-open-where">
               {BUSINESS_TYPE_LABELS[open.businessType]} <span className="muted">· {LANDING_EXAMPLE.label}</span>
             </p>
-            <p className="landing-open-range">
-              Kemungkinan sebenarnya antara {open.summary.range[0]} dan {open.summary.range[1]}.
-            </p>
           </div>
 
           <ol className="landing-ruler" aria-hidden="true">
@@ -175,15 +164,6 @@ export function SevenAnswers() {
           </ol>
         </div>
       </div>
-
-      <p className="landing-answers-note" data-reveal="rise">
-        Selisih <strong>{spread} poin</strong> antara {BUSINESS_TYPE_LABELS[best.businessType].toLowerCase()} dan{' '}
-        {BUSINESS_TYPE_LABELS[worst.businessType].toLowerCase()} — di titik contoh yang sama.{' '}
-        <span className="muted">
-          Tujuh skor dihitung model LOKABIS v{LANDING_EXAMPLE.source.modelVersion} dari snapshot OpenStreetMap{' '}
-          {SNAPSHOT_DATE} dan Overture Maps {LANDING_EXAMPLE.source.overtureRelease}.
-        </span>
-      </p>
     </section>
   );
 }

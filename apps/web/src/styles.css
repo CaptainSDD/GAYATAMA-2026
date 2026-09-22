@@ -482,11 +482,12 @@ input {
 }
 
 .brand-summary svg:last-of-type {
+  transform: rotate(-90deg);
   transition: transform 160ms ease-out;
 }
 
 .brand-nav[open] .brand-summary svg:last-of-type {
-  transform: rotate(180deg);
+  transform: rotate(90deg);
 }
 
 .brand-logo {
@@ -3442,10 +3443,12 @@ p.error {
   max-width: min(26rem, calc(100vw - 2 * var(--space-4)));
   padding: var(--space-5);
   color: var(--text);
-  background: var(--surface-raised);
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-lg), var(--glass-sheen);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .confirm-dialog::backdrop {
@@ -4276,7 +4279,7 @@ p.error {
   /* One display step and two beneath it is the whole hierarchy. The page used
      to carry four separate clamps, which is not a scale — it is four sizes that
      happen to differ. */
-  --lp-display: clamp(2.7rem, 8.2vw, 6rem);
+  --lp-display: clamp(2.4rem, 6.8vw, 5rem);
   --lp-h2: clamp(2rem, 4.6vw, 3.4rem);
   --lp-h3: clamp(1.15rem, 1.6vw, 1.4rem);
   /* The two running sizes, named so the step between a section's own lede and
@@ -4694,7 +4697,7 @@ p.error {
   }
 }
 
-/* The sentence. Light weight at display size, because at 6rem a 300 has all the
+/* The sentence. Light weight at display size, because at 5rem a 300 has all the
    presence it needs and a 700 becomes a wall; the second line is indented so the
    two read as a spoken phrase rather than as a stacked block. */
 .landing-title {
@@ -5120,11 +5123,6 @@ p.error {
   font-weight: 500;
 }
 
-.landing-result-range {
-  font-size: 0.875rem;
-  color: var(--lp-ink-muted);
-}
-
 /* The slab's dark anchor. Teal rather than neutral black: this cell carries the
    product's structural claim, and teal is what structures this interface. */
 .landing-tile-dark {
@@ -5384,7 +5382,8 @@ p.error {
   fill: none;
   stroke: var(--sekunder-strong);
   stroke-width: 1.4;
-  opacity: 0.3;
+  /* Context only: the radius figure must recede behind the score ruler. */
+  opacity: 0.14;
   pointer-events: none;
 }
 
@@ -5437,11 +5436,6 @@ p.error {
   font-size: 0.8125rem;
 }
 
-.landing-open-range {
-  font-size: 0.8125rem;
-  color: var(--lp-ink-muted);
-}
-
 /* The ruler. One 0-100 scale for all five, so the spread is read by position
    rather than by comparing five numbers, and choosing one never hides it. */
 .landing-ruler {
@@ -5490,7 +5484,7 @@ p.error {
   position: absolute;
   inset-block: 0;
   border-radius: var(--radius-pill);
-  opacity: 0.5;
+  opacity: 0.72;
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.7s var(--lp-ease) var(--delay, 0ms);
@@ -5531,19 +5525,6 @@ p.error {
      the field's gradient, which is the only ground on this page that is not a
      token and therefore the only place the muted tier was not measured. */
   color: var(--lp-ink-soft);
-}
-
-.landing-answers-note {
-  max-width: 62ch;
-  justify-self: center;
-  text-align: center;
-  font-size: 0.9375rem;
-  color: var(--lp-ink-soft);
-}
-
-.landing-answers-note strong {
-  font-weight: 500;
-  color: var(--lp-ink);
 }
 
 /* Zones -----------------------------------------------------------------------

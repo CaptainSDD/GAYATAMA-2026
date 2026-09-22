@@ -28,12 +28,6 @@ const EXAMPLE_RANGE = scoreRange(EXAMPLE_SCORE, EXAMPLE_MARGIN);
 const EXAMPLE_STRENGTHS = [...COMPONENT_KEYS]
   .sort((a, b) => LANDING_EXAMPLE.components[b] - LANDING_EXAMPLE.components[a])
   .slice(0, 3);
-const EXAMPLE_SNAPSHOT_DATE = new Intl.DateTimeFormat('id-ID', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-}).format(new Date(LANDING_EXAMPLE.source.osmSnapshotAt));
 
 const COMPONENT_EXPLANATIONS: Record<ComponentKey, string> = {
   demandFit:
@@ -45,10 +39,10 @@ const COMPONENT_EXPLANATIONS: Record<ComponentKey, string> = {
 };
 
 const SECTIONS = [
-  { id: 'bukti', label: 'Bukti' },
-  { id: 'jawaban', label: 'Jawaban' },
-  { id: 'zona', label: 'Zona' },
-  { id: 'metode', label: 'Metode' },
+  { id: 'bukti', label: 'Contoh skor' },
+  { id: 'jawaban', label: 'Bandingkan usaha' },
+  { id: 'zona', label: 'Jarak & pesaing' },
+  { id: 'metode', label: 'Cara menghitung' },
 ] as const;
 const SECTION_IDS = SECTIONS.map(({ id }) => id);
 
@@ -208,15 +202,15 @@ export function LandingPage() {
 
             <div className="landing-hero-foot" data-reveal="rise" style={{ '--delay': '220ms' } as CSSProperties}>
               <p className="landing-deck">
-                Skor 0–100 untuk satu titik dan satu jenis usaha, lengkap dengan rentang ketidakpastiannya dan fasilitas
-                yang menghasilkannya.
+                Pilih jenis usaha dan tandai lokasi. LOKABIS menilai kecocokannya dari potensi pelanggan, akses,
+                persaingan, fasilitas pendukung, dan risiko di sekitarnya.
               </p>
               <p className="landing-hero-availability">
                 <strong>Skor inti gratis</strong> · Saat ini tersedia untuk Kota Semarang.
               </p>
               <div className="landing-hero-meta">
                 <a className="landing-hero-next" href="#bukti">
-                  Lihat cara titik ini dibaca
+                  Lihat contoh penilaian
                   <ArrowDownIcon />
                 </a>
                 <p className="landing-credit">
@@ -242,13 +236,13 @@ export function LandingPage() {
           <section className="landing-slab" id="bukti" aria-labelledby="landing-slab-title" data-reveal="slab">
             <div className="landing-slab-lede" data-reveal="cell" data-reveal-defer="">
               <h2 id="landing-slab-title">
-                Satu titik,
+                Pahami alasan
                 <br />
-                dibaca lengkap.
+                di balik setiap skor.
               </h2>
               <p className="landing-lede-copy">
-                Setiap skor terurai kembali menjadi fasilitas, jarak dan mutu data yang menghasilkannya. Angka yang
-                tidak bisa Anda bongkar sendiri belum menjawab apa pun.
+                Hasil tidak berhenti pada angka. Anda bisa melihat faktor yang paling membantu, faktor yang perlu
+                diwaspadai, serta kualitas data peta yang dipakai untuk menilai lokasi.
               </p>
               <p className="landing-lede-action">
                 <Link className="landing-cta" to="/signup">
@@ -256,7 +250,7 @@ export function LandingPage() {
                 </Link>
                 <span className="landing-lede-action-note">Satu lokasi, satu jenis usaha · saat ini Kota Semarang.</span>
               </p>
-              <p className="landing-lede-flow">Pilih jenis usaha → tandai lokasi → periksa skor dan buktinya.</p>
+              <p className="landing-lede-flow">Pilih usaha → tandai lokasi → lihat skor, alasan, dan batas datanya.</p>
             </div>
 
             <article
@@ -275,9 +269,7 @@ export function LandingPage() {
                   {BUSINESS_TYPE_LABELS[LANDING_EXAMPLE.featuredBusiness]} · {LANDING_EXAMPLE.label}
                 </p>
                 <p className="landing-result-source">
-                  Snapshot OpenStreetMap {EXAMPLE_SNAPSHOT_DATE} · model LOKABIS v{LANDING_EXAMPLE.source.modelVersion}
-                  <br />
-                  {LANDING_EXAMPLE.source.warning}
+                  <strong>Catatan data:</strong> Terakhir diperbarui 36 bulan lalu.
                 </p>
               </div>
 
@@ -292,17 +284,15 @@ export function LandingPage() {
                 ))}
               </ul>
 
-              <p className="landing-result-range">
-                Kemungkinan sebenarnya antara {EXAMPLE_RANGE[0]} dan {EXAMPLE_RANGE[1]}.
-              </p>
               <ScoreBreakdown components={LANDING_EXAMPLE.components} total={EXAMPLE_TOTAL} />
             </article>
 
             <article className="landing-tile landing-tile-dark" data-reveal="cell" data-reveal-defer="">
-              <h3>Skornya per jenis usaha, bukan per lokasi</h3>
+              <h3>Lokasi yang sama bisa memberi hasil berbeda untuk setiap usaha</h3>
               <p>
-                Tempat yang bagus untuk laundry bisa buruk untuk apotek. Sebuah lokasi hanya pernah bagus untuk
-                sesuatu, jadi jenis usaha bukan keterangan tambahan; dia setengah dari pertanyaannya.
+                Lokasi yang cocok untuk laundry belum tentu cocok untuk apotek atau kedai kopi. Karena kebutuhan
+                pelanggan dan tingkat persaingan tiap usaha berbeda, Anda selalu memilih jenis usaha sebelum membaca
+                skornya.
               </p>
             </article>
 
@@ -314,15 +304,16 @@ export function LandingPage() {
                 neighbour inside a shared plate is ordinary typesetting. */}
             <div className="landing-tile landing-guarantees" data-reveal="cell" data-reveal-defer="">
               <article className="landing-guarantee">
-                <h3>Tidak mengarang data kependudukan</h3>
+                <h3>Tidak menebak jumlah atau profil penduduk</h3>
                 <p>
-                  Tidak ada jumlah penduduk atau tingkat pendapatan yang tidak bisa kami sebut sumbernya. Fasilitas
-                  sekitar dibaca sebagai indikator, bukan sebagai kepala yang dihitung.
+                  LOKABIS tidak mengklaim jumlah penduduk, pendapatan, atau usia tanpa sumber yang dapat diperiksa.
+                  Kampus, kos, kantor, dan fasilitas lain dipakai sebagai petunjuk adanya calon pelanggan, bukan bukti
+                  jumlah orang.
                 </p>
               </article>
 
               <article className="landing-guarantee">
-                <h3>Angkanya membawa ketidakpastiannya</h3>
+                <h3>Setiap skor menunjukkan seberapa pasti datanya</h3>
                 <div className="landing-interval" aria-hidden="true">
                   <span className="landing-interval-track">
                     <span
@@ -340,8 +331,9 @@ export function LandingPage() {
                   </span>
                 </div>
                 <p>
-                  Selalu {EXAMPLE_SCORE} ± {EXAMPLE_MARGIN}, tidak pernah {EXAMPLE_SCORE} saja. Kalau datanya tipis,
-                  rentangnya melebar — dan di bawah batas keyakinan, LOKABIS menolak menjawab.
+                  Skor selalu ditampilkan sebagai {EXAMPLE_SCORE} ± {EXAMPLE_MARGIN}, bukan {EXAMPLE_SCORE} saja.
+                  Jika data di sekitar lokasi kurang lengkap atau lama, rentangnya melebar. Bila datanya terlalu tipis,
+                  LOKABIS tidak memberi rekomendasi pasti.
                 </p>
               </article>
             </div>
@@ -357,11 +349,11 @@ export function LandingPage() {
         <section className="landing-method" id="metode" aria-labelledby="landing-method-title">
           <div className="landing-method-inner">
             <div className="landing-method-lede" data-reveal="rise">
-              <h2 id="landing-method-title">Rumusnya terbuka.</h2>
+              <h2 id="landing-method-title">Lihat cara skor lokasi dihitung.</h2>
               <p>
-                Bobotnya adalah penilaian yang didokumentasikan, bukan parameter hasil pengepasan data — ditulis supaya
-                bisa dibantah, bukan supaya terdengar pasti. Setiap contoh perhitungan di dokumentasi diuji oleh mesin
-                skornya sendiri, jadi dokumentasi tidak bisa menyimpang dari kode tanpa membuat build gagal.
+                Lima komponen berikut membentuk skor akhir. Bobot dan aturannya dipublikasikan agar Anda dapat menilai
+                dasar rekomendasinya, bukan hanya menerima angka jadi. Contoh perhitungannya diuji bersama mesin skor,
+                sehingga dokumentasi dan hasil aplikasi tetap selaras.
               </p>
               <p className="landing-method-link">
                 <a
@@ -403,13 +395,13 @@ export function LandingPage() {
         </section>
 
         <section className="landing-close" aria-labelledby="landing-close-title" data-reveal="rise">
-          <h2 id="landing-close-title">Nilai satu lokasi sebelum Anda terikat padanya.</h2>
+          <h2 id="landing-close-title">Periksa kelayakan lokasi sebelum mengeluarkan modal.</h2>
           <Link className="landing-cta" to="/signup" aria-describedby="landing-close-note">
             Nilai lokasi gratis
           </Link>
           <p className="landing-close-note" id="landing-close-note">
-            Menilai satu lokasi untuk satu jenis usaha gratis — saat ini untuk Kota Semarang. Alat perbandingan dan
-            ekspor sedang disiapkan sebagai paket berbayar.
+            Analisis satu lokasi untuk satu jenis usaha gratis dan saat ini tersedia untuk Kota Semarang. Gunakan hasilnya
+            sebagai bahan survei lapangan, bukan pengganti pengecekan lokasi secara langsung.
           </p>
         </section>
       </main>
