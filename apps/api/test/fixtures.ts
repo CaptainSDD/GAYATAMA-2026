@@ -57,3 +57,56 @@ export function siteElements(origin = ORIGIN): OverpassElement[] {
     node({ highway: 'crossing' }, 40, -20, origin),
   ];
 }
+
+interface DocRef {
+  collection: 'usernames' | 'users';
+  id: string;
+}
+
+/**
+ * Just enough of the Firestore Admin SDK for `AuthService` to run against —
+ * both the transactional writes `registerProfile` uses and the plain
+ * `doc().get()`/`doc().set(data, { merge })` reads/writes `getProfile`,
+ * `saveWeights` and `setPlan` use outside a transaction.
+ */
+export class FakeFirestore {
+  usernames = new Map<string, unknown>();
+  users = new Map<string, unknown>();
+
+  private store(name: 'usernames' | 'users') {
+    return name === 'usernames' ? this.usernames : this.users;
+  }
+
+  collection(name: 'usernames' | 'users') {
+    const store = this.store(name);
+    return {
+      doc: (id: string): DocRef & { get: () => Promise<unknown>; set: (data: unknown, options?: { merge?: boolean }) => Promise<void> } => ({
+        collection: name,
+        id,
+        get: async () => ({ exists: store.has(id), data: () => store.get(id) }),
+        set: async (data: unknown, options?: { merge?: boolean }) => {
+          const current = options?.merge === true ? ((store.get(id) as object | undefined) ?? {}) : {};
+          store.set(id, { ...current, ...(data as object) });
+        },
+      }),
+    };
+  }
+
+  async runTransaction<T>(fn: (tx: FakeFirestoreTransaction) => Promise<T>): Promise<T> {
+    return fn(new FakeFirestoreTransaction(this));
+  }
+}
+
+class FakeFirestoreTransaction {
+  constructor(private readonly firestore: FakeFirestore) {}
+
+  async get(ref: DocRef) {
+    const store = ref.collection === 'usernames' ? this.firestore.usernames : this.firestore.users;
+    return { exists: store.has(ref.id), data: () => store.get(ref.id) };
+  }
+
+  set(ref: DocRef, data: unknown) {
+    const store = ref.collection === 'usernames' ? this.firestore.usernames : this.firestore.users;
+    store.set(ref.id, data);
+  }
+}

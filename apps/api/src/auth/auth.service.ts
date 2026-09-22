@@ -4,6 +4,8 @@ import { ApiError, usernameTaken } from '../common/errors';
 import { FIRESTORE } from '../firebase/firebase.module';
 import type { ComponentWeightsRequest, RegisterProfileRequest } from './schemas';
 
+export type Plan = 'free' | 'premium';
+
 export interface UserProfile {
   uid: string;
   email: string | null;
@@ -11,6 +13,8 @@ export interface UserProfile {
   createdAt: string;
   /** null when the visitor has never left the documented baseline. */
   weights: ComponentWeightsRequest | null;
+  /** No payment behind this — see `setPlan`. Defaults to `'free'` at sign-up. */
+  plan: Plan;
 }
 
 /**
@@ -49,10 +53,10 @@ export class AuthService {
         throw usernameTaken(request.username);
       }
       transaction.set(usernameRef, { uid });
-      transaction.set(userRef, { email, username: request.username, createdAt });
+      transaction.set(userRef, { email, username: request.username, createdAt, plan: 'free' });
     });
 
-    return { uid, email, username: request.username, createdAt, weights: null };
+    return { uid, email, username: request.username, createdAt, weights: null, plan: 'free' };
   }
 
   /**
@@ -72,6 +76,8 @@ export class AuthService {
       username: (data.username as string | undefined) ?? '',
       createdAt: (data.createdAt as string | undefined) ?? '',
       weights: (data.weights as ComponentWeightsRequest | undefined) ?? null,
+      // Accounts created before `plan` existed have no such field: default free.
+      plan: (data.plan as Plan | undefined) ?? 'free',
     };
   }
 
@@ -88,6 +94,24 @@ export class AuthService {
       );
     }
     await userRef.set({ weights }, { merge: true });
+  }
+
+  /**
+   * The whole "upgrade" flow: no payment behind it, just an authenticated
+   * write to the caller's own account — the demo toggle button server-side.
+   */
+  async setPlan(uid: string, plan: Plan): Promise<void> {
+    const firestore = this.requireFirestore();
+    const userRef = firestore.collection('users').doc(uid);
+    const snapshot = await userRef.get();
+    if (!snapshot.exists) {
+      throw new ApiError(
+        HttpStatus.NOT_FOUND,
+        'REQUEST_FAILED',
+        'No profile exists for this account yet.',
+      );
+    }
+    await userRef.set({ plan }, { merge: true });
   }
 
   private requireFirestore(): Firestore {

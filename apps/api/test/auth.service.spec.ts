@@ -1,43 +1,7 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { AuthService } from '../src/auth/auth.service';
 import { ApiError } from '../src/common/errors';
-
-interface DocRef {
-  collection: 'usernames' | 'users';
-  id: string;
-}
-
-/** Just enough of the Firestore transaction API for AuthService to run against. */
-class FakeFirestore {
-  usernames = new Map<string, unknown>();
-  users = new Map<string, unknown>();
-
-  private store(ref: DocRef) {
-    return ref.collection === 'usernames' ? this.usernames : this.users;
-  }
-
-  collection(name: 'usernames' | 'users') {
-    return { doc: (id: string): DocRef => ({ collection: name, id }) };
-  }
-
-  async runTransaction<T>(fn: (tx: FakeTransaction) => Promise<T>): Promise<T> {
-    return fn(new FakeTransaction(this));
-  }
-}
-
-class FakeTransaction {
-  constructor(private readonly firestore: FakeFirestore) {}
-
-  async get(ref: DocRef) {
-    const store = ref.collection === 'usernames' ? this.firestore.usernames : this.firestore.users;
-    return { exists: store.has(ref.id), data: () => store.get(ref.id) };
-  }
-
-  set(ref: DocRef, data: unknown) {
-    const store = ref.collection === 'usernames' ? this.firestore.usernames : this.firestore.users;
-    store.set(ref.id, data);
-  }
-}
+import { FakeFirestore } from './fixtures';
 
 function setup() {
   const firestore = new FakeFirestore();
@@ -57,9 +21,11 @@ describe('AuthService.registerProfile', () => {
       createdAt: profile.createdAt,
       // A brand new profile has never left the documented baseline.
       weights: null,
+      // No payment behind this — every new account starts free.
+      plan: 'free',
     });
     expect(firestore.usernames.get('budi87')).toEqual({ uid: 'uid-1' });
-    expect(firestore.users.get('uid-1')).toMatchObject({ email: 'budi@example.com', username: 'Budi87' });
+    expect(firestore.users.get('uid-1')).toMatchObject({ email: 'budi@example.com', username: 'Budi87', plan: 'free' });
   });
 
   it('treats a retry by the same user as a no-op rather than a conflict', async () => {
@@ -96,5 +62,29 @@ describe('AuthService.registerProfile', () => {
   it('fails clearly when Firestore is not configured', async () => {
     const service = new AuthService(null);
     await expect(service.registerProfile('uid-1', null, { username: 'budi' })).rejects.toThrow(ApiError);
+  });
+});
+
+describe('AuthService plan', () => {
+  it('defaults a freshly registered profile to the free plan', async () => {
+    const { service } = setup();
+    await service.registerProfile('uid-1', 'a@example.com', { username: 'budi' });
+
+    const profile = await service.getProfile('uid-1', 'a@example.com');
+    expect(profile?.plan).toBe('free');
+  });
+
+  it('setPlan is read back by getProfile — the whole "upgrade" flow, no payment involved', async () => {
+    const { service } = setup();
+    await service.registerProfile('uid-1', 'a@example.com', { username: 'budi' });
+
+    await service.setPlan('uid-1', 'premium');
+
+    expect((await service.getProfile('uid-1', 'a@example.com'))?.plan).toBe('premium');
+  });
+
+  it('rejects setPlan for an account with no profile yet', async () => {
+    const { service } = setup();
+    await expect(service.setPlan('uid-404', 'premium')).rejects.toThrow(ApiError);
   });
 });

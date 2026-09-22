@@ -66,7 +66,7 @@ of ports (for example `PORT=3001` and
 - `POST /api/v1/compare`
 - `POST /api/v1/compare-locations`
 - `POST /api/v1/simulate`
-- `POST /api/v1/opportunities` — nine analyses per call, throttled to 4/minute
+- `POST /api/v1/opportunities` — sixteen analyses, one per kecamatan of Semarang, no point in the request, throttled to 4/minute
 - `GET /api/v1/pois`
 - `POST /api/v1/auth/register-profile` (Firebase bearer token required)
 

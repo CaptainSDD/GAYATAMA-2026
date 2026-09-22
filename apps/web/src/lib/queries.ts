@@ -1,8 +1,10 @@
 import type { BusinessType, ComponentWeights, LatLng, OperatorOptions } from '@gayatama/scoring';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIdToken } from '../features/auth/useIdToken';
 import {
   fetchAnalysis,
   fetchProfile,
+  fetchSetPlan,
   saveWeights,
   fetchComparison,
   fetchLocationComparison,
@@ -23,23 +25,34 @@ function requirePoint(point: LatLng | null): LatLng {
   return point;
 }
 
+/**
+ * Every analysis route now requires sign-in, so every hook below reads the
+ * signed-in account's ID token itself via `useIdToken` — a cheap, global
+ * subscription to Firebase's own auth state — rather than taking it as a
+ * parameter. Threading it as a prop instead would mean thirty call sites
+ * across the app (`MapPicker`, `SimulationPanel`, `KecamatanDetail`, …), most
+ * of which have nothing else to do with auth.
+ */
+
 export function useAnalysis(point: LatLng | null, businessType: BusinessType, weights?: ComponentWeights) {
+  const idToken = useIdToken();
   return useQuery({
     // The weights are part of the identity of a result, not a detail of how it
     // was fetched: two weight sets are two different answers for one point.
     queryKey: ['analysis', point, businessType, USE_GOOGLE_MAP, weights ?? null],
-    queryFn: ({ signal }) => fetchAnalysis(requirePoint(point), businessType, USE_GOOGLE_MAP, weights, signal),
-    enabled: point !== null,
+    queryFn: ({ signal }) => fetchAnalysis(idToken!, requirePoint(point), businessType, USE_GOOGLE_MAP, weights, signal),
+    enabled: point !== null && idToken !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
 }
 
 export function useRecommendation(point: LatLng | null) {
+  const idToken = useIdToken();
   return useQuery({
     queryKey: ['recommend', point, USE_GOOGLE_MAP],
-    queryFn: ({ signal }) => fetchRecommendation(requirePoint(point), USE_GOOGLE_MAP, signal),
-    enabled: point !== null,
+    queryFn: ({ signal }) => fetchRecommendation(idToken!, requirePoint(point), USE_GOOGLE_MAP, signal),
+    enabled: point !== null && idToken !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
@@ -47,10 +60,11 @@ export function useRecommendation(point: LatLng | null) {
 
 /** Not keyed by business type: comparing every category is what answers which one to pick. */
 export function useComparison(point: LatLng | null) {
+  const idToken = useIdToken();
   return useQuery({
     queryKey: ['compare', point, USE_GOOGLE_MAP],
-    queryFn: ({ signal }) => fetchComparison(requirePoint(point), USE_GOOGLE_MAP, signal),
-    enabled: point !== null,
+    queryFn: ({ signal }) => fetchComparison(idToken!, requirePoint(point), USE_GOOGLE_MAP, signal),
+    enabled: point !== null && idToken !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
@@ -58,41 +72,51 @@ export function useComparison(point: LatLng | null) {
 
 /** Both points and the category are part of the key: changing any of them is a different comparison. */
 export function useLocationComparison(a: LatLng | null, b: LatLng | null, businessType: BusinessType) {
+  const idToken = useIdToken();
   return useQuery({
     queryKey: ['compare-locations', a, b, businessType, USE_GOOGLE_MAP],
     queryFn: ({ signal }) =>
-      fetchLocationComparison(requirePoint(a), requirePoint(b), businessType, USE_GOOGLE_MAP, signal),
-    enabled: a !== null && b !== null,
+      fetchLocationComparison(idToken!, requirePoint(a), requirePoint(b), businessType, USE_GOOGLE_MAP, signal),
+    enabled: a !== null && b !== null && idToken !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
 }
 
 export function usePois(point: LatLng | null) {
+  const idToken = useIdToken();
   return useQuery({
     queryKey: ['pois', point, USE_GOOGLE_MAP],
-    queryFn: ({ signal }) => fetchPois(requirePoint(point), USE_GOOGLE_MAP, signal),
-    enabled: point !== null,
+    queryFn: ({ signal }) => fetchPois(idToken!, requirePoint(point), USE_GOOGLE_MAP, signal),
+    enabled: point !== null && idToken !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
 }
 
 export function useLocationDetails(point: LatLng | null) {
+  const idToken = useIdToken();
   return useQuery({
     queryKey: ['location-details', point],
-    queryFn: ({ signal }) => fetchLocationDetails(requirePoint(point), signal),
-    enabled: point !== null,
+    queryFn: ({ signal }) => fetchLocationDetails(idToken!, requirePoint(point), signal),
+    enabled: point !== null && idToken !== null,
     staleTime: 24 * 60 * 60_000,
     retry: shouldRetry,
   });
 }
 
-export function useOpportunities(point: LatLng | null, businessType: BusinessType) {
+/**
+ * `enabled` gates this on the area explorer being open, not on any point —
+ * there isn't one yet. `kecamatanId` is the premium path — the API checks the
+ * caller's plan server-side; its own key so the city-wide list and a
+ * kecamatan's detail cache separately.
+ */
+export function useOpportunities(enabled: boolean, businessType: BusinessType, kecamatanId?: string) {
+  const idToken = useIdToken();
   return useQuery({
-    queryKey: ['opportunities', point, businessType],
-    queryFn: ({ signal }) => fetchOpportunities(requirePoint(point), businessType, signal),
-    enabled: point !== null,
+    queryKey: ['opportunities', businessType, kecamatanId ?? null],
+    queryFn: ({ signal }) => fetchOpportunities(idToken!, businessType, kecamatanId, signal),
+    enabled: enabled && idToken !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
@@ -104,13 +128,14 @@ export function useOpportunities(point: LatLng | null, businessType: BusinessTyp
  * applied yet and no request should run.
  */
 export function useSimulation(point: LatLng | null, businessType: BusinessType, options: OperatorOptions | null) {
+  const idToken = useIdToken();
   return useQuery({
     queryKey: ['simulate', point, businessType, options, USE_GOOGLE_MAP],
     queryFn: ({ signal }) => {
       if (options === null) throw new Error('No what-if options applied');
-      return fetchSimulation(requirePoint(point), businessType, options, USE_GOOGLE_MAP, signal);
+      return fetchSimulation(idToken!, requirePoint(point), businessType, options, USE_GOOGLE_MAP, signal);
     },
-    enabled: point !== null && options !== null,
+    enabled: point !== null && options !== null && idToken !== null,
     staleTime: STALE_TIME_MS,
     retry: shouldRetry,
   });
@@ -135,6 +160,21 @@ export function useSaveWeights(idToken: string | null) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (weights: ComponentWeights | null) => saveWeights(idToken!, weights),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['profile', idToken] });
+    },
+  });
+}
+
+/**
+ * The demo "upgrade/downgrade" button, server-side: no payment behind it,
+ * just an authenticated write to the caller's own account, same shape as
+ * `useSaveWeights`.
+ */
+export function useSetPlan(idToken: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (plan: 'free' | 'premium') => fetchSetPlan(idToken!, plan),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['profile', idToken] });
     },

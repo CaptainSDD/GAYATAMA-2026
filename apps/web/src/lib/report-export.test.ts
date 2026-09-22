@@ -1,12 +1,6 @@
 import type { ComponentKey, Segment } from '@gayatama/scoring';
 import { describe, expect, it } from 'vitest';
-import type {
-  AnalysisResponse,
-  DataSource,
-  OpportunitiesResponse,
-  PoisResponse,
-  RecommendResponse,
-} from './api-types';
+import type { AnalysisResponse, DataSource, PoisResponse, RecommendResponse } from './api-types';
 import { reportHtml } from './report-export';
 import type { ReportData } from './report-data';
 
@@ -116,24 +110,6 @@ const recommend: RecommendResponse = {
   dataSource,
 };
 
-const opportunities: OpportunitiesResponse = {
-  center: analysis.location,
-  businessType: 'beverages',
-  source: 'OpenStreetMap',
-  spacingMeters: 350,
-  cells: [
-    { id: '1:-1', lat: 0, lng: 0, status: 'scored', score: 60, confidence: 70 },
-    { id: '1:0', lat: 0, lng: 0, status: 'scored', score: 81, confidence: 75 },
-    { id: '1:1', lat: 0, lng: 0, status: 'insufficient_data', score: null, confidence: null },
-    { id: '0:-1', lat: 0, lng: 0, status: 'scored', score: 58, confidence: 66 },
-    { id: '0:0', lat: 0, lng: 0, status: 'scored', score: 72, confidence: 81 },
-    { id: '0:1', lat: 0, lng: 0, status: 'scored', score: 64, confidence: 70 },
-    { id: '-1:-1', lat: 0, lng: 0, status: 'unavailable', score: null, confidence: null },
-    { id: '-1:0', lat: 0, lng: 0, status: 'scored', score: 55, confidence: 60 },
-    { id: '-1:1', lat: 0, lng: 0, status: 'scored', score: 61, confidence: 64 },
-  ],
-};
-
 const pois: PoisResponse = {
   location: analysis.location,
   asOf: '2026-09-20T03:00:00.000Z',
@@ -146,12 +122,12 @@ const pois: PoisResponse = {
   dataSource,
 };
 
-const full: ReportData = { analysis, recommend, opportunities, pois };
+const full: ReportData = { analysis, recommend, pois };
 
 describe('reportHtml — chapters', () => {
-  it('contains all five chapters the interface shows', () => {
+  it('contains all four chapters the interface shows', () => {
     const html = reportHtml(full);
-    for (const heading of ['1 · Skor lokasi', '2 · Pilihan usaha', '3 · Pelanggan', '4 · Pesaing', '5 · Peluang']) {
+    for (const heading of ['1 · Skor lokasi', '2 · Pilihan usaha', '3 · Pelanggan', '4 · Pesaing']) {
       expect(html).toContain(heading);
     }
   });
@@ -208,15 +184,6 @@ describe('reportHtml — charts', () => {
     expect(html).toContain('210'); // zone b count
   });
 
-  it('lays the nine opportunity points out as a grid and flags the best', () => {
-    const html = reportHtml(full);
-    expect(html).toContain('heat-grid');
-    expect(html).toContain('Titik Anda');
-    expect(html).toContain('terbaik');
-    // 1:0 scores 81, which beats the centre's 72, so the verdict points north.
-    expect(html).toContain('ke utara');
-  });
-
   it('places the saturation reading on its scale', () => {
     const html = reportHtml(full);
     expect(html).toContain('Mulai jenuh');
@@ -263,10 +230,9 @@ describe('reportHtml — completeness', () => {
   });
 
   it('says which chapters could not be loaded instead of dropping them silently', () => {
-    const html = reportHtml({ analysis, recommend: null, opportunities: null, pois: null });
+    const html = reportHtml({ analysis, recommend: null, pois: null });
     expect(html).toContain('2 · Pilihan usaha');
-    expect(html).toContain('5 · Peluang');
-    expect(html.match(/tidak bisa dimuat/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(html.match(/tidak bisa dimuat/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });
 

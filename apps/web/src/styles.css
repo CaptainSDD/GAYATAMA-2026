@@ -1432,37 +1432,6 @@ select:hover {
    lets the Leaflet divIcon and the Google AdvancedMarker share this one rule.
    Violet, not the red the chosen point uses — this is a place being considered,
    not the place being analysed. */
-.opportunity-ping {
-  display: block;
-  width: 14px;
-  height: 14px;
-  background: #7c3aed;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgb(15 23 42 / 0.4);
-  animation: opportunity-ping 1.5s ease-out infinite;
-}
-
-@keyframes opportunity-ping {
-  0% {
-    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 0 rgb(124 58 237 / 0.5);
-  }
-  70% {
-    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 16px rgb(124 58 237 / 0);
-  }
-  100% {
-    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 0 rgb(124 58 237 / 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  /* Keeps a static halo: the mark still has to be findable on a busy map. */
-  .opportunity-ping {
-    animation: none;
-    box-shadow: 0 1px 3px rgb(15 23 42 / 0.4), 0 0 0 6px rgb(124 58 237 / 0.3);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .picked-pin-pulse {
     animation: none;
@@ -2751,6 +2720,26 @@ p.error {
   background: transparent;
 }
 
+/* The one other door into the app: a visitor with no location in mind at all,
+   next to the one for a visitor who already has a point. Neither reads as the
+   primary path — "atau" holds the line between two equally valid starts. */
+.intro-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-1) 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.intro-divider::before,
+.intro-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .panel .location-preview {
   gap: var(--space-4);
 }
@@ -3843,108 +3832,222 @@ p.error {
   font-variant-numeric: tabular-nums;
 }
 
-/* Area opportunity map ----------------------------------------------------- */
-/* A 3 x 3 grid standing in for the map: the top row is north, so the layout
-   reads as geography rather than as a table. Cell colour comes from the same
-   score tones as every other number in the interface. */
+/* Area opportunity explorer -------------------------------------------------
+   Points, not tiles: each grid point is a pin on the map and a matching row
+   here, coloured by the same score tones as every other number in the
+   interface. Nothing is a privileged "centre" — nobody has picked a location
+   yet, so there is no visitor point for the others to be read against. */
 
 .opportunity {
   display: grid;
   gap: var(--space-4);
 }
 
-.opportunity-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.opportunity-legend {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
-}
-
-.opportunity-cell {
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 0.15rem;
-  aspect-ratio: 1;
-  padding: var(--space-2);
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-
-button.opportunity-cell {
-  cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-button.opportunity-cell:hover {
-  border-color: var(--sekunder);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-/* The visitor's own point is the reference every other cell is read against. */
-.opportunity-cell-centre {
-  background: var(--surface-raised);
-  border-color: var(--tersier);
-  border-style: dashed;
-}
-
-.opportunity-cell-best {
-  border-color: var(--tone-excellent);
-  border-width: 2px;
-}
-
-.opportunity-cell-blank {
-  background: var(--surface-sunken);
-}
-
-.opportunity-direction {
   font-size: var(--text-xs);
   color: var(--muted);
 }
 
-.opportunity-score {
+.opportunity-legend-scale {
+  display: flex;
+  overflow: hidden;
+  width: 6rem;
+  height: 0.55rem;
+  border-radius: var(--radius-pill);
+}
+
+.opportunity-legend-swatch {
+  flex: 1;
+  height: 100%;
+}
+
+.opportunity-point-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opportunity-point-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.opportunity-point-row-best {
+  border-color: var(--tone-excellent);
+  border-width: 2px;
+}
+
+.opportunity-point-row-blank {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+}
+
+.opportunity-point-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.opportunity-point-button:hover {
+  background: var(--surface-raised);
+}
+
+.opportunity-point-label {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.opportunity-point-dot {
+  flex-shrink: 0;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  border: 1px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.opportunity-point-score {
   font-size: var(--text-md);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
 }
 
-.opportunity-cell-blank .opportunity-score {
-  font-size: var(--text-xs);
+.opportunity-point-row-blank .opportunity-point-score {
+  font-size: var(--text-sm);
   font-weight: 650;
 }
 
-.opportunity-confidence {
+.opportunity-point-confidence {
   font-size: var(--text-xs);
 }
 
-.opportunity-compass {
-  margin-top: calc(var(--space-3) * -1);
-  font-size: var(--text-xs);
-  text-align: center;
+/* Freemium row: same shape as the clickable button, minus the interaction —
+   no cursor, no hover, no button semantics, so it doesn't look like a promise
+   the free tier can't keep. */
+.opportunity-point-row-locked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
 }
 
-.opportunity-verdict {
+.kecamatan-detail-intro {
+  margin-bottom: var(--space-3);
+}
+
+.kecamatan-local-candidates {
+  margin-top: var(--space-4);
+}
+
+.kecamatan-local-candidates h2 {
+  font-size: var(--text-md);
+  margin-bottom: var(--space-1);
+}
+
+/* Premium (demo) kecamatan detail -------------------------------------------
+   Same list/row shape as the freemium list, so switching modes doesn't
+   relearn a new pattern — each row just carries more: a rank, a
+   reverse-geocoded address, and a bigger score, since there are five instead
+   of sixteen. */
+
+.candidate-list {
   display: grid;
-  justify-items: start;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  font-size: var(--text-sm);
-  background: var(--surface-sunken);
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.candidate-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  background: var(--surface);
 }
 
-@media (max-width: 420px) {
-  .simulate-scores {
-    gap: var(--space-3);
-  }
+.candidate-card-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
 
-  .opportunity-score {
-    font-size: var(--text-sm);
-  }
+.candidate-card-button:hover {
+  background: var(--surface-raised);
+}
+
+.candidate-card-rank {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-sunken);
+  border-radius: 50%;
+}
+
+.candidate-card-body {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.candidate-card-address {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-card-confidence {
+  font-size: var(--text-xs);
+}
+
+.candidate-card-score {
+  flex-shrink: 0;
+  font-size: var(--text-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.candidate-card-dot {
+  flex-shrink: 0;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+}
+
+.premium-demo-toggle {
+  font-size: var(--text-xs);
 }
 
 /* The picked-location preview, distilled to one flat stack ------------------

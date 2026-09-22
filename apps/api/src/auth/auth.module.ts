@@ -10,5 +10,9 @@ import { VerifyTokenGuard } from './verify-token.guard';
   imports: [MailModule],
   controllers: [AuthController],
   providers: [AuthService, VerificationService, VerifyTokenGuard, RequireVerifiedEmailGuard],
+  // `AuthService` and `VerifyTokenGuard` are reused outside this module: every
+  // analysis/location route now requires sign-in, and the premium kecamatan
+  // check needs to read the caller's plan.
+  exports: [AuthService, VerifyTokenGuard],
 })
 export class AuthModule {}

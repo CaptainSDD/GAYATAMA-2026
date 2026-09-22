@@ -86,9 +86,15 @@ function postJson<T>(path: string, payload: unknown, signal?: AbortSignal, heade
   });
 }
 
+function authHeader(idToken: string): Record<string, string> {
+  return { authorization: `Bearer ${idToken}` };
+}
+
 // `googleMap` tells the API the results are shown on a Google map, the only case in which it may use Google data.
+// Every analysis route now requires sign-in — `idToken` proves who the caller is, the same way it already did for `fetchProfile`.
 
 export function fetchAnalysis(
+  idToken: string,
   point: LatLng,
   businessType: BusinessType,
   googleMap: boolean,
@@ -99,46 +105,75 @@ export function fetchAnalysis(
     '/analysis',
     { lat: point.lat, lng: point.lng, businessType, googleMap, ...(weights === undefined ? {} : { weights }) },
     signal,
+    authHeader(idToken),
   );
 }
 
-export function fetchRecommendation(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
-  return postJson<RecommendResponse>('/recommend', { lat: point.lat, lng: point.lng, googleMap }, signal);
+export function fetchRecommendation(idToken: string, point: LatLng, googleMap: boolean, signal?: AbortSignal) {
+  return postJson<RecommendResponse>('/recommend', { lat: point.lat, lng: point.lng, googleMap }, signal, authHeader(idToken));
 }
 
 /** Compares every category for one point. No business type is sent: choosing one is what this answers. */
-export function fetchComparison(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
-  return postJson<ComparisonResponse>('/compare', { lat: point.lat, lng: point.lng, googleMap }, signal);
+export function fetchComparison(idToken: string, point: LatLng, googleMap: boolean, signal?: AbortSignal) {
+  return postJson<ComparisonResponse>('/compare', { lat: point.lat, lng: point.lng, googleMap }, signal, authHeader(idToken));
 }
 
 /** Compares exactly two points for one chosen category. */
 export function fetchLocationComparison(
+  idToken: string,
   a: LatLng,
   b: LatLng,
   businessType: BusinessType,
   googleMap: boolean,
   signal?: AbortSignal,
 ) {
-  return postJson<LocationComparisonResponse>('/compare-locations', { a, b, businessType, googleMap }, signal);
+  return postJson<LocationComparisonResponse>(
+    '/compare-locations',
+    { a, b, businessType, googleMap },
+    signal,
+    authHeader(idToken),
+  );
 }
 
-export function fetchSimulation(point: LatLng, businessType: BusinessType, options: OperatorOptions, googleMap: boolean, signal?: AbortSignal) {
-  return postJson<SimulationResponse>('/simulate', { lat: point.lat, lng: point.lng, businessType, options, googleMap }, signal);
+export function fetchSimulation(
+  idToken: string,
+  point: LatLng,
+  businessType: BusinessType,
+  options: OperatorOptions,
+  googleMap: boolean,
+  signal?: AbortSignal,
+) {
+  return postJson<SimulationResponse>(
+    '/simulate',
+    { lat: point.lat, lng: point.lng, businessType, options, googleMap },
+    signal,
+    authHeader(idToken),
+  );
 }
 
-export function fetchOpportunities(point: LatLng, businessType: BusinessType, signal?: AbortSignal) {
-  return postJson<OpportunitiesResponse>('/opportunities', { lat: point.lat, lng: point.lng, businessType }, signal);
+/**
+ * No point yet: the sixteen-kecamatan grid is fixed, so a business type is all
+ * this needs. `kecamatanId` is the premium path — the API checks the caller's
+ * plan server-side and answers `PREMIUM_REQUIRED` for a free account.
+ */
+export function fetchOpportunities(idToken: string, businessType: BusinessType, kecamatanId?: string, signal?: AbortSignal) {
+  return postJson<OpportunitiesResponse>(
+    '/opportunities',
+    kecamatanId === undefined ? { businessType } : { businessType, kecamatanId },
+    signal,
+    authHeader(idToken),
+  );
 }
 
-export function fetchPois(point: LatLng, googleMap: boolean, signal?: AbortSignal) {
+export function fetchPois(idToken: string, point: LatLng, googleMap: boolean, signal?: AbortSignal) {
   const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng), googleMap: String(googleMap) });
-  return request<PoisResponse>(`/pois?${query.toString()}`, { signal });
+  return request<PoisResponse>(`/pois?${query.toString()}`, { signal, headers: authHeader(idToken) });
 }
 
 /** Lightweight address lookup. This endpoint does not load POIs or run the scoring engine. */
-export function fetchLocationDetails(point: LatLng, signal?: AbortSignal) {
+export function fetchLocationDetails(idToken: string, point: LatLng, signal?: AbortSignal) {
   const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
-  return request<LocationDetailsResponse>(`/location?${query.toString()}`, { signal });
+  return request<LocationDetailsResponse>(`/location?${query.toString()}`, { signal, headers: authHeader(idToken) });
 }
 
 /**
@@ -161,6 +196,19 @@ export function saveWeights(idToken: string, weights: ComponentWeights | null, s
     method: 'PUT',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ weights }),
+    signal,
+  });
+}
+
+/**
+ * The whole "upgrade/downgrade" flow: no payment gateway behind it, just an
+ * authenticated write to the caller's own account — the demo toggle button.
+ */
+export function fetchSetPlan(idToken: string, plan: 'free' | 'premium', signal?: AbortSignal) {
+  return request<{ plan: 'free' | 'premium' }>('/auth/profile/plan', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ plan }),
     signal,
   });
 }

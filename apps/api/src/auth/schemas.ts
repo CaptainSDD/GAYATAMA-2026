@@ -44,3 +44,11 @@ export const saveWeightsSchema = z.object({ weights: componentWeightsSchema.null
 
 export type ComponentWeightsRequest = z.infer<typeof componentWeightsSchema>;
 export type SaveWeightsRequest = z.infer<typeof saveWeightsSchema>;
+
+/**
+ * The whole "upgrade/downgrade" request. No payment fields exist because
+ * there is no payment behind this — see `AuthService.setPlan`.
+ */
+export const setPlanSchema = z.object({ plan: z.enum(['free', 'premium']) }).strict();
+
+export type SetPlanRequest = z.infer<typeof setPlanSchema>;

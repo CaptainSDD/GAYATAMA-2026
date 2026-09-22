@@ -27,11 +27,18 @@ export interface SimulationResponse {
 }
 
 export interface OpportunitiesResponse {
-  center: LatLng;
   businessType: BusinessType;
   source: 'OpenStreetMap';
-  spacingMeters: number;
-  cells: Array<{ id: string; lat: number; lng: number; status: 'scored' | 'insufficient_data' | 'unavailable'; score: number | null; confidence: number | null }>;
+  /** One fixed representative point per kecamatan of Kota Semarang. */
+  cells: Array<{
+    id: string;
+    label: string;
+    lat: number;
+    lng: number;
+    status: 'scored' | 'insufficient_data' | 'unavailable';
+    score: number | null;
+    confidence: number | null;
+  }>;
 }
 
 
@@ -385,5 +392,7 @@ export interface ProfileResponse {
     createdAt: string;
     /** null when this account has never left the documented baseline. */
     weights: ComponentWeights | null;
+    /** No payment gateway behind this — see `useSetPlan`. */
+    plan: 'free' | 'premium';
   } | null;
 }

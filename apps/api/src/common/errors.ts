@@ -10,6 +10,7 @@ export type ErrorCode =
   | 'INTERNAL_ERROR'
   | 'UNAUTHORIZED'
   | 'EMAIL_NOT_VERIFIED'
+  | 'PREMIUM_REQUIRED'
   | 'USERNAME_TAKEN'
   | 'LOCATION_NOT_ELIGIBLE'
   | 'MAIL_NOT_CONFIGURED';
@@ -68,6 +69,19 @@ export function emailNotVerified(): ApiError {
   );
 }
 
+/**
+ * 403, not 401: the caller proved who they are, they just aren't on a plan
+ * that includes this feature. A 401 would tell the client to sign in again,
+ * which would not change the answer.
+ */
+export function premiumRequired(): ApiError {
+  return new ApiError(
+    HttpStatus.FORBIDDEN,
+    'PREMIUM_REQUIRED',
+    'Fitur ini hanya tersedia untuk akun premium.',
+  );
+}
+
 /** Distinct from REQUEST_FAILED so the browser knows it may fall back to Firebase's own sender. */
 export function mailNotConfigured(): ApiError {
   return new ApiError(
@@ -87,6 +101,15 @@ export function mailSendFailed(): ApiError {
 
 export function usernameTaken(username: string): ApiError {
   return new ApiError(HttpStatus.CONFLICT, 'USERNAME_TAKEN', 'This username is already taken.', { username });
+}
+
+export function unknownKecamatan(kecamatanId: string): ApiError {
+  return new ApiError(
+    HttpStatus.BAD_REQUEST,
+    'VALIDATION_FAILED',
+    `Unknown kecamatanId: ${kecamatanId}`,
+    { kecamatanId },
+  );
 }
 
 export function unsuitableLocation(reason: 'water' | 'wetland' | 'aquaculture'): ApiError {

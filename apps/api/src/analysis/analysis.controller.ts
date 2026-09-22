@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { type AuthenticatedRequest, VerifyTokenGuard } from '../auth/verify-token.guard';
 import { AnalysisService } from './analysis.service';
 import {
   type AnalysisRequest,
@@ -21,7 +22,14 @@ import {
 
 const SCORING_LIMIT = { default: { limit: 30, ttl: 60_000 } };
 
+/**
+ * Every route here requires sign-in: scoring is no longer usable
+ * anonymously, matching the web app, which already turns away signed-out
+ * visitors before they reach any of these (`AuthGate`). This controller is
+ * where that is actually enforced, rather than merely assumed.
+ */
 @Controller()
+@UseGuards(VerifyTokenGuard)
 export class AnalysisController {
   constructor(private readonly analysis: AnalysisService) {}
 
@@ -46,11 +54,15 @@ export class AnalysisController {
     return this.analysis.simulate(body);
   }
 
+  /** The kecamatan drill-down (`kecamatanId` set) is premium-gated inside the service, where the caller's plan is read. */
   @Post('opportunities')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 4, ttl: 60_000 } })
-  opportunities(@Body(new ZodValidationPipe(opportunitiesRequestSchema)) body: OpportunitiesRequest) {
-    return this.analysis.opportunities(body);
+  opportunities(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(opportunitiesRequestSchema)) body: OpportunitiesRequest,
+  ) {
+    return this.analysis.opportunities(body, request.uid);
   }
 
   @Post('compare')

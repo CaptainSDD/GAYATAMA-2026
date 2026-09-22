@@ -6,8 +6,10 @@ import { RequireVerifiedEmailGuard } from './require-verified-email.guard';
 import {
   registerProfileSchema,
   saveWeightsSchema,
+  setPlanSchema,
   type RegisterProfileRequest,
   type SaveWeightsRequest,
+  type SetPlanRequest,
 } from './schemas';
 import { VerificationService } from './verification.service';
 import { type AuthenticatedRequest, VerifyTokenGuard } from './verify-token.guard';
@@ -40,6 +42,7 @@ export class AuthController {
         email: profile.email,
         createdAt: profile.createdAt,
         weights: profile.weights,
+        plan: profile.plan,
       },
     };
   }
@@ -60,6 +63,22 @@ export class AuthController {
   ) {
     await this.authService.saveWeights(request.uid, body.weights);
     return { weights: body.weights };
+  }
+
+  /**
+   * The demo "upgrade/downgrade" — no payment gateway behind it, just an
+   * authenticated write to the caller's own account. Gated the same way
+   * `profile/weights` is: it's an account action past sign-up, not part of
+   * creating one.
+   */
+  @Put('profile/plan')
+  @UseGuards(VerifyTokenGuard, RequireVerifiedEmailGuard)
+  async setPlan(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(setPlanSchema)) body: SetPlanRequest,
+  ) {
+    await this.authService.setPlan(request.uid, body.plan);
+    return { plan: body.plan };
   }
 
   /** Live state from Firebase, so it is right the moment the link is followed. */

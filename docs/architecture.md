@@ -139,9 +139,9 @@ from the API. The report flow is client-side, though —
 `apps/web/src/lib/report-export.ts` builds a print-ready document from an
 analysis already in hand, and the browser's own print dialog writes the PDF, so
 no report endpoint is involved. The **Skor** tab's what-if panel and the
-**Peluang** tab both go back to the API: `/simulate` rescores this point with
-the operator's changes, and `/opportunities` runs nine analyses for the
-surrounding grid, which is why it is throttled hardest.
+**Peluang** area explorer both go back to the API: `/simulate` rescores this
+point with the operator's changes, and `/opportunities` runs sixteen analyses,
+one per kecamatan of Semarang, which is why it is throttled hardest.
 
 The explanation and calculation deliberately stay separate.
 `apps/api/src/analysis/narrative.service.ts` starts from the fixed scoring
@@ -233,7 +233,7 @@ src/
 │   ├── competition/      Named/aggregate competitors and saturation
 │   ├── compare/          All-category and two-location comparisons
 │   ├── simulate/         What-if controls and the rescored result
-│   ├── opportunity/      The 3 x 3 grid of nearby points
+│   ├── opportunity/      One point per kecamatan, for a visitor with no point picked
 │   └── tour/             Replayable guided first-run tour
 ├── lib/                  API/auth clients, hooks, formatting, report export
 └── components/           Shared loading, error, notice and navigation UI

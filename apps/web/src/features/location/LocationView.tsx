@@ -5,32 +5,26 @@ import { Loading, QueryError } from '../../components/QueryState';
 import { Tabs, type TabItem } from '../../components/Tabs';
 import type { AnalysisResponse } from '../../lib/api-types';
 import { isInSemarangCoverage } from '../../lib/location';
-import { useAnalysis, useComparison, useOpportunities, useRecommendation } from '../../lib/queries';
+import { useAnalysis, useComparison, useRecommendation } from '../../lib/queries';
 import { ComparisonView } from '../compare/ComparisonView';
 import { CompetitionView } from '../competition/CompetitionView';
-import { OpportunityView } from '../opportunity/OpportunityView';
 import { RecommendView } from '../recommend/RecommendView';
 import { ScorePanel } from '../score/ScorePanel';
 import { SegmentsView } from '../segments/SegmentsView';
 
-type TabKey = 'score' | 'recommend' | 'customers' | 'competitors' | 'opportunity';
+type TabKey = 'score' | 'recommend' | 'customers' | 'competitors';
 
 const TABS: readonly TabItem<TabKey>[] = [
   { key: 'score', label: 'Skor' },
   { key: 'recommend', label: 'Pilihan usaha' },
   { key: 'customers', label: 'Pelanggan' },
   { key: 'competitors', label: 'Pesaing' },
-  { key: 'opportunity', label: 'Peluang' },
 ];
 
 interface LocationViewProps {
   point: LatLng;
   businessType: BusinessType;
   onBusinessTypeChange: (businessType: BusinessType) => void;
-  /** Moves the whole analysis to another point, keeping the chosen category. */
-  onAnalysePoint: (point: LatLng) => void;
-  /** Marks a point on the map while the opportunity grid points at it. */
-  onHoverPoint: (point: LatLng | null) => void;
   /** null means the documented baseline; the engine is never sent anything. */
   weights: ComponentWeights | null;
   onWeightsChange: (weights: ComponentWeights | null) => void;
@@ -44,8 +38,6 @@ export function LocationView({
   point,
   businessType,
   onBusinessTypeChange,
-  onAnalysePoint,
-  onHoverPoint,
   weights,
   onWeightsChange,
   entryMode = 'score',
@@ -60,8 +52,6 @@ export function LocationView({
   const recommendation = useRecommendation(inCoverage && tab === 'recommend' ? point : null);
   // The comparison carries more per category, so it waits until its section is opened.
   const comparison = useComparison(inCoverage && tab === 'recommend' && compareOpen ? point : null);
-  // Nine analyses in one call, so this waits for its tab and is throttled hardest by the API.
-  const opportunities = useOpportunities(inCoverage && tab === 'opportunity' ? point : null, businessType);
 
   if (!inCoverage) {
     return (
@@ -99,19 +89,6 @@ export function LocationView({
             }}
           />
         </>
-      ) : tab === 'opportunity' ? (
-        <OpportunityView
-          query={opportunities}
-          // Passed straight through, not wrapped: OpportunityView clears the
-          // highlight in an effect keyed on this function, so a new identity
-          // every render would wipe the mark as fast as it was set.
-          onHoverPoint={onHoverPoint}
-          businessType={businessType}
-          onAnalysePoint={(next) => {
-            onAnalysePoint(next);
-            setTab('score');
-          }}
-        />
       ) : (
         <AnalysisTab
           tab={tab}
@@ -127,7 +104,7 @@ export function LocationView({
 }
 
 interface AnalysisTabProps {
-  tab: Exclude<TabKey, 'recommend' | 'opportunity'>;
+  tab: Exclude<TabKey, 'recommend'>;
   query: UseQueryResult<AnalysisResponse>;
   point: LatLng;
   weights: ComponentWeights | null;

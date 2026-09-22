@@ -4,6 +4,7 @@ import { DownloadIcon } from '../../components/Icons';
 import type { AnalysisResponse } from '../../lib/api-types';
 import { PREPARING_HTML, writeReport } from '../../lib/report-export';
 import { gatherReportData } from '../../lib/report-data';
+import { useIdToken } from '../auth/useIdToken';
 
 /**
  * Opens a print-ready report; the browser's Save as PDF option writes the file.
@@ -17,9 +18,11 @@ import { gatherReportData } from '../../lib/report-data';
  */
 export function ReportExportButton({ analysis }: { analysis: AnalysisResponse }) {
   const client = useQueryClient();
+  const idToken = useIdToken();
   const [state, setState] = useState<'idle' | 'preparing' | 'failed'>('idle');
 
   const open = () => {
+    if (idToken === null) return;
     const target = window.open('', '_blank');
     if (target === null) {
       window.alert('Browser memblokir jendela laporan. Izinkan pop-up untuk situs ini lalu coba lagi.');
@@ -29,7 +32,7 @@ export function ReportExportButton({ analysis }: { analysis: AnalysisResponse })
     target.document.write(PREPARING_HTML);
     setState('preparing');
 
-    void gatherReportData(client, analysis).then(
+    void gatherReportData(client, analysis, idToken).then(
       (data) => {
         writeReport(target, data);
         setState('idle');
@@ -49,7 +52,7 @@ export function ReportExportButton({ analysis }: { analysis: AnalysisResponse })
         type="button"
         className="button-secondary report-export"
         onClick={open}
-        disabled={state === 'preparing'}
+        disabled={state === 'preparing' || idToken === null}
         aria-busy={state === 'preparing'}
       >
         <DownloadIcon size={18} /> {state === 'preparing' ? 'Menyiapkan laporan…' : 'Export laporan PDF'}

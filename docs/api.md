@@ -519,43 +519,66 @@ delivery and rent are specified in
 
 ## `POST /api/v1/opportunities`
 
-Scores a 3 × 3 grid of points centred on the given coordinate, 350 m apart, for
-one business category. It answers "am I on the best corner of this
-neighbourhood?" rather than "is this exact point good?".
+For a visitor who has not chosen a location yet: scores one fixed
+representative point per kecamatan of Kota Semarang, for one business
+category. It answers "I don't have a location in mind — where should I even
+look?" rather than "is this exact point good?". There is no coordinate in the
+request: the sixteen points are the same for every visitor today, which is
+also what lets repeat requests for the same point reuse the POI cache
+`/analysis` already shares, instead of paying for a fresh Overpass/Geoapify
+lookup every time.
+
+Each point is a representative coordinate for its kecamatan, not a search for
+the best spot within it — a cost-saving simplification, not a claim of
+optimality.
 
 OpenStreetMap only: no `googleMap` flag is accepted. Google's aggregate counts
-cannot be attributed truthfully to nine separate cells, so the endpoint does not
-offer the choice.
+cannot be attributed truthfully to sixteen separate points, so the endpoint
+does not offer the choice.
 
 ### Request
 
 ```json
-{ "lat": -7.301234, "lng": 112.717890, "businessType": "laundry" }
+{ "businessType": "laundry" }
+```
+
+`kecamatanId` is an optional third field (e.g. `"semarang_tengah"`). This is
+the premium-demo path, gated on the client only — the server does not check
+any entitlement. When present, the response scores a fixed 3×3 local grid (9
+points, ~800 m spacing) around that one kecamatan's representative point
+instead of the sixteen-kecamatan list, each cell's `label` carrying the
+kecamatan's name. An id that names no known kecamatan is a client error:
+
+```json
+{ "statusCode": 400, "error": "VALIDATION_FAILED", "message": "Unknown kecamatanId: nonexistent", "details": { "kecamatanId": "nonexistent" } }
 ```
 
 ### Response `200`
 
 ```json
 {
-  "center": { "lat": -7.301234, "lng": 112.717890 },
   "businessType": "laundry",
   "source": "OpenStreetMap",
-  "spacingMeters": 350,
   "cells": [
-    { "id": "-1:-1", "lat": -7.304383, "lng": 112.714714, "status": "scored", "score": 64.80, "confidence": 71 },
-    { "id": "0:0", "lat": -7.301234, "lng": 112.717890, "status": "scored", "score": 71.20, "confidence": 78 },
-    { "id": "1:1", "lat": -7.298085, "lng": 112.721066, "status": "insufficient_data", "score": null, "confidence": 22 }
+    { "id": "semarang_tengah", "label": "Semarang Tengah", "lat": -6.9786542, "lng": 110.4217815, "status": "scored", "score": 64.80, "confidence": 71 },
+    { "id": "tembalang", "label": "Tembalang", "lat": -7.0601456, "lng": 110.4466015, "status": "scored", "score": 71.20, "confidence": 78 },
+    { "id": "tugu", "label": "Tugu", "lat": -6.9635069, "lng": 110.3345870, "status": "insufficient_data", "score": null, "confidence": 22 }
   ]
 }
 ```
 
-- `cells` always holds nine entries. `id` is `"row:column"`, each from `-1` to
-  `1`; `"0:0"` is the requested point itself.
+- Without `kecamatanId`, `cells` holds sixteen entries, one per kecamatan of
+  Kota Semarang, `id` a stable slug and `label` its Indonesian name. With
+  `kecamatanId`, `cells` holds the 9 local-grid points instead, each `id`
+  suffixed by index (e.g. `"semarang_tengah_0"`) and `label` repeating the
+  kecamatan's name.
 - `status` is `scored`, `insufficient_data` (confidence below 40 — `score` is
-  `null`), or `unavailable` (that cell's data could not be fetched; `score` and
-  `confidence` are both `null`). One failing cell does not fail the request.
-- Nine analyses run per call, so this endpoint is throttled far harder than the
-  others — see [Rate limiting](#rate-limiting).
+  `null`), or `unavailable` (that point's data could not be fetched; `score`
+  and `confidence` are both `null`). One failing point does not fail the
+  request.
+- Sixteen (or nine, for a kecamatan detail request) analyses run per call, so
+  this endpoint is throttled far harder than the others — see
+  [Rate limiting](#rate-limiting).
 
 ---
 
@@ -877,7 +900,7 @@ shared service and the cache is what keeps LOKABIS a well-behaved client of it.
 | Endpoint | Limit |
 |----------|-------|
 | `/analysis`, `/recommend`, `/simulate`, `/compare`, `/compare-locations` | 30 requests / minute |
-| `/opportunities` | 4 requests / minute — one call runs nine analyses |
+| `/opportunities` | 4 requests / minute — one call runs sixteen analyses |
 | `/pois`, `/location`, `/auth/register-profile` | 60 requests / minute (global default) |
 | `/health` | unlimited |
 

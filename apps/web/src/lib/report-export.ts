@@ -6,7 +6,6 @@ import {
   confidenceReading,
   type Segment,
 } from '@gayatama/scoring';
-import { CENTRE_ID, COLUMNS, DIRECTIONS, ROWS, bestCell, cellDistanceMeters } from '../features/opportunity/grid';
 import type { AnalysisResponse, Competitor, DataSource, RecommendResponse } from './api-types';
 import { bandTone, confidenceTone, roleTone, saturationTone, scoreTone } from './band-color';
 import {
@@ -34,7 +33,6 @@ import {
   barChart,
   donutChart,
   escapeHtml,
-  heatGrid,
   scaleMeter,
   stackedBar,
   type BarDatum,
@@ -482,69 +480,6 @@ function competitionChapter(analysis: AnalysisResponse): string {
   );
 }
 
-/* ── 5. Peluang ────────────────────────────────────────────────────────── */
-
-function opportunityChapter(data: ReportData): string {
-  const { opportunities, analysis } = data;
-  if (opportunities === null)
-    return chapter('5 · Peluang', 'Sembilan titik di sekitar lokasi ini, dinilai terpisah.', missing('Peta peluang sembilan titik'));
-
-  const byId = new Map(opportunities.cells.map((cell) => [cell.id, cell]));
-  const best = bestCell(opportunities.cells);
-  const centre = byId.get(CENTRE_ID);
-
-  const cells = ROWS.flatMap((row) =>
-    COLUMNS.map((column) => {
-      const cell = byId.get(`${row}:${column}`);
-      const label = DIRECTIONS[`${row}:${column}`] ?? '';
-      if (cell === undefined) return { label, value: null, tone: 'neutral' as const };
-      const scored = cell.status === 'scored' && cell.score !== null;
-      return {
-        label: cell.id === CENTRE_ID ? 'Titik Anda' : label,
-        value: scored ? Number(displayScore(cell.score as number)) : null,
-        tone: scored ? scoreTone(cell.score as number) : ('neutral' as const),
-        note: scored
-          ? cell.confidence === null
-            ? undefined
-            : `yakin ${Math.round(cell.confidence)}`
-          : cell.status === 'unavailable'
-            ? 'gagal'
-            : 'data tipis',
-        isCentre: cell.id === CENTRE_ID,
-        isBest: best !== null && cell.id === best.id && best.id !== CENTRE_ID,
-      };
-    }),
-  );
-
-  let verdict: string;
-  if (best === null) {
-    verdict = 'Tidak ada satu pun dari sembilan titik ini yang datanya cukup untuk dinilai.';
-  } else if (best.id === CENTRE_ID) {
-    verdict =
-      'Titik yang dipilih adalah yang terbaik di antara sembilan titik ini. Menggeser lokasi beberapa ratus meter tidak akan menolong.';
-  } else {
-    const gap = centre?.score == null ? null : Math.round((best.score - centre.score) * 10) / 10;
-    verdict = `Titik terbaik di sekitar sini ada ${formatDistance(
-      cellDistanceMeters(best.id, opportunities.spacingMeters),
-    )} ke ${DIRECTIONS[best.id]}, dengan skor ${displayScore(best.score)}${
-      gap !== null && gap > 0 ? ` — ${number(gap, 1)} poin di atas titik yang dipilih` : ''
-    }.`;
-  }
-
-  return chapter(
-    '5 · Peluang',
-    `Sembilan titik berjarak ${formatDistance(opportunities.spacingMeters)}, dinilai untuk ${BUSINESS_TYPE_LABELS[analysis.businessType]}. Pertanyaannya bukan "apakah titik ini bagus", tapi "apakah ada sudut yang lebih baik di sekitarnya".`,
-    `${heatGrid(cells)}
-    <p class="verdict">${escapeHtml(verdict)}</p>
-    ${
-      opportunities.cells.some((cell) => cell.status !== 'scored')
-        ? '<p class="muted">Kotak tanpa angka berarti data peta di sana terlalu tipis untuk dinilai, atau gagal dimuat. Titik itu tidak otomatis buruk — hanya belum bisa dibandingkan.</p>'
-        : ''
-    }
-    <p class="muted">Semua titik di sini dinilai dari OpenStreetMap saja. Hitungan usaha dari Google tidak dipakai, karena satu angka wilayah tidak bisa dibagi jujur ke sembilan titik terpisah.</p>`,
-  );
-}
-
 /* ── Attribution ───────────────────────────────────────────────────────── */
 
 function footer(dataSource: DataSource, modelVersion: string): string {
@@ -602,7 +537,7 @@ const STYLES = `
      below are the ones worth keeping together. */
   .chapter { margin-top: 22px; padding-top: 12px; border-top: 1px solid ${RULE}; }
   .chapter h2, h3, h4 { break-after: avoid; }
-  tr, .bar-row, .facts > div, .heat-grid, .stack, .meter { break-inside: avoid; }
+  tr, .bar-row, .facts > div, .stack, .meter { break-inside: avoid; }
   table, .split { break-inside: auto; }
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -632,17 +567,6 @@ const STYLES = `
   .meter { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin: 4px 0 8px; }
   .meter-step { padding: 4px 2px; text-align: center; font-size: 8pt; font-weight: 650; border-radius: 3px; }
 
-  .heat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0 4px; }
-  .heat-cell { position: relative; padding: 10px 6px; text-align: center; border: 1px solid; border-radius: 6px; }
-  .heat-cell-centre { border-width: 2px; border-style: dashed; }
-  .heat-dir { display: block; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; color: ${MUTED}; }
-  .heat-score { display: block; font-size: 17pt; font-weight: 750; line-height: 1.1; }
-  .heat-note { display: block; font-size: 7.5pt; color: ${MUTED}; }
-  .heat-blank { display: block; padding: 8px 0; font-size: 8.5pt; color: ${MUTED}; }
-  .heat-flag { position: absolute; top: 3px; right: 4px; font-size: 7pt; font-weight: 700; text-transform: uppercase; color: ${TONE_TEXT.excellent}; }
-  .heat-compass { margin: 0; font-size: 8pt; color: ${MUTED}; text-align: center; }
-
-  .verdict { padding: 8px 10px; background: #f8fafc; border-left: 3px solid ${BRAND}; font-weight: 650; }
   .notice { padding: 8px 10px; background: #fef9c3; border-left: 3px solid #ca8a04; font-size: 9pt; }
   .warn-list { margin: 4px 0; }
   .tag { display: inline-block; margin: 0 2px 2px 0; padding: 1px 7px; background: #f1f5f9; border-radius: 999px; font-size: 8pt; }
@@ -669,7 +593,6 @@ ${scoreChapter(analysis)}
 ${recommendChapter(data.recommend, analysis.businessType)}
 ${segmentsChapter(data)}
 ${competitionChapter(analysis)}
-${opportunityChapter(data)}
 ${footer(analysis.dataSource, analysis.modelVersion)}
 </body>
 </html>`;

@@ -1,5 +1,6 @@
-import { Controller, Get, Logger, Optional, Query } from '@nestjs/common';
+import { Controller, Get, Logger, Optional, Query, UseGuards } from '@nestjs/common';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { VerifyTokenGuard } from '../auth/verify-token.guard';
 import { GeoapifyClient } from '../geoapify/geoapify.client';
 import type { GeoapifyReverseResult } from '../geoapify/geoapify-place';
 import { LocationEligibilityService, type LocationEligibility } from './location-eligibility';
@@ -15,6 +16,7 @@ export class LocationController {
   ) {}
 
   @Get('location')
+  @UseGuards(VerifyTokenGuard)
   async location(@Query(new ZodValidationPipe(locationQuerySchema)) query: LocationQuery) {
     let result: GeoapifyReverseResult | null = null;
     let eligibility: LocationEligibility = { status: 'unknown' };

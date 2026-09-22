@@ -12,9 +12,10 @@ import { LocationView } from './features/location/LocationView';
 import { LocationPreview } from './features/location/LocationPreview';
 import { BusinessTypePicker, LocationSummary, PointModeTabs, type PointMode } from './features/map/LocationControls';
 import { MapPicker } from './features/map/MapPicker';
+import { AreaOpportunityExplorer } from './features/opportunity/AreaOpportunityExplorer';
 import { Tour } from './features/tour/Tour';
 import { useIdToken } from './features/auth/useIdToken';
-import { useProfile } from './lib/queries';
+import { useOpportunities, useProfile, useSetPlan } from './lib/queries';
 import {
   DEFAULT_CENTER,
   isInSemarangCoverage,
@@ -58,11 +59,15 @@ export function App({
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const [outsideCoverage, setOutsideCoverage] = useState(false);
   /**
-   * A point the opportunity grid is pointing at. Held here rather than in the
-   * grid because the map is the thing that has to draw it, and the two are on
-   * opposite sides of the layout.
+   * "area" is for a visitor with no location in mind yet: it replaces the
+   * point-based screens with the opportunity explorer, and has no picked point
+   * of its own. Clicking a point there moves back to "point" with that point
+   * as the analysed location.
    */
-  const [highlightPoint, setHighlightPoint] = useState<LatLng | null>(null);
+  const [explorerMode, setExplorerMode] = useState<'point' | 'area'>('point');
+  const opportunities = useOpportunities(explorerMode === 'area', selection.businessType);
+  const opportunityGrid =
+    explorerMode === 'area' && opportunities.data !== undefined ? { cells: opportunities.data.cells } : null;
   /* Session-scoped on purpose: the reminder should stop nagging while someone
      is working, and come back next visit if the email is still unverified. */
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
@@ -80,6 +85,14 @@ export function App({
   const idToken = useIdToken();
   const profile = useProfile(idToken);
   const savedWeights = profile.data?.profile?.weights ?? null;
+  /**
+   * No payment gateway behind this — see `apps/web/src/features/membership/MembershipPage.tsx`.
+   * `plan` is a real, server-side field on the account (`AuthService.setPlan`),
+   * not local component state: it survives a reload and applies the same way
+   * on any device the account signs into.
+   */
+  const isPremium = profile.data?.profile?.plan === 'premium';
+  const setPlan = useSetPlan(idToken);
 
   /**
    * Adopts the account's saved weight set once, on sign-in.
@@ -103,6 +116,9 @@ export function App({
   }, [selection]);
 
   const pick = (point: LatLng) => {
+    // The map click has nothing to do while exploring the demo area — the
+    // clickable surface there is the coloured points, not the base map.
+    if (explorerMode === 'area') return;
     if (!isInSemarangCoverage(point)) {
       setOutsideCoverage(true);
       return;
@@ -181,14 +197,22 @@ export function App({
     setAnalysisSelection(nextSelection);
   };
 
-  /** Moves the analysis to a nearby point the opportunity grid suggested, keeping the category. */
+  /**
+   * Moves the analysis to a point the opportunity grid suggested, keeping the
+   * category. Also the exit from the area explorer: clicking any of its
+   * points ends with a picked point, so there is nothing left to explore.
+   */
   const analysePoint = (point: LatLng) => {
     if (!isInSemarangCoverage(point)) return;
     const nextSelection = { point: roundPoint(point), businessType: selection.businessType, weights: selection.weights };
     setEntryMode('score');
     setSelection(nextSelection);
     setAnalysisSelection(nextSelection);
+    setExplorerMode('point');
   };
+
+  /** Leaves the area explorer for a visitor who already knows where to look. */
+  const exitAreaExplorer = () => setExplorerMode('point');
 
   /**
    * The tour blocks the page, so its later steps cannot wait for the visitor to
@@ -295,17 +319,22 @@ export function App({
       <main className="layout">
         <section
           className="map-pane"
-          aria-label="Peta. Klik untuk memilih lokasi, atau geser peta dengan tombol panah lalu pilih titik tengahnya."
+          aria-label={
+            explorerMode === 'area'
+              ? 'Peta. Area demo yang dinilai, diwarnai menurut skornya. Klik titik mana pun untuk membuka analisisnya.'
+              : 'Peta. Klik untuk memilih lokasi, atau geser peta dengan tombol panah lalu pilih titik tengahnya.'
+          }
         >
           <MapPicker
             initialCenter={initialCenter}
-            point={selection.point}
+            point={explorerMode === 'area' ? null : selection.point}
             // Zone rings and facility dots belong to one analysed point, so they
             // stay off while two sites are being compared.
             analysisPoint={siteCompare.active ? null : analysisSelection?.point ?? null}
             comparing={siteCompare.active}
             secondPoint={siteCompare.pointB}
-            highlightPoint={highlightPoint}
+            opportunityGrid={siteCompare.active ? null : opportunityGrid}
+            onAnalysePoint={analysePoint}
             onPick={pick}
             onCenterChange={setMapCenter}
           />
@@ -314,18 +343,19 @@ export function App({
               keyboard. Both map engines pan on arrow keys once focused, so the
               missing half was a way to commit the centre. `prepareTourResult`
               already did exactly this for the guided tour and kept it from
-              users. */}
-          <button
-            type="button"
-            className="map-centre-pick"
-            onClick={() => pick(mapCenter)}
-          >
-            Pilih titik tengah peta
-          </button>
-          {outsideCoverage && (
-            <p className="coverage-warning" role="status">
-              Lokasi itu berada di luar area cakupan Semarang. Pilih titik di dalam garis merah.
-            </p>
+              users. Neither applies while exploring the area: there is no
+              point to commit, only the coloured points to click. */}
+          {explorerMode === 'point' && (
+            <>
+              <button type="button" className="map-centre-pick" onClick={() => pick(mapCenter)}>
+                Pilih titik tengah peta
+              </button>
+              {outsideCoverage && (
+                <p className="coverage-warning" role="status">
+                  Lokasi itu berada di luar area cakupan Semarang. Pilih titik di dalam garis merah.
+                </p>
+              )}
+            </>
           )}
         </section>
 
@@ -354,17 +384,38 @@ export function App({
             `.panel .x` keeps applying; `floating-panel` restates only its box. */}
         <div className="overlay overlay-right">
           <FloatingPanel
-            title="Analisis lokasi"
+            title={explorerMode === 'area' ? 'Peluang wilayah' : 'Analisis lokasi'}
             // Carries the chosen category, so it stays visible while reading the
             // result instead of having to be recalled from the other card.
             badge={BUSINESS_TYPE_LABELS[selection.businessType]}
+            barControls={
+              explorerMode === 'area' ? (
+                <button
+                  type="button"
+                  className="button-secondary premium-demo-toggle"
+                  onClick={() => setPlan.mutate(isPremium ? 'free' : 'premium')}
+                  disabled={setPlan.isPending}
+                  aria-pressed={isPremium}
+                >
+                  Mode: {isPremium ? 'Premium (demo)' : 'Freemium'}
+                </button>
+              ) : undefined
+            }
             tourId="score"
             className="panel results-panel"
             collapsed={sheetCollapsed}
             onToggle={() => setSheetCollapsed((collapsed) => !collapsed)}
           >
-            {selection.point === null ? (
-              <Intro />
+            {explorerMode === 'area' ? (
+              <AreaOpportunityExplorer
+                query={opportunities}
+                businessType={selection.businessType}
+                isPremium={isPremium}
+                onSelectPoint={analysePoint}
+                onExit={exitAreaExplorer}
+              />
+            ) : selection.point === null ? (
+              <Intro onExploreArea={() => setExplorerMode('area')} />
             ) : siteCompare.active ? (
               <LocationComparisonView
                 pointA={selection.point}
@@ -385,8 +436,6 @@ export function App({
                 point={analysisSelection.point!}
                 businessType={analysisSelection.businessType}
                 onBusinessTypeChange={analyseBusinessType}
-                onAnalysePoint={analysePoint}
-                onHoverPoint={setHighlightPoint}
                 weights={selection.weights}
                 onWeightsChange={chooseWeights}
                 entryMode={entryMode}
@@ -414,7 +463,7 @@ export function App({
   );
 }
 
-function Intro() {
+function Intro({ onExploreArea }: { onExploreArea: () => void }) {
   return (
     <section className="intro">
       <span className="eyebrow">Analisis lokasi</span>
@@ -431,6 +480,13 @@ function Intro() {
           datanya terbatas, hasil akan ditandai agar Anda tahu bagian yang perlu dicek langsung.
         </p>
       </details>
+      <div className="intro-divider" role="separator" aria-label="atau">
+        <span>atau</span>
+      </div>
+      <p className="intro-copy">Belum tahu mau mulai di mana? Jelajahi satu area demo yang sudah dinilai penuh.</p>
+      <button type="button" className="button-secondary" onClick={onExploreArea}>
+        Jelajahi peluang di area demo
+      </button>
     </section>
   );
 }

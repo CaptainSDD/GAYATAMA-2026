@@ -1,4 +1,8 @@
 import { ZONE_LIMITS_METERS, ZONE_WEIGHTS, type LatLng } from '@gayatama/scoring';
+import type { OpportunitiesResponse } from '../../lib/api-types';
+
+/** One point of the area explorer's grid, as the API returns it. */
+export type OpportunityGridCell = OpportunitiesResponse['cells'][number];
 
 /**
  * City-level view before the user chooses a point. This is fractionally wider
@@ -115,12 +119,12 @@ export interface MapPickerProps {
   /** The second candidate, once picked. Only meaningful while comparing. */
   secondPoint?: LatLng | null;
   /**
-   * A point being pointed at elsewhere in the interface — a cell of the
-   * opportunity grid under the cursor. Shown, never selected: the grid names
-   * nine places by compass direction and distance, which is a poor substitute
-   * for seeing which one it means.
+   * The area explorer's opportunity points, drawn only while it is open.
+   * Optional so the landing map and the comparison view are untouched.
    */
-  highlightPoint?: LatLng | null;
+  opportunityGrid?: { cells: readonly OpportunityGridCell[] } | null;
+  /** Opens the full analysis at a point the visitor clicked on the map. */
+  onAnalysePoint?: (point: LatLng) => void;
   onPick: (point: LatLng) => void;
   onCenterChange: (center: LatLng) => void;
 }

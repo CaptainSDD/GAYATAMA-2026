@@ -152,48 +152,6 @@ export function barChart(data: readonly BarDatum[], max = 100): string {
   return `<div class="bar-chart">${rows}</div>`;
 }
 
-export interface HeatCell {
-  /** Grid position label, e.g. "utara". */
-  label: string;
-  /** `null` when the cell could not be scored. */
-  value: number | null;
-  tone: Tone;
-  /** Shown under the value. */
-  note?: string;
-  /** The analysed point itself. */
-  isCentre?: boolean;
-  /** The highest-scoring cell. */
-  isBest?: boolean;
-}
-
-/**
- * The nine-point opportunity grid, laid out as it is on screen: north at the
- * top, the analysed point in the middle. A table rather than a chart, because
- * the reader's question is "which direction", and a 3×3 of directions answers it
- * without a legend.
- */
-export function heatGrid(cells: readonly HeatCell[]): string {
-  const boxes = cells
-    .map((cell) => {
-      const badge = cell.isBest ? '<span class="heat-flag">terbaik</span>' : '';
-      const value =
-        cell.value === null
-          ? `<span class="heat-blank">${escapeHtml(cell.note ?? 'tidak dinilai')}</span>`
-          : `<span class="heat-score">${escapeHtml(cell.value)}</span>${
-              cell.note === undefined ? '' : `<span class="heat-note">${escapeHtml(cell.note)}</span>`
-            }`;
-      return `<div class="heat-cell${cell.isCentre === true ? ' heat-cell-centre' : ''}" style="background:${
-        cell.value === null ? '#f8fafc' : TONE_WASH[cell.tone]
-      };border-color:${cell.value === null ? RULE : TONE_INK[cell.tone]}">
-        <span class="heat-dir">${escapeHtml(cell.label)}</span>
-        ${value}
-        ${badge}
-      </div>`;
-    })
-    .join('');
-  return `<div class="heat-grid">${boxes}</div><p class="heat-compass">Atas = utara</p>`;
-}
-
 /**
  * One bar split into parts, for a total broken down by distance zone. Segments
  * under a few per cent still get a hairline of width so a small count is not

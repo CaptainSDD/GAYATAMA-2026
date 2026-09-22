@@ -77,14 +77,15 @@ is enforced in the scoring engine, not left to interface copy.
 | 4 | **Target Market Insight** | *Which customer segments are most likely to be present around this location?* Six customer segments scored 0–100, each backed by the specific facilities that produced the score, plus what that implies for product, pricing, and opening hours. |
 | 5 | **Side-by-side Comparison** | *Which of these is the better bet?* Two comparisons: all seven business types ranked against each other at one point, and two candidate locations scored for the same business type, each with the deciding differences named. |
 | 6 | **What-if Simulator** | *What would change if I fixed the parking?* Rescores the location with on-site parking or the operator's own opening hours applied, and reports the baseline, the new score, and exactly which components moved. |
-| 7 | **Area Opportunity Map** | *Am I on the best corner of this neighbourhood?* Nine points 350 m apart, each scored for the chosen category, with the strongest named by direction and distance — and one control to move the whole analysis there. |
+| 7 | **Area Opportunity Explorer** | *I don't have a location in mind — where should I even look?* For a visitor who has not picked a point yet: one fixed representative point per kecamatan of Semarang, each coloured green-to-red by score for the chosen category. Clicking any point opens the full analysis there. |
 | 8 | **Consolidated Report** | *Can I take this away and show someone?* Any completed analysis opens as a print-ready report the browser saves as PDF, carrying the score, its interval, the evidence, and the data attribution. |
 | 9 | **Authentication & Guided Tour** | *Can I enter securely and understand the workflow?* Firebase email/password accounts, email-verification guidance, protected app routes, and a replayable product tour. |
 
 The simulator moves only what an owner actually controls, and the opportunity
-grid is OpenStreetMap-only — a Google aggregate count covers an area, so it
-cannot be split honestly across nine separate points. Both say plainly when a
-point could not be scored rather than filling the gap with a number.
+explorer is OpenStreetMap-only — a Google aggregate count covers an area, so
+it cannot be split honestly across sixteen separate kecamatan. Both say
+plainly when a point could not be scored rather than filling the gap with a
+number.
 
 Full formulas, weights, and worked examples: **[docs/methodology.md](docs/methodology.md)**.
 
@@ -356,13 +357,14 @@ What is deliberately out of scope for this submission, and why:
 
 ## Team
 
-<!-- TODO before submission: replace with real names, study programmes, and faculty advisor. -->
-
 | Role | Name | Institution |
 |------|------|-------------|
-| _TBD_ | _TBD_ | _TBD_ |
+| Frontend Developer, UI/UX Designer | Daniel Yehuda | BINUS University |
+| Backend Developer, System Architect | Jason Christian Purnomo | BINUS University |
+| Full-Stack Developer, Methodology Lead | Steven Orlando Winoto | BINUS University |
+| Business Analyst, Proposal Writer, Team Lead | Vanessa Angelica Budiono | BINUS University |
 
-**Faculty advisor:** _TBD_
+**Faculty advisor:** Dr. Prabowo Wahyu Sudarno, S.Kom.
 
 ## License
 

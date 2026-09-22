@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
+import { FIREBASE_AUTH, FIRESTORE } from '../src/firebase/firebase.module';
 import { GeoapifyClient } from '../src/geoapify/geoapify.client';
 import { OSM_SNAPSHOTS, OsmSnapshots } from '../src/osm-snapshots/osm-snapshots';
 import { OVERTURE_PLACES, OverturePlaces } from '../src/overture/overture-places';
@@ -9,7 +10,23 @@ import { OverpassClient } from '../src/overpass/overpass.client';
 import type { OverpassElement } from '../src/overpass/overpass-element';
 import { PlacesAggregateClient, type PlaceCountRequest } from '../src/places/places-aggregate.client';
 import { configureApp } from '../src/setup';
-import { ORIGIN, neighbourhood, offset, siteElements } from './fixtures';
+import { FakeFirestore, ORIGIN, neighbourhood, offset, siteElements } from './fixtures';
+
+/**
+ * Every analysis/location route now requires a verified caller, so the whole
+ * suite runs as one signed-in test account. `verifyIdToken` is faked rather
+ * than exercising real Firebase Auth — the guard itself is `VerifyTokenGuard`'s
+ * own responsibility to get right, not this file's.
+ */
+const FAKE_TOKEN = 'fake-id-token';
+const FAKE_UID = 'test-uid';
+const fakeAuth = {
+  verifyIdToken: async (token: string) => {
+    if (token !== FAKE_TOKEN) throw new Error('Invalid token');
+    return { uid: FAKE_UID, email: 'test@example.com', email_verified: true };
+  },
+};
+const AUTH_HEADER = { authorization: `Bearer ${FAKE_TOKEN}` };
 
 class FakeOverpassClient {
   readonly queryTimeoutSeconds = 25;
@@ -83,15 +100,18 @@ const readJson = (response: Response): Promise<any> => response.json();
 describe('API (end to end, fake Overpass)', () => {
   const overpass = new FakeOverpassClient();
   const places = new FakePlacesClient();
+  const firestore = new FakeFirestore();
   let app: NestExpressApplication;
   let base: string;
 
-  const post = (path: string, body: string | object) =>
+  const post = (path: string, body: string | object, headers: Record<string, string> = AUTH_HEADER) =>
     fetch(`${base}${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...headers },
       body: typeof body === 'string' ? body : JSON.stringify(body),
     });
+
+  const get = (path: string, headers: Record<string, string> = AUTH_HEADER) => fetch(`${base}${path}`, { headers });
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -106,6 +126,10 @@ describe('API (end to end, fake Overpass)', () => {
       .useValue(OVERTURE)
       .overrideProvider(PlacesAggregateClient)
       .useValue(places)
+      .overrideProvider(FIREBASE_AUTH)
+      .useValue(fakeAuth)
+      .overrideProvider(FIRESTORE)
+      .useValue(firestore)
       .compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
@@ -117,6 +141,8 @@ describe('API (end to end, fake Overpass)', () => {
     overpass.poi = neighbourhood();
     places.failure = null;
     places.requests.length = 0;
+    firestore.users.clear();
+    firestore.usernames.clear();
   });
 
   afterAll(async () => {
@@ -296,7 +322,7 @@ describe('API (end to end, fake Overpass)', () => {
   });
 
   it('GET /pois returns facilities and site conditions for local recomputation', async () => {
-    const response = await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}`);
+    const response = await get(`/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}`);
     const body = await readJson(response);
 
     expect(response.status).toBe(200);
@@ -307,7 +333,7 @@ describe('API (end to end, fake Overpass)', () => {
     const distances = body.facilities.map((facility: { distanceMeters: number }) => facility.distanceMeters);
     expect(distances).toEqual([...distances].sort((a, b) => a - b));
 
-    const near = await readJson(await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&radius=300`));
+    const near = await readJson(await get(`/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&radius=300`));
     expect(near.facilities).toHaveLength(4);
   });
 
@@ -352,7 +378,7 @@ describe('API (end to end, fake Overpass)', () => {
     });
 
     it('GET /pois returns counted zones alongside the remaining OpenStreetMap facilities', async () => {
-      const body = await readJson(await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&googleMap=true`));
+      const body = await readJson(await get(`/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&googleMap=true`));
 
       expect(body.facilities.map((facility: { kind: string }) => facility.kind).sort()).toEqual([
         'atm',
@@ -379,7 +405,7 @@ describe('API (end to end, fake Overpass)', () => {
         dataQuality: 0.65,
       });
 
-      const near = await readJson(await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&radius=300&googleMap=true`));
+      const near = await readJson(await get(`/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&radius=300&googleMap=true`));
       expect(near.facilities).toHaveLength(3);
       expect(near.facilityCounts.map((entry: { kind: string }) => entry.kind)).toEqual(['cafe']);
     });
@@ -404,7 +430,7 @@ describe('API (end to end, fake Overpass)', () => {
     it('rejects a googleMap flag that is not a boolean', async () => {
       const response = await post('/recommend', { lat: ORIGIN.lat, lng: ORIGIN.lng, googleMap: 'yes' });
       expect(response.status).toBe(400);
-      expect((await fetch(`${base}/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&googleMap=1`)).status).toBe(400);
+      expect((await get(`/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}&googleMap=1`)).status).toBe(400);
     });
   });
 
@@ -446,5 +472,49 @@ describe('API (end to end, fake Overpass)', () => {
     const response = await fetch(`${base}/reports/abc`);
     expect(response.status).toBe(404);
     expect(await readJson(response)).toMatchObject({ error: 'NOT_FOUND' });
+  });
+
+  describe('sign-in is required for every analysis route', () => {
+    it('rejects POST /analysis with no Authorization header', async () => {
+      const response = await post('/analysis', { lat: ORIGIN.lat, lng: ORIGIN.lng, businessType: 'laundry' }, {});
+      expect(response.status).toBe(401);
+      expect(await readJson(response)).toMatchObject({ error: 'UNAUTHORIZED' });
+    });
+
+    it('rejects GET /pois with an invalid token', async () => {
+      const response = await get(`/pois?lat=${ORIGIN.lat}&lng=${ORIGIN.lng}`, { authorization: 'Bearer not-the-fake-token' });
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('the kecamatan drill-down is premium-only, server-side', () => {
+    it('answers PREMIUM_REQUIRED for kecamatanId on a free (or unregistered) account', async () => {
+      const response = await post('/opportunities', { businessType: 'laundry', kecamatanId: 'semarang_tengah' });
+      expect(response.status).toBe(403);
+      expect(await readJson(response)).toMatchObject({ error: 'PREMIUM_REQUIRED' });
+    });
+
+    it('lets a free account see the city-wide list, just not one kecamatan\'s detail', async () => {
+      const response = await post('/opportunities', { businessType: 'laundry' });
+      expect(response.status).toBe(200);
+      expect((await readJson(response)).cells.length).toBe(16);
+    });
+
+    it('the demo "upgrade" (no payment) makes the drill-down work', async () => {
+      await post('/auth/register-profile', { username: 'demoUser' });
+
+      const beforeUpgrade = await post('/opportunities', { businessType: 'laundry', kecamatanId: 'semarang_tengah' });
+      expect(beforeUpgrade.status).toBe(403);
+
+      const upgrade = await fetch(`${base}/auth/profile/plan`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', ...AUTH_HEADER },
+        body: JSON.stringify({ plan: 'premium' }),
+      });
+      expect(upgrade.status).toBe(200);
+
+      const afterUpgrade = await post('/opportunities', { businessType: 'laundry', kecamatanId: 'semarang_tengah' });
+      expect(afterUpgrade.status).toBe(200);
+    });
   });
 });

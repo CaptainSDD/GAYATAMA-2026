@@ -95,10 +95,17 @@ export const simulationRequestSchema = z
   .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType, googleMap, options: operatorOptions })
   .strict();
 
-/** OSM-only 3×3 opportunity grid; Google aggregates cannot be reused truthfully per cell. */
-export const opportunitiesRequestSchema = z
-  .object({ lat: latitude(z.number()), lng: longitude(z.number()), businessType })
-  .strict();
+/**
+ * OSM-only score for one fixed representative point per kecamatan of Kota
+ * Semarang. No point yet: this is for a visitor who has not picked a
+ * location, so the only input is what they want to open. Google aggregates
+ * cannot be reused truthfully per point either way.
+ *
+ * `kecamatanId` is optional and demo-tier-gated on the client only — there is
+ * no server-side entitlement check. When present, the response scores a small
+ * local grid inside that one kecamatan instead of the sixteen-kecamatan list.
+ */
+export const opportunitiesRequestSchema = z.object({ businessType, kecamatanId: z.string().optional() }).strict();
 
 export type SimulationRequest = z.infer<typeof simulationRequestSchema>;
 export type OpportunitiesRequest = z.infer<typeof opportunitiesRequestSchema>;

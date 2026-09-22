@@ -4,6 +4,7 @@ import { useCallback, useMemo, type CSSProperties } from 'react';
 import { SEMARANG_MAP_LIMITS } from '../../lib/location';
 import { GOOGLE_MAP_ID, GOOGLE_MAPS_API_KEY } from '../../lib/map-config';
 import { SEMARANG_BOUNDARY } from '../../lib/semarang-boundary';
+import { GoogleOpportunityMarkers } from './OpportunityMarkers';
 import { useKeyboardPan } from './useKeyboardPan';
 import { ZoneLabel } from './ZoneLabel';
 import {
@@ -50,11 +51,12 @@ export function GoogleMapPicker({
   analysisPoint,
   comparing = false,
   secondPoint = null,
+  opportunityGrid,
+  onAnalysePoint,
   onPick,
   onCenterChange,
   hoveredZone,
   onZoneHover,
-  highlightPoint = null,
 }: MapPickerProps & ZoneHoverProps) {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
@@ -91,6 +93,11 @@ export function GoogleMapPicker({
         }}
       >
         <CoverageOverlay />
+        {/* Not gated on a picked point: the area explorer draws these points
+            before any point exists at all. */}
+        {opportunityGrid != null && onAnalysePoint !== undefined && (
+          <GoogleOpportunityMarkers cells={opportunityGrid.cells} onAnalysePoint={onAnalysePoint} />
+        )}
         {point !== null && (
           <>
             {analysisPoint !== null && (
@@ -136,13 +143,6 @@ export function GoogleMapPicker({
               <span className="picked-pin-pulse" aria-hidden="true" />
               <span style={PICK_MARKER_LABEL_STYLE}>B</span>
             </span>
-          </AdvancedMarker>
-        )}
-        {highlightPoint !== null && (
-          // Same element and same CSS rule as the Leaflet path, so the hovered
-          // cell is marked identically whichever provider is drawing the map.
-          <AdvancedMarker position={highlightPoint} clickable={false} anchorLeft="-50%" anchorTop="-50%">
-            <span className="opportunity-ping" />
           </AdvancedMarker>
         )}
         <KeyboardPan />
