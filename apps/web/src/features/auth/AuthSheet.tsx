@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import lokabisLogo from '../../assets/lokabis-logo.png';
+import { ConstellationField } from '../../components/ConstellationField';
 
 /**
  * The shell both doors share, in the landing page's Studio Sheet rather than the
@@ -35,6 +36,7 @@ interface AuthSheetProps {
 export function AuthSheet({ counterpart, aside, children }: AuthSheetProps) {
   return (
     <div className="landing landing-sheet">
+      <ConstellationField />
       <a className="landing-skip" href="#formulir">
         Lewati ke formulir
       </a>

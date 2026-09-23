@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { COMPONENT_KEYS, type ComponentWeights } from '@gayatama/scoring';
 import lokabisLogo from '../../assets/lokabis-logo.png';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { ConstellationField } from '../../components/ConstellationField';
 import { signOutUser } from '../../lib/auth';
 import { formatDateTime } from '../../lib/format';
 import { AuthLoading } from '../auth/AuthLoading';
@@ -50,17 +51,43 @@ export function ProfilePage() {
   const lastSignIn = user.metadata.lastSignInTime;
 
   return (
-    <div className="account-page">
-      <header className="account-bar">
-        <Link to="/app" className="account-back">
-          <img className="account-logo" src={lokabisLogo} alt="LOKABIS" width={132} height={44} />
+    <div className="landing landing-sheet account-page account-sheet">
+      <ConstellationField />
+      <a className="landing-skip" href="#akun">
+        Lewati ke informasi akun
+      </a>
+
+      <header className="landing-nav sheet-nav account-nav">
+        <Link className="landing-nav-brand" to="/app" aria-label="LOKABIS, ke peta analisis">
+          <img src={lokabisLogo} alt="" width={132} height={44} />
         </Link>
-        <Link className="button-secondary" to="/app">
-          Kembali ke peta
-        </Link>
+
+        <div className="landing-nav-pill">
+          <nav className="landing-nav-links" aria-label="Halaman akun">
+            <Link to="/app">
+              <span className="account-nav-label-long">Peta analisis</span>
+              <span className="account-nav-label-short">Peta</span>
+            </Link>
+            <Link className="account-nav-package" to="/membership">
+              Paket
+            </Link>
+          </nav>
+          <Link className="landing-nav-login" to="/akun" aria-current="page">
+            Profil
+          </Link>
+        </div>
       </header>
 
-      <main className="account-main">
+      <span className="sheet-rings" aria-hidden="true">
+        <svg viewBox="0 0 120 120" focusable="false">
+          <circle className="sheet-ring-outer" cx="60" cy="60" r="58" vectorEffect="non-scaling-stroke" />
+          <circle className="sheet-ring-mid" cx="60" cy="60" r="31" vectorEffect="non-scaling-stroke" />
+          <circle className="sheet-ring-inner" cx="60" cy="60" r="12" vectorEffect="non-scaling-stroke" />
+          <circle className="sheet-ring-point" cx="60" cy="60" r="1.6" />
+        </svg>
+      </span>
+
+      <main className="account-main" id="akun" tabIndex={-1}>
         <h1 className="account-title">Akun</h1>
 
         <section className="account-card" aria-labelledby="account-identity">

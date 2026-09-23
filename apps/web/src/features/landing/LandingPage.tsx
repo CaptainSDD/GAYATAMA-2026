@@ -10,8 +10,10 @@ import {
 import { Component, lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import lokabisLogo from '../../assets/lokabis-logo.png';
+import { ConstellationField } from '../../components/ConstellationField';
 import { bandTone, toneChip } from '../../lib/band-color';
 import { BAND_LABELS, BUSINESS_TYPE_LABELS, COMPONENT_LABELS } from '../../lib/copy';
+import { useAuthState } from '../auth/useAuthState';
 import { LANDING_EXAMPLE } from './landingExample';
 import { ScoreBreakdown } from './ScoreBreakdown';
 import { SevenAnswers } from './SevenAnswers';
@@ -89,9 +91,11 @@ export function LandingPage() {
   const heroEnd = useRef<HTMLDivElement>(null);
   const mobileMenu = useRef<HTMLDetailsElement>(null);
   const [enhanceMap, setEnhanceMap] = useState(false);
+  const authState = useAuthState();
   const activeSection = useActiveLandingSection(SECTION_IDS);
   useScrollReveal();
   useHeroExit(heroEnd);
+  const signedIn = authState.status === 'signed-in';
 
   // The truthful static radius diagram paints with the headline. Leaflet and
   // third-party tiles enhance it after that first frame instead of competing
@@ -114,6 +118,7 @@ export function LandingPage() {
 
   return (
     <div className="landing">
+      <ConstellationField />
       <a className="landing-skip" href="#top">
         Lewati ke konten utama
       </a>
@@ -135,9 +140,15 @@ export function LandingPage() {
                 {section.label}
               </a>
             ))}
-            <Link to="/login" onClick={closeMobileMenu}>
-              Masuk
-            </Link>
+            {signedIn ? (
+              <Link to="/app" onClick={closeMobileMenu}>
+                Peta analisis
+              </Link>
+            ) : (
+              <Link to="/login" onClick={closeMobileMenu}>
+                Masuk
+              </Link>
+            )}
           </nav>
         </details>
 
@@ -153,16 +164,32 @@ export function LandingPage() {
               </a>
             ))}
           </nav>
-          <Link className="landing-nav-login" to="/login">
-            Masuk
-          </Link>
+          {signedIn ? (
+            <Link className="landing-nav-login" to="/app">
+              Peta analisis
+            </Link>
+          ) : (
+            <Link className="landing-nav-login" to="/login">
+              Masuk
+            </Link>
+          )}
         </div>
 
-        <Link className="landing-nav-action" to="/signup" aria-label="Nilai lokasi gratis">
-          <span className="landing-nav-action-long">Nilai lokasi gratis</span>
-          <span className="landing-nav-action-short" aria-hidden="true">
-            Nilai gratis
-          </span>
+        <Link
+          className="landing-nav-action"
+          to={signedIn ? '/akun' : '/signup'}
+          aria-label={signedIn ? 'Buka profil' : 'Nilai lokasi gratis'}
+        >
+          {signedIn ? (
+            'Profil'
+          ) : (
+            <>
+              <span className="landing-nav-action-long">Nilai lokasi gratis</span>
+              <span className="landing-nav-action-short" aria-hidden="true">
+                Nilai gratis
+              </span>
+            </>
+          )}
         </Link>
       </header>
 

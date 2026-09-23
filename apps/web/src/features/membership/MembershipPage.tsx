@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import lokabisLogo from '../../assets/lokabis-logo.png';
+import { ConstellationField } from '../../components/ConstellationField';
 import { CheckIcon } from '../../components/Icons';
+import { useAuthState } from '../auth/useAuthState';
 
 /**
  * The plans page, in the landing page's Studio Sheet rather than the app's
@@ -197,14 +199,18 @@ const TIERS: Tier[] = [
 ];
 
 export function MembershipPage() {
+  const authState = useAuthState();
+  const signedIn = authState.status === 'signed-in';
+
   return (
     <div className="landing landing-sheet landing-plans">
+      <ConstellationField />
       <a className="landing-skip" href="#paket">
         Lewati ke daftar paket
       </a>
 
-      {/* The doorway's bar, with the two doors in place of the counterpart: every
-          link here leaves the page, so it sits in the layout rather than over it. */}
+      {/* Membership is public, but a signed-in visitor reached it from the app and
+          needs a way back to their work rather than another invitation to enter. */}
       <header className="landing-nav sheet-nav">
         <Link className="landing-nav-brand" to="/" aria-label="LOKABIS, ke halaman utama">
           <img src={lokabisLogo} alt="" width={132} height={44} />
@@ -212,12 +218,27 @@ export function MembershipPage() {
 
         <div className="landing-nav-pill">
           <nav className="landing-nav-links" aria-label="Halaman LOKABIS">
-            <Link to="/">Beranda</Link>
-            <Link to="/login">Masuk</Link>
+            <Link className={signedIn ? 'plans-nav-home' : undefined} to="/">
+              Beranda
+            </Link>
+            {signedIn ? (
+              <Link to="/app">
+                <span className="plans-nav-label-long">Peta analisis</span>
+                <span className="plans-nav-label-short">Peta</span>
+              </Link>
+            ) : (
+              <Link to="/login">Masuk</Link>
+            )}
           </nav>
-          <Link className="landing-nav-login sheet-nav-counterpart" to="/signup">
-            Daftar
-          </Link>
+          {signedIn ? (
+            <Link className="landing-nav-login plans-nav-profile" to="/akun">
+              Profil
+            </Link>
+          ) : (
+            <Link className="landing-nav-login sheet-nav-counterpart" to="/signup">
+              Daftar
+            </Link>
+          )}
         </div>
       </header>
 
@@ -318,7 +339,7 @@ export function MembershipPage() {
 
                     {live ? (
                       <>
-                        <Link className="plans-action plans-action-live" to="/signup">
+                        <Link className="plans-action plans-action-live" to={signedIn ? '/app' : '/signup'}>
                           {tier.cta}
                         </Link>
                         <p className="plans-note">Tanpa kartu kredit. Akun diverifikasi lewat email.</p>
@@ -355,11 +376,20 @@ export function MembershipPage() {
         </div>
 
         <footer className="sheet-foot">
-          {/* The bar above carries Beranda and Masuk; the foot carries the move
-              this page is actually for, which the narrow bar drops. */}
+          {/* The footer keeps the same destinations available after the reader
+              reaches the end of the plan comparison. */}
           <nav className="sheet-foot-nav" aria-label="Navigasi LOKABIS">
-            <Link to="/">Beranda</Link>
-            <Link to="/signup">Daftar gratis</Link>
+            {signedIn ? (
+              <>
+                <Link to="/app">Peta analisis</Link>
+                <Link to="/akun">Profil</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/">Beranda</Link>
+                <Link to="/signup">Daftar gratis</Link>
+              </>
+            )}
           </nav>
           <p>
             Data lokasi © OpenStreetMap contributors, ODbL 1.0. Skor dihitung oleh model LOKABIS dan selalu disertai
